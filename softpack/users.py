@@ -6,15 +6,29 @@ class Users:
     def get(self):
         users = [
             User(
-                name="Jip Bager",
-                email="jip.bager@email.com",
+                name="Haris Rivas",
+                email="haris.rivas@example.com",
+                id=0,
             ),
             User(
-                name="Eike Wetzel",
-                email="eike.wetzel@email.com",
+                name="Annabelle Lloyd",
+                email="annabelle.lloyd@example.com",
+                id=1,
             ),
             User(
-                name="Yalwa Norris",
-                email="yalwa.norris@email.com",
+                name="Khalil Sawyer",
+                email="khalil.sawyer@example.com",
+                id=2,
+            ),
+            User(
+                name="Frederick Contreras",
+                email="frederick.contreras@example.com",
+                id=3,
+            ),
+            User(
+                name="Sian Duke",
+                email="sian.duke@example.com",
+                id=4,
             ),
         ]
+        return users
