@@ -32,7 +32,7 @@ class Environments:
                     )
                 ],
                 creation_date=datetime.now(),
-                status= ["completed", "pending", "failed"][i % 3],
+                status= ["Completed", "Pending", "Failed"][i % 3],
                 id=i
             )
             for i in range(5)
