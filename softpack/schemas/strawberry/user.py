@@ -7,3 +7,4 @@ class User:
 
     name: strawberry.auto
     email: strawberry.auto
+    id: strawberry.ID

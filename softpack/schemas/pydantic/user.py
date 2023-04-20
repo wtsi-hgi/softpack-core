@@ -6,3 +6,4 @@ class BaseUser(BaseModel):
 
     name: str
     email: str
+    id: int
