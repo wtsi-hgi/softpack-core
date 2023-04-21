@@ -1,10 +1,10 @@
 import strawberry
 from typing import List
+from .schemas.strawberry.package_collection import PackageCollection
 from .schemas.strawberry.environment import Environment
-from .schemas.strawberry.package import Package
 from .schemas.strawberry.user import User
+from .package_collections import PackageCollections
 from .environments import Environments
-from .packages import Packages
 from .users import Users
 
 
@@ -16,8 +16,8 @@ def all_environments() -> List[Environment]:
     envs = Environments()
     return envs.get()
 
-def all_packages() -> List[Package]:
-    pkgs = Packages()
+def all_packages() -> List[PackageCollection]:
+    pkgs = PackageCollections()
     return pkgs.get()
 
 def all_users() -> List[User]:
