@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from strawberry.fastapi import GraphQLRouter
 from singleton_decorator import singleton
 from .query import Query
+from .config import Settings
 
 
 
@@ -13,19 +14,15 @@ class Application:
     """Application class."""
 
     def __init__(self) -> None:
-        """Constructor"""
+        """Constructor."""
+        self.settings = Settings.parse_obj({})
         self.schema = strawberry.Schema(query=Query)
         self.graphql_app = GraphQLRouter(self.schema)
         self.router = FastAPI()
         self.router.include_router(self.graphql_app, prefix="/graphql")
-        origins = [
-                "http://localhost",
-                "http://localhost:8080",
-                "http://localhost:3000",
-            ]
         self.router.add_middleware(
             CORSMiddleware,
-            allow_origins=origins,
+            allow_origins=self.settings.server.header.origins,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],

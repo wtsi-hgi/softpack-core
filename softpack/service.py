@@ -1,11 +1,11 @@
 import uvicorn
-
+from softpack.app import app
 
 def main():
     uvicorn.run(
         "softpack.app:app.router",
-        host="0.0.0.0",
-        port=8000,
+        host=app.settings.server.host,
+        port=app.settings.server.port,
         reload=True,
         log_level="debug",
         )
