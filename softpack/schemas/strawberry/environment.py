@@ -1,4 +1,3 @@
-from typing import List
 import strawberry
 from ..pydantic.environment import BaseEnvironment
 from .package import Package
@@ -11,8 +10,8 @@ class Environment:
 
     name: strawberry.auto
     description: strawberry.auto
-    packages: List[Package]
-    owners: List[User]
+    packages: list[Package]
+    owner: User
     creation_date: strawberry.auto
     status: strawberry.auto
     id: strawberry.ID

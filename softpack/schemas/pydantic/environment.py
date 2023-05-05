@@ -1,4 +1,3 @@
-from typing import List
 from pydantic import BaseModel
 from datetime import datetime
 from .package import BasePackage
@@ -10,8 +9,8 @@ class BaseEnvironment(BaseModel):
 
     name: str
     description: str
-    packages: List[BasePackage]
-    owners: List[BaseUser]
+    packages: list[BasePackage]
+    owner: BaseUser
     creation_date: datetime
     status: str
     id: int

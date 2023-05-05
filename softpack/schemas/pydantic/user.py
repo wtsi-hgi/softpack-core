@@ -5,5 +5,4 @@ class BaseUser(BaseModel):
     """A model representing a single user."""
 
     name: str
-    email: str
     id: int

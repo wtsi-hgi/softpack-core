@@ -1,22 +1,22 @@
 import strawberry
-from typing import List
-from .schemas.strawberry.package_collection import PackageCollection
-from .schemas.strawberry.environment import Environment
-from .schemas.strawberry.user import User
-from .package_collections import PackageCollections
+
 from .environments import Environments
+from .package_collections import PackageCollections
+from .schemas.strawberry.environment import Environment
+from .schemas.strawberry.package_collection import PackageCollection
+from .schemas.strawberry.user import User
 from .users import Users
 
 
-def all_environments() -> List[Environment]:
+def all_environments() -> list[Environment]:
     envs = Environments()
     return envs.get()
 
-def all_package_collections() -> List[PackageCollection]:
+def all_package_collections() -> list[PackageCollection]:
     collections = PackageCollections()
     return collections.get()
 
-def all_users() -> List[User]:
+def all_users() -> list[User]:
     users = Users()
     return users.get()
 
@@ -30,7 +30,9 @@ def find_environment(name: str) -> Environment:
     
 def find_package_collection(name: str) -> PackageCollection:
     collections = PackageCollections().get()
-    matching_collections = [collection for collection in collections if collection.name == name]
+    matching_collections = [
+        collection for collection in collections if collection.name == name
+    ]
     if len(matching_collections) > 0:
         return matching_collections[0]
     else:
@@ -51,5 +53,7 @@ class Query:
     all_packages = strawberry.field(resolver=all_package_collections)
     all_users = strawberry.field(resolver=all_users)
     find_environment = strawberry.field(resolver=find_environment)
-    find_package_collection = strawberry.field(resolver=find_package_collection)
+    find_package_collection = strawberry.field(
+        resolver=find_package_collection
+    )
     find_users = strawberry.field(resolver=find_users)

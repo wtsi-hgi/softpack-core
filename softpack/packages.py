@@ -1,10 +1,8 @@
-from typing import List
 from .schemas.strawberry.package import Package
 
 
 class Packages:
-    
-    def get(self) -> List[Package]:
+    def get(self) -> list[Package]:
         pkgs = [
             Package(
                 name="Python",
@@ -13,6 +11,6 @@ class Packages:
             Package(
                 name="R",
                 version="3.4.0",
-            )
+            ),
         ]
         return pkgs

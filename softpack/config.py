@@ -1,8 +1,9 @@
 from pathlib import Path
 from typing import Any, Tuple
+
+import yaml
 from pydantic import AnyHttpUrl, BaseModel, BaseSettings
 from pydantic.env_settings import SettingsSourceCallable
-import yaml
 
 
 class ServerConfig(BaseModel):
@@ -76,7 +77,7 @@ class Settings(BaseSettings):
                 config file.
 
             """
-            path = Path.home() / ".softpack-core" / cls.config_file
+            path = Path.home() / ".softpack/core" / cls.config_file
             return cls.file_settings(path, settings)
 
         @classmethod

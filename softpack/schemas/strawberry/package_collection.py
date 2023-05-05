@@ -1,6 +1,5 @@
 import strawberry
 from ..pydantic.package_collection import BasePackageCollection
-from typing import List
 from .package import Package
 
 
@@ -9,5 +8,5 @@ class PackageCollection:
     """A Strawberry model representing a single package collection."""
 
     name: strawberry.auto
-    packages: List[Package]
+    packages: list[Package]
     id: strawberry.ID
