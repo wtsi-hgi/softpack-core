@@ -14,7 +14,7 @@ from .schemas.strawberry.user import User
 from .users import Users
 
 
-def all_environments() -> list[Environment]:
+def environments() -> list[Environment]:
     """Get all environments.
 
     Returns:
@@ -24,27 +24,7 @@ def all_environments() -> list[Environment]:
     return envs.get()
 
 
-def all_package_collections() -> list[PackageCollection]:
-    """Get all package collections.
-
-    Returns:
-        a list of package collection objects
-    """
-    collections = PackageCollections()
-    return collections.get()
-
-
-def all_users() -> list[User]:
-    """Get all users.
-
-    Returns:
-        a user objects
-    """
-    users = Users()
-    return users.get()
-
-
-def find_environment(name: str) -> Environment:
+def environment(name: str) -> Environment:
     """Get environment by name.
 
     Args:
@@ -61,7 +41,17 @@ def find_environment(name: str) -> Environment:
         return None
 
 
-def find_package_collection(name: str) -> PackageCollection:
+def package_collections() -> list[PackageCollection]:
+    """Get all package collections.
+
+    Returns:
+        a list of package collection objects
+    """
+    collections = PackageCollections()
+    return collections.get()
+
+
+def package_collection(name: str) -> PackageCollection:
     """Get package collection by name.
 
     Args:
@@ -80,7 +70,17 @@ def find_package_collection(name: str) -> PackageCollection:
         return None
 
 
-def find_users(name: str) -> User:
+def users() -> list[User]:
+    """Get all users.
+
+    Returns:
+        a user objects
+    """
+    users = Users()
+    return users.get()
+
+
+def user(name: str) -> User:
     """Get user by name.
 
     Args:
@@ -101,11 +101,9 @@ def find_users(name: str) -> User:
 class Query:
     """GraphQL queries."""
 
-    all_environments = strawberry.field(resolver=all_environments)
-    all_packages = strawberry.field(resolver=all_package_collections)
-    all_users = strawberry.field(resolver=all_users)
-    find_environment = strawberry.field(resolver=find_environment)
-    find_package_collection = strawberry.field(
-        resolver=find_package_collection
-    )
-    find_users = strawberry.field(resolver=find_users)
+    environments = strawberry.field(resolver=environments)
+    environment = strawberry.field(resolver=environment)
+    packages = strawberry.field(resolver=package_collections)
+    package_collection = strawberry.field(resolver=package_collection)
+    users = strawberry.field(resolver=users)
+    user = strawberry.field(resolver=user)
