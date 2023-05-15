@@ -1,12 +1,13 @@
 from typing import Any
+
 import strawberry
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from strawberry.fastapi import GraphQLRouter
 from singleton_decorator import singleton
-from .query import Query
-from .config import Settings
+from strawberry.fastapi import GraphQLRouter
 
+from .config import Settings
+from .query import Query
 
 
 @singleton
@@ -29,8 +30,8 @@ class Application:
         )
 
 
-
 app = Application()
+
 
 @app.router.get("/")
 def root() -> Any:

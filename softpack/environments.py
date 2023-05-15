@@ -5,7 +5,6 @@ from .schemas.strawberry.environment import Environment
 
 
 class Environments:
-
     def get(self) -> list[Environment]:
         artifacts = Artifacts().get_artifacts()
 

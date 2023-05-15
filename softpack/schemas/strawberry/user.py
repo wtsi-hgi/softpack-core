@@ -1,5 +1,7 @@
 import strawberry
+
 from ..pydantic.user import BaseUser
+
 
 @strawberry.experimental.pydantic.type(model=BaseUser)
 class User:

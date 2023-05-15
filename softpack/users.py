@@ -2,7 +2,6 @@ from .schemas.strawberry.user import User
 
 
 class Users:
-    
     def get(self):
         users = [
             User(

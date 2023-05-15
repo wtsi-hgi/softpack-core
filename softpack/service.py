@@ -1,5 +1,7 @@
 import uvicorn
+
 from softpack.app import app
+
 
 def main():
     uvicorn.run(
@@ -8,9 +10,8 @@ def main():
         port=app.settings.server.port,
         reload=True,
         log_level="debug",
-        )
+    )
+
 
 if __name__ == "__main__":
     main()
-
-

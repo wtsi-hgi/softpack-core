@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     """Package settings."""
 
     server: ServerConfig
-    
+
     class Config:
         """Configuration loader."""
 
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
                 return settings.dict()
             with open(path) as f:
                 return yaml.safe_load(f)
-            
+
         @classmethod
         def defaults(cls, settings: BaseSettings) -> dict[str, Any]:
             """Load defaults from config file.
@@ -64,7 +64,7 @@ class Settings(BaseSettings):
             package_dir = Path(__file__).parent.absolute()
             path = package_dir / cls.config_dir / cls.config_file
             return cls.file_settings(path, settings)
-        
+
         @classmethod
         def overrides(cls, settings: BaseSettings) -> dict[str, Any]:
             """Load overrides from config file in the current directory.

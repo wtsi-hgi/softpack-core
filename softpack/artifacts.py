@@ -11,14 +11,12 @@ from softpack.schemas.strawberry.user import User
 
 
 class Artifacts:
-    
     @staticmethod
     def package_components(package: str) -> Box[dict[str, Optional[str]]]:
         """Returns the name and version of the package."""
 
         keys = ["name", "version"]
         return Box(dict(zip_longest(keys, package.split("@"), fillvalue=None)))
-    
 
     def get_artifacts(self) -> list[Environment]:
         """Get the list of artifacts."""
@@ -34,12 +32,11 @@ class Artifacts:
                 env.owner = User(name=pth.parent.parent.name, id=0)
                 env.packages = [
                     Package(
-                        name=self.package_components(package).name, 
-                        version=self.package_components(package).version
+                        name=self.package_components(package).name,
+                        version=self.package_components(package).version,
                     )
                     for package in env.packages
                 ]
                 artifacts.append(env)
 
         return artifacts
-

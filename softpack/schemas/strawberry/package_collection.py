@@ -1,4 +1,5 @@
 import strawberry
+
 from ..pydantic.package_collection import BasePackageCollection
 from .package import Package
 

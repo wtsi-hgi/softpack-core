@@ -12,13 +12,16 @@ def all_environments() -> list[Environment]:
     envs = Environments()
     return envs.get()
 
+
 def all_package_collections() -> list[PackageCollection]:
     collections = PackageCollections()
     return collections.get()
 
+
 def all_users() -> list[User]:
     users = Users()
     return users.get()
+
 
 def find_environment(name: str) -> Environment:
     envs = Environments().get()
@@ -27,7 +30,8 @@ def find_environment(name: str) -> Environment:
         return matching_envs[0]
     else:
         return None
-    
+
+
 def find_package_collection(name: str) -> PackageCollection:
     collections = PackageCollections().get()
     matching_collections = [
@@ -37,7 +41,8 @@ def find_package_collection(name: str) -> PackageCollection:
         return matching_collections[0]
     else:
         return None
-    
+
+
 def find_users(name: str) -> User:
     users = Users().get()
     matching_users = [user for user in users if user.name == name]
