@@ -1,3 +1,9 @@
+"""Copyright (c) Wellcome Sanger Institute.
+
+This source code is licensed under the MIT license found in the
+LICENSE file in the root directory of this source tree.
+"""
+
 from typing import Any
 
 import strawberry
@@ -35,6 +41,11 @@ app = Application()
 
 @app.router.get("/")
 def root() -> Any:
+    """Handler for the default route.
+
+    Returns:
+        response to be encoded as JSON
+    """
     return {"message": "Softpack"}
 
 

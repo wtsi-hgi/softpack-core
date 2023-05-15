@@ -1,3 +1,9 @@
+"""Copyright (c) Wellcome Sanger Institute.
+
+This source code is licensed under the MIT license found in the
+LICENSE file in the root directory of this source tree.
+"""
+
 from pathlib import Path
 from typing import Any, Tuple
 
@@ -43,7 +49,6 @@ class Settings(BaseSettings):
             Returns:
                 dict[str, Any]: A dictionary of settings.
             """
-
             if not path.is_file():
                 return settings.dict()
             with open(path) as f:
@@ -60,7 +65,6 @@ class Settings(BaseSettings):
                dict[str, Any]: Settings loaded from default config file.
 
             """
-
             package_dir = Path(__file__).parent.absolute()
             path = package_dir / cls.config_dir / cls.config_file
             return cls.file_settings(path, settings)
