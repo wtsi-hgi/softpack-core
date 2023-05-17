@@ -6,19 +6,20 @@ LICENSE file in the root directory of this source tree.
 
 from datetime import datetime
 
-from pydantic import BaseModel
+import strawberry
 
-from .package import BasePackage
-from .user import BaseUser
+from .package import Package
+from .user import User
 
 
-class BaseEnvironment(BaseModel):
-    """A model representing a single environment."""
+@strawberry.type
+class Environment:
+    """A Strawberry model representing a single environment."""
 
     name: str
     description: str
-    packages: list[BasePackage]
-    owner: BaseUser
+    packages: list[Package]
+    owner: User
     creation_date: datetime
     status: str
-    id: int
+    id: strawberry.ID

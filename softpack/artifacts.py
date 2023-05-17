@@ -11,9 +11,9 @@ from typing import Optional
 import yaml
 from box import Box
 
-from softpack.schemas.strawberry.environment import Environment
-from softpack.schemas.strawberry.package import Package
-from softpack.schemas.strawberry.user import User
+from softpack.schemas.environment import Environment
+from softpack.schemas.package import Package
+from softpack.schemas.user import User
 
 
 class Artifacts:

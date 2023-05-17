@@ -6,12 +6,13 @@ LICENSE file in the root directory of this source tree.
 
 import strawberry
 
-from ..pydantic.user import BaseUser
+from .package import Package
 
 
-@strawberry.experimental.pydantic.type(model=BaseUser)
-class User:
-    """A Strawberry model representing a single package."""
+@strawberry.type
+class PackageCollection:
+    """A Strawberry model representing a single package collection."""
 
-    name: strawberry.auto
+    name: str
+    packages: list[Package]
     id: strawberry.ID

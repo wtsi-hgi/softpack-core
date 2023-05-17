@@ -7,7 +7,7 @@ LICENSE file in the root directory of this source tree.
 from datetime import datetime
 
 from .artifacts import Artifacts
-from .schemas.strawberry.environment import Environment
+from .schemas.environment import Environment
 
 
 class Environments:

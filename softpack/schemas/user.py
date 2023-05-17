@@ -4,11 +4,12 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-from pydantic import BaseModel
+import strawberry
 
 
-class BaseUser(BaseModel):
-    """A model representing a single user."""
+@strawberry.type
+class User:
+    """A Strawberry model representing a single package."""
 
     name: str
-    id: int
+    id: strawberry.ID

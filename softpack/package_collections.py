@@ -4,8 +4,8 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-from .schemas.strawberry.package import Package
-from .schemas.strawberry.package_collection import PackageCollection
+from .schemas.package import Package
+from .schemas.package_collection import PackageCollection
 
 
 class PackageCollections:

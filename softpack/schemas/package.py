@@ -6,11 +6,12 @@ LICENSE file in the root directory of this source tree.
 
 from typing import Optional
 
-from pydantic import BaseModel
+import strawberry
 
 
-class BasePackage(BaseModel):
-    """A model representing a single package."""
+@strawberry.type
+class Package:
+    """A Strawberry model representing a single package."""
 
     name: str
     version: Optional[str]

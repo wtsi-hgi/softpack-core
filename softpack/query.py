@@ -8,9 +8,9 @@ import strawberry
 
 from .environments import Environments
 from .package_collections import PackageCollections
-from .schemas.strawberry.environment import Environment
-from .schemas.strawberry.package_collection import PackageCollection
-from .schemas.strawberry.user import User
+from .schemas.environment import Environment
+from .schemas.package_collection import PackageCollection
+from .schemas.user import User
 from .users import Users
 
 
