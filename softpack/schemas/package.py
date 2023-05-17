@@ -14,4 +14,17 @@ class Package:
     """A Strawberry model representing a single package."""
 
     name: str
-    version: Optional[str]
+    version: Optional[str] = None
+
+
+@strawberry.input
+class PackageInput(Package):
+    """GraphQL input type for Package."""
+
+    def create_instance(self) -> Package:
+        """Create a Package instance from a PackageInput instance.
+
+        Returns:
+            a Package object
+        """
+        return Package(**self.__dict__)

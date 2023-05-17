@@ -13,7 +13,7 @@ from singleton_decorator import singleton
 from strawberry.fastapi import GraphQLRouter
 
 from .config import Settings
-from .query import Query
+from .query import Mutation, Query
 
 
 @singleton
@@ -23,7 +23,7 @@ class Application:
     def __init__(self) -> None:
         """Constructor."""
         self.settings = Settings.parse_obj({})
-        self.schema = strawberry.Schema(query=Query)
+        self.schema = strawberry.Schema(query=Query, mutation=Mutation)
         self.graphql_app = GraphQLRouter(self.schema)
         self.router = FastAPI()
         self.router.include_router(self.graphql_app, prefix="/graphql")

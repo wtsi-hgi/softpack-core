@@ -13,3 +13,16 @@ class User:
 
     name: str
     id: strawberry.ID
+
+
+@strawberry.input
+class UserInput(User):
+    """GraphQL input type for User."""
+
+    def create_instance(self) -> User:
+        """Create a User instance from a UserInput instance.
+
+        Returns:
+            a User object
+        """
+        return User(**self.__dict__)
