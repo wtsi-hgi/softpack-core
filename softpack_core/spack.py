@@ -14,6 +14,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
+from uuid import UUID
 
 
 class Spack:
@@ -89,7 +90,7 @@ class Spack:
     class Collection:
         """Spack package collection."""
 
-        id: uuid.UUID
+        id: UUID
         name: str
         packages: list["Spack.Package"]
 
