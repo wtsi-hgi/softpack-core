@@ -4,24 +4,31 @@ repo_url: https://github.com/wtsi-hgi/softpack-core
 repo_name: wtsi-hgi/softpack-core
 #strict: true
 nav:
-  - Home: index.md
-  - Installation: installation.md
-  - Usage: usage.md
-  - Modules: api.md
+  - Introduction: index.md
+  - Topics:
+    - topics/design.md
+  - Tutorials:
+    - tutorials/getting_started.md
+  - Guides:
+      - guides/how-to-start-a-build.md
+  - Reference:
+    - reference/cli.md
+    - reference/api.md
+    - reference/rest.md
   - Contributing: contributing.md
   - Changelog: changelog.md
 theme:
   name: material
   language: en
-  #logo: assets/logo.png
+  logo: img/softpack.png
+  favicon: img/favicon.ico
   palette:
     scheme: preference
     primary: indigo
     accent: indigo
   features:
-    - navigation.indexes
-    - navigation.instant
-    - navigation.tabs.sticky
+    - navigation.footer
+    - navigation.top
 markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:materialx.emoji.twemoji
@@ -36,31 +43,27 @@ markdown_extensions:
       generic: true
   - pymdownx.highlight:
       linenums: false
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.inlinehilite
   - pymdownx.details
   - admonition
   - toc:
-      baselevel: 2
+      baselevel: 3
       permalink: true
   - meta
 plugins:
   - include-markdown
+  - render_swagger
   - search:
       lang: en
-  - mkdocstrings:
-      watch:
-        - softpack
+watch:
+  - softpack_core
 extra:
   social:
-    - icon: fontawesome/brands/twitter
-      # replace with your own tweet link below
-      link: https://github.com/altaf-ali/cookiecutter-pypackage
-      name: Tweet
-    - icon: fontawesome/brands/facebook
-      # replace with your own facebook link below
-      link: https://github.com/altaf-ali/cookiecutter-pypackage
-      name: Facebook
     - icon: fontawesome/brands/github
       link: https://github.com/wtsi-hgi/softpack-core
       name: Github
