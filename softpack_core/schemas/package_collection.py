@@ -40,7 +40,7 @@ class PackageCollection:
         return PackageCollection(
             id=collection.id,
             name=collection.name,
-            packages=map(cls.from_package, collection.packages[:3]),
+            packages=map(cls.from_package, collection.packages),
         )  # type: ignore [call-arg]
 
     @classmethod
@@ -53,6 +53,6 @@ class PackageCollection:
 class PackageCollectionSchema:
     @dataclass
     class Query:
-        packaageCollections: list[
+        packageCollections: list[
             PackageCollection
         ] = PackageCollection.iter  # type: ignore
