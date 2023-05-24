@@ -22,6 +22,11 @@ class LDAP:
         self.initialize()
 
     def initialize(self) -> None:
+        """Initialize an LDAP client.
+
+        Returns:
+            None.
+        """
         self.ldap = ldap.initialize(self.settings.ldap.server)
         self.group_regex = re.compile(self.settings.ldap.group.pattern)
 

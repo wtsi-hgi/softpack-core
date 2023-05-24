@@ -32,7 +32,7 @@ class Spack:
         self.modules = self.load_modules()
         self.repos = self.load_repo_list()
         self.packages = self.load_package_list()
-        self.collections = self.create_collections()
+        self.collections = self.load_collections()
 
     def load_modules(self) -> Modules:
         """Loads all required packages."""
@@ -94,7 +94,12 @@ class Spack:
         name: str
         packages: list["Spack.Package"]
 
-    def create_collections(self) -> list[Collection]:
+    def load_collections(self) -> list[Collection]:
+        """Load package collections from Spack repo.
+
+        Returns:
+            list[Collection]: A list of package collections.
+        """
         collections = {"Python": "py-", "R": "r-"}
         return [
             self.Collection(

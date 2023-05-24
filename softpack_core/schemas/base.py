@@ -6,8 +6,10 @@ LICENSE file in the root directory of this source tree.
 
 
 class BaseSchema:
+    """A GraphQL base schema class."""
+
     class Query:
-        pass
+        """GraphQL query schema."""
 
     class Mutation:
-        pass
+        """GraphQL query mutation."""
