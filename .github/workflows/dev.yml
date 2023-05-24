@@ -46,40 +46,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry tox tox-gh-actions
 
-      - name: Install Singularity
-        uses: eWaterCycle/setup-singularity@v7
-        with:
-          singularity-version: 3.8.7
-
       - name: Install Spack
         uses: actions/checkout@v3
         with:
           repository: spack/spack
           ref: 0707ffd4e466402bf19dff1add59eaf2b6d9154e
           path: spack
-
-      - name: Install Spack templates
-        uses: actions/checkout@v3
-        with:
-          repository: wtsi-hgi/softpack-templates
-          ref: main
-          path: templates
-
-      - name: Create Spack config
-        env:
-          CONFIG_PATH: $HOME/.spack
-          CONFIG_FILE: config.yaml
-        run: |
-          mkdir -p ${{ env.CONFIG_PATH }}
-          cat <<EOF > ${{ env.CONFIG_PATH }}/$CONFIG_FILE
-          config:
-            template_dirs:
-              - $GITHUB_WORKSPACE/templates
-          EOF
-
-      - name: Create GPG key
-        run: |
-          SPACK_GNUPGHOME=$HOME/.gpg $GITHUB_WORKSPACE/spack/bin/spack gpg create softpack softpack@example.com
 
       - name: Update PATH
         run: |
