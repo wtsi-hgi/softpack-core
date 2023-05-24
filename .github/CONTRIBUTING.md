@@ -52,7 +52,7 @@ Ready to contribute? Here's how to set up `softpack-core` for local development.
 2. Clone your fork locally
 
     ```
-    $ git clone git@github.com:your_name_here/softpack-core.git
+    $ git clone https://github.com/wtsi-hgi/softpack-core.git
     ```
 
 3. Ensure [poetry](https://python-poetry.org/docs/) is installed.

@@ -4,37 +4,35 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import itertools
+import sys
 from pathlib import Path
 from typing import Any, Tuple
 
+import hvac
+import mergedeep
 import yaml
-from pydantic import AnyHttpUrl, BaseModel, BaseSettings
+from pydantic import BaseSettings
 from pydantic.env_settings import SettingsSourceCallable
 
-
-class ServerConfig(BaseModel):
-    """Server config model."""
-
-    class HeaderConfig(BaseModel):
-        """Header config."""
-
-        origins: list[AnyHttpUrl]
-
-    header: HeaderConfig
-    host: str
-    port: int
+from .models import ArtifactsConfig, LDAPConfig, ServerConfig, VaultConfig
 
 
 class Settings(BaseSettings):
     """Package settings."""
 
+    debug: bool = False
     server: ServerConfig
+    vault: VaultConfig
+    ldap: LDAPConfig
+    artifacts: ArtifactsConfig
 
     class Config:
         """Configuration loader."""
 
         config_dir = "conf"
-        config_file = "config.yaml"
+        config_file = "config.yml"
+        config_user_dir = ".softpack/core"
 
         @classmethod
         def file_settings(
@@ -50,7 +48,7 @@ class Settings(BaseSettings):
                 dict[str, Any]: A dictionary of settings.
             """
             if not path.is_file():
-                return settings.dict()
+                return {}
             with open(path) as f:
                 return yaml.safe_load(f)
 
@@ -63,7 +61,6 @@ class Settings(BaseSettings):
 
             Returns:
                dict[str, Any]: Settings loaded from default config file.
-
             """
             package_dir = Path(__file__).parent.absolute()
             path = package_dir / cls.config_dir / cls.config_file
@@ -71,7 +68,7 @@ class Settings(BaseSettings):
 
         @classmethod
         def overrides(cls, settings: BaseSettings) -> dict[str, Any]:
-            """Load overrides from config file in the current directory.
+            """Load overrides from config file in the home directory.
 
             Args:
                 settings: BaseSettings model.
@@ -79,10 +76,54 @@ class Settings(BaseSettings):
             Returns:
                 dict[str, Any]: Settings loaded from deployment-specific
                 config file.
-
             """
-            path = Path.home() / ".softpack/core" / cls.config_file
-            return cls.file_settings(path, settings)
+            path = Path.home() / cls.config_user_dir / cls.config_file
+            overrides = cls.file_settings(path, settings)
+            try:
+                config = cls.vault(VaultConfig(**overrides["vault"]))
+                overrides = mergedeep.merge(overrides, config)
+            except KeyError as e:
+                print(e, file=sys.stderr)
+            return overrides
+
+        @classmethod
+        def vault(cls, vault: VaultConfig) -> dict[str, Any]:
+            """Load secrets from HashiCorp Vault.
+
+            Args:
+                settings: BaseSettings model.
+
+            Returns:
+                dict[str, Any]: Settings loaded from HashiCorp Vault.
+            """
+            try:
+                client = hvac.Client(
+                    url=vault.url,
+                    token=vault.token,
+                )
+
+                def get_secret(path: Path, key: str) -> dict[str, Any]:
+                    secret = client.kv.v1.read_secret(
+                        path=str(path / key), mount_point="/"
+                    )
+                    return secret["data"]
+
+                secrets = client.secrets.kv.v1.list_secrets(
+                    path=str(vault.path), mount_point="/"
+                )
+                merged_secrets = dict(
+                    itertools.chain.from_iterable(
+                        [
+                            get_secret(vault.path, key).items()
+                            for key in secrets["data"]["keys"]
+                        ]
+                    )
+                )
+                return {vault.path.name: merged_secrets}
+
+            except Exception as e:
+                print(e, file=sys.stderr)
+                return {}
 
         @classmethod
         def customise_sources(
@@ -100,6 +141,5 @@ class Settings(BaseSettings):
 
             Returns:
                 A tuple of settings sources
-
             """
             return cls.overrides, cls.defaults, init_settings
