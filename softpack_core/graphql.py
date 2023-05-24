@@ -10,9 +10,11 @@ from typing import Any, Callable, Iterable, Tuple, Union, cast
 
 import strawberry
 from strawberry.fastapi import GraphQLRouter
+from typer import Typer
 from typing_extensions import Type
 
 from .api import API
+from .app import app
 from .schemas.base import BaseSchema
 from .schemas.environment import EnvironmentSchema
 from .schemas.package_collection import PackageCollectionSchema
@@ -23,6 +25,17 @@ class GraphQL(API):
 
     prefix = "/graphql"
     schemas = [EnvironmentSchema, PackageCollectionSchema]
+    commands = Typer(help="GraphQL commands.")
+
+    @staticmethod
+    @commands.command("query", help="Execute a GraphQL query.")
+    def query_command() -> None:
+        """Execute a GraphQL query.
+
+        Returns:
+            None.
+        """
+        app.echo("GraphQL Query")
 
     class Schema(strawberry.Schema):
         """GraphQL Schema class."""
