@@ -65,17 +65,24 @@ class Spack:
 
         id: str
         name: str
+        versions: list[str]
 
     def load_package_list(self) -> list[Package]:
         """Load a list of all packages."""
         return list(
             map(
                 lambda package: self.Package(
-                    id=uuid.uuid4().hex, name=package
+                    id=uuid.uuid4().hex,
+                    name=package.name,
+                    versions=[
+                        str(ver) for ver in list(package.versions.keys())
+                    ],
                 ),
                 itertools.chain.from_iterable(
                     list(
-                        map(lambda repo: repo.all_package_names(), self.repos)
+                        map(
+                            lambda repo: repo.all_package_classes(), self.repos
+                        )
                     )
                 ),
             )
