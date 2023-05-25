@@ -18,8 +18,6 @@ from softpack_core.spack import Spack
 class PackageMultiVersion(Spack.Package):
     """A Strawberry model representing a package in a collection."""
 
-    versions: list[str]
-
 
 @strawberry.type
 class PackageCollection:
@@ -69,7 +67,7 @@ class PackageCollection:
 
         """
         return PackageMultiVersion(
-            id=package.id, name=package.name, versions=["latest"]
+            id=package.id, name=package.name, versions=package.versions
         )  # type: ignore [call-arg]
 
 
