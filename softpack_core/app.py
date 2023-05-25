@@ -28,8 +28,8 @@ class Application:
     commands = Typer()
     router = FastAPI()
 
-    @router.get("/")
     @staticmethod
+    @router.get("/")
     def status() -> dict[str, Any]:
         """HTTP GET handler for / route.
 
