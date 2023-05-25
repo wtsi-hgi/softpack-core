@@ -9,7 +9,8 @@ server:
       - http://localhost:3000
 
 artifacts:
-  repo: https://github.com/softpack-io/softpack-artifacts.git
+  repo:
+    url: https://github.com/softpack-io/softpack-artifacts.git
   path: ./softpack-artifacts
 
 # LVault Config
