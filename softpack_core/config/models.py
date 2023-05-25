@@ -5,6 +5,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 from pathlib import Path
+from typing import Optional
 
 from pydantic import AnyHttpUrl, AnyUrl, BaseModel, HttpUrl
 
@@ -44,8 +45,8 @@ class ArtifactsConfig(BaseModel):
         """Repo model."""
 
         url: AnyUrl
-        reader: Credentials
-        writer: Credentials
+        reader: Optional[Credentials]
+        writer: Optional[Credentials]
 
     path: Path
     repo: Repo

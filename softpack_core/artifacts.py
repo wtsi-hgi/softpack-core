@@ -7,12 +7,13 @@ LICENSE file in the root directory of this source tree.
 import itertools
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator, Optional
+from typing import Iterable, Iterator, Optional, cast
 
 import pygit2
 from box import Box
 
 from .app import app
+from .config.models import Credentials
 from .ldapapi import LDAP
 
 
@@ -93,11 +94,19 @@ class Artifacts:
         self.ldap = LDAP()
         self.settings = app.settings
 
-        path = self.settings.artifacts.path / ".git"
-        credentials = pygit2.UserPass(
-            self.settings.artifacts.repo.reader.username,
-            self.settings.artifacts.repo.reader.password,
-        )
+        path = self.settings.artifacts.path.expanduser() / ".git"
+        credentials = None
+        try:
+            credentials = cast(
+                Credentials, self.settings.artifacts.repo.reader
+            )
+            credentials = pygit2.UserPass(
+                credentials.username,
+                credentials.password,
+            )
+        except Exception as e:
+            print(e)
+
         callbacks = pygit2.RemoteCallbacks(credentials=credentials)
 
         if path.is_dir():

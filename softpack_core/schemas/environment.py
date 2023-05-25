@@ -17,7 +17,7 @@ from softpack_core.spack import Spack
 
 
 @strawberry.type
-class Package(Spack.Package):
+class Package(Spack.PackageBase):
     """A Strawberry model representing a package."""
 
     version: Optional[str] = None

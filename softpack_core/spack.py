@@ -60,11 +60,16 @@ class Spack:
         )
 
     @dataclass
-    class Package:
+    class PackageBase:
         """Wrapper for a spack package."""
 
         id: str
         name: str
+
+    @dataclass
+    class Package(PackageBase):
+        """Wrapper for a spack package."""
+
         versions: list[str]
 
     def load_package_list(self) -> list[Package]:
