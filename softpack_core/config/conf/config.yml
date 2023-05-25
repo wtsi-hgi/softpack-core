@@ -9,7 +9,7 @@ server:
       - http://localhost:3000
 
 artifacts:
-  path: /tmp/softpack-artifacts
+  path: ./softpack-artifacts
 
 # LVault Config
 #  vault:
