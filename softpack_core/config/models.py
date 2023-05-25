@@ -61,6 +61,7 @@ class LDAPConfig(BaseModel):
         pattern: str
 
     server: AnyUrl
+    retries: int = 3
     base: str
     filter: str
     group: GroupConfig

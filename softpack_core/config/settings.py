@@ -7,7 +7,7 @@ LICENSE file in the root directory of this source tree.
 import itertools
 import sys
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 import hvac
 import mergedeep
@@ -23,8 +23,8 @@ class Settings(BaseSettings):
 
     debug: bool = False
     server: ServerConfig
-    vault: VaultConfig
-    ldap: LDAPConfig
+    vault: Optional[VaultConfig]
+    ldap: Optional[LDAPConfig]
     artifacts: ArtifactsConfig
 
     class Config:

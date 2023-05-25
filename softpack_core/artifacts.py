@@ -223,7 +223,7 @@ class Artifacts:
                 folders = list(
                     itertools.chain(
                         [self.user_folder(user)],
-                        map(self.group_folder, self.ldap.groups(user)),
+                        map(self.group_folder, self.ldap.groups(user) or []),
                     )
                 )
             else:

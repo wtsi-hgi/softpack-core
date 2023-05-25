@@ -8,15 +8,18 @@ server:
       - http://localhost:8080
       - http://localhost:3000
 
-vault:
-    url:
-    path:
-    token:
+# LVault Config
+#  vault:
+#      url:
+#      path:
+#      token:
 
-ldap:
-  server:
-  base:
-  filter:
-  group:
-    attr:
-    pattern:
+# LDAP Config
+#  ldap:
+#    server:
+#    retries:
+#    base:
+#    filter:
+#    group:
+#      attr:
+#      pattern:

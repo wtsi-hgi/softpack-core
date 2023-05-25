@@ -42,7 +42,7 @@ class Environment:
             Iterable[Environment]: An iterator of Environment objects.
         """
         user = None
-        if not all:
+        if not user:
             # TODO: set username from the environment for now
             # eventually this needs to be the name of the authenticated user
             user = os.environ["USER"]
