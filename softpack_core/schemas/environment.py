@@ -22,6 +22,16 @@ class Package(Spack.PackageBase):
 
     version: Optional[str] = None
 
+@strawberry.input
+class PackageInput(Package):
+    """A Strawberry input model representing a pacakge."""
+
+    def to_package(self):
+        """Create a Package object from a PackageInput object.
+        
+        Return: a Package object
+        """
+        return Package(**self.__dict__)
 
 @strawberry.type
 class Environment:
@@ -81,12 +91,49 @@ class Environment:
         Returns:
             Environment: A newly created Environment.
         """
+        for env in Environment.iter():
+            if name == env.name:
+                return EnvironmentAlreadyExistsError(**env.__dict__)
         return Environment(
             id=uuid.uuid4().hex,
             name=name,
-            packges=[Package(id="unknown", name="unknown-package")],
+            path="users/username",
+            description="description",
+            packages=[Package(id="unknown", name="unknown-package")],
         )  # type: ignore [call-arg]
 
+    @classmethod
+    def update(cls, name: str, path: Optional[str]=None, description: Optional[str]=None, packages: Optional[list[PackageInput]]=None):
+        for env in Environment.iter():
+            if env.name == name:
+                if path != None:
+                    env.path = path
+                if description != None:
+                    env.description = description
+                if packages != None:
+                    env.packages = map(lambda pkg: pkg.to_package(), packages)
+                return env
+            return EnvironmentNotFoundError(name=name)
+    
+    @classmethod
+    def delete(cls, name: str):
+        for env in Environment.iter():
+            if env.name == name:
+                return f"Deleted {name}"
+        return "An environment with that name was not found"
+    
+#Error types
+@strawberry.type
+class EnvironmentNotFoundError:
+    """Environment not found"""
+    name: str
+
+@strawberry.type
+class EnvironmentAlreadyExistsError(Environment):
+    """Environment name already exists"""
+
+UpdateEnvironmentResponse = strawberry.union("UpdateEnvironmentResponse", [Environment, EnvironmentNotFoundError])
+CreateEnvironmentResponse = strawberry.union("CreateEnvironmentResponse", [Environment, EnvironmentAlreadyExistsError])
 
 class EnvironmentSchema(BaseSchema):
     """Environment schema."""
@@ -101,4 +148,6 @@ class EnvironmentSchema(BaseSchema):
     class Mutation:
         """GraphQL mutation schema."""
 
-        createEnvironment: Environment = Environment.create  # type: ignore
+        createEnvironment: CreateEnvironmentResponse = Environment.create  # type: ignore
+        updateEnvironment: UpdateEnvironmentResponse = Environment.update  # type: ignore
+        deleteEnvironment: str = Environment.delete # type: ignore
