@@ -240,3 +240,6 @@ class Artifacts:
 
         except KeyError:
             return iter(())
+
+    def get(self, path: Path, name: str) -> pygit2.Tree:
+        return self.tree(self.environments_folder(path.as_posix(), name))

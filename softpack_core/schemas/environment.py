@@ -7,10 +7,12 @@ LICENSE file in the root directory of this source tree.
 import os
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Iterable, Optional
 
 import httpx
 import strawberry
+from strawberry.file_uploads import Upload
 
 from softpack_core.artifacts import Artifacts
 from softpack_core.schemas.base import BaseSchema
@@ -107,31 +109,33 @@ class Environment:
         Returns:
             Environment: A newly created Environment.
         """
-        for env in Environment.iter():
-            if name == env.name:
-                return EnvironmentAlreadyExistsError(**env.__dict__)
-        response = httpx.post(
-            "http://0.0.0.0:7080/environments/build",
-            json={
-                "name": name,
-                "model": {
-                    "description": description,
-                    "packages": [f"{pkg.name}" for pkg in packages],
+        try:
+            cls.artifacts.get(Path(path), name)
+            return EnvironmentAlreadyExistsError(path=path, name=name)
+        except KeyError as e:
+            print(f"Error {type(e)}: {e}")
+            response = httpx.post(
+                "http://0.0.0.0:7080/environments/build",
+                json={
+                    "name": name,
+                    "model": {
+                        "description": description,
+                        "packages": [f"{pkg.name}" for pkg in packages],
+                    },
                 },
-            },
-        ).json()
-        print(f"Create: {response}")
-        return Environment(
-            id=response['id'],
-            name=response['name'],
-            path=path,
-            description=description,
-            packages=map(lambda pkg: pkg.to_package(), packages),
-            created=datetime.strptime(
-                response['created'], '%Y-%m-%dT%H:%M:%S.%f%z'
-            ),
-            state=response['state']['type'],
-        )  # type: ignore [call-arg]
+            ).json()
+            print(f"Create: {response}")
+            return Environment(
+                id=response['id'],
+                name=response['name'],
+                path=path,
+                description=description,
+                packages=map(lambda pkg: pkg.to_package(), packages),
+                created=datetime.strptime(
+                    response['created'], '%Y-%m-%dT%H:%M:%S.%f%z'
+                ),
+                state=response['state']['type'],
+            )  # type: ignore [call-arg]
 
     @classmethod
     def update(
@@ -187,6 +191,10 @@ class Environment:
                 return f"Deleted {name}"
         return "An environment with that name was not found"
 
+    @classmethod
+    async def upload_file(cls, file: Upload):
+        return (await file.read()).decode("utf-8")
+
 
 # Error types
 @strawberry.type
@@ -197,8 +205,11 @@ class EnvironmentNotFoundError:
 
 
 @strawberry.type
-class EnvironmentAlreadyExistsError(Environment):
+class EnvironmentAlreadyExistsError:
     """Environment name already exists"""
+
+    path: str
+    name: str
 
 
 UpdateEnvironmentResponse = strawberry.union(
@@ -225,3 +236,4 @@ class EnvironmentSchema(BaseSchema):
         createEnvironment: CreateEnvironmentResponse = Environment.create  # type: ignore
         updateEnvironment: UpdateEnvironmentResponse = Environment.update  # type: ignore
         deleteEnvironment: str = Environment.delete  # type: ignore
+        upload_file: str = Environment.upload_file  # type: ignore
