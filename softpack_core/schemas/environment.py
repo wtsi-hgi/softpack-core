@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Optional
 
+import uuid
 import httpx
 import strawberry
 from strawberry.file_uploads import Upload
@@ -36,7 +37,13 @@ class PackageInput(Package):
         Return: a Package object
         """
         return Package(**self.__dict__)
-
+    
+@strawberry.input
+class EnvironmentInput:
+    name: Optional[str]
+    path: Optional[str]
+    description: Optional[str]
+    packages: Optional[list[PackageInput]]
 
 @strawberry.type
 class Environment:
@@ -93,11 +100,8 @@ class Environment:
     @classmethod
     def create(
         cls,
-        name: str,
-        path: str,
-        description: Optional[str] = None,
-        packages: Optional[list[PackageInput]] = None,
-    ) -> "Environment":
+        env: EnvironmentInput
+    ):
         """Create an Environment object.
 
         Args:
@@ -109,41 +113,40 @@ class Environment:
         Returns:
             Environment: A newly created Environment.
         """
-        try:
-            cls.artifacts.get(Path(path), name)
-            return EnvironmentAlreadyExistsError(path=path, name=name)
-        except KeyError as e:
-            print(f"Error {type(e)}: {e}")
-            response = httpx.post(
-                "http://0.0.0.0:7080/environments/build",
-                json={
-                    "name": name,
-                    "model": {
-                        "description": description,
-                        "packages": [f"{pkg.name}" for pkg in packages],
-                    },
+        if not (env.name and env.path and env.description and env.packages):
+            raise ValueError("Environment name, path, description and packages are required")
+        
+        # Check if an env with same name already exists at given path
+        if cls.artifacts.get(Path(env.path), env.name):
+            return EnvironmentAlreadyExistsError(path=env.path, name=env.name)
+
+        response = httpx.post(
+            "http://0.0.0.0:7080/environments/build",
+            json={
+                "name": env.name,
+                "model": {
+                    "description": env.description,
+                    "packages": [f"{pkg.name}" for pkg in env.packages],
                 },
-            ).json()
-            print(f"Create: {response}")
-            return Environment(
-                id=response['id'],
-                name=response['name'],
-                path=path,
-                description=description,
-                packages=map(lambda pkg: pkg.to_package(), packages),
-                created=datetime.strptime(
-                    response['created'], '%Y-%m-%dT%H:%M:%S.%f%z'
-                ),
-                state=response['state']['type'],
-            )  # type: ignore [call-arg]
+            },
+        ).json()
+        print(f"Create: {response}")
+        return Environment(
+            id=uuid.uuid4().hex,
+            name=response['name'],
+            path=env.path,
+            description=env.description,
+            packages=list(map(lambda pkg: pkg.to_package(), env.packages)),
+            created=datetime.strptime(
+                response['created'], '%Y-%m-%dT%H:%M:%S.%f%z'
+            ),
+            state=response['state']['type'],
+        )  # type: ignore [call-arg]
 
     @classmethod
     def update(
         cls,
-        name: str,
-        path: Optional[str] = None,
-        description: Optional[str] = None,
-        packages: Optional[list[PackageInput]] = None,
+        env: EnvironmentInput,
     ):
         """Update an Environment object.
 
@@ -156,28 +159,28 @@ class Environment:
         Returns:
             Environment: An updated Environment.
         """
-        for env in Environment.iter():
-            if env.name == name:
+        for current in Environment.iter():
+            if current.name == env.name:
                 response = httpx.post(
                     "http://0.0.0.0:7080/environments/build",
                     json={
-                        "name": name,
+                        "name": env.name,
                         "model": {
-                            "description": description,
-                            "packages": [pkg.name for pkg in packages],
+                            "description": env.description,
+                            "packages": [pkg.name for pkg in env.packages],
                         },
                     },
                 ).json()
                 print(f"Update: {response}")
-                if path != None:
-                    env.path = path
-                if description != None:
-                    env.description = description
-                if packages != None:
-                    env.packages = map(lambda pkg: pkg.to_package(), packages)
-                env.state = response['state']['type']
-                return env
-        return EnvironmentNotFoundError(name=name)
+                if env.path != None:
+                    current.path = env.path
+                if env.description != None:
+                    current.description = env.description
+                if env.packages != None:
+                    current.packages = map(lambda pkg: pkg.to_package(), env.packages)
+                current.state = response['state']['type']
+                return current
+        return EnvironmentNotFoundError(name=env.name)
 
     @classmethod
     def delete(cls, name: str):
@@ -236,4 +239,4 @@ class EnvironmentSchema(BaseSchema):
         createEnvironment: CreateEnvironmentResponse = Environment.create  # type: ignore
         updateEnvironment: UpdateEnvironmentResponse = Environment.update  # type: ignore
         deleteEnvironment: str = Environment.delete  # type: ignore
-        upload_file: str = Environment.upload_file  # type: ignore
+        upload_file: str = Environment.upload_file   # type: ignore

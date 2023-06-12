@@ -241,5 +241,9 @@ class Artifacts:
         except KeyError:
             return iter(())
 
-    def get(self, path: Path, name: str) -> pygit2.Tree:
-        return self.tree(self.environments_folder(path.as_posix(), name))
+    def get(self, path: Path, name: str) -> Optional[pygit2.Tree]:
+        try: 
+            return self.tree(self.environments_folder(path.as_posix(), name).as_posix())
+        except KeyError:
+            return None
+
