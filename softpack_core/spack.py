@@ -38,7 +38,7 @@ class Spack:
         """Loads all required packages."""
         spack = shutil.which("spack")
         if spack:
-            spack_root = Path(spack).parent.parent
+            spack_root = Path(spack).resolve().parent.parent
         else:
             spack_root = Path.cwd() / "spack"
 
