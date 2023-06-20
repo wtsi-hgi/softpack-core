@@ -35,9 +35,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry tox tox-gh-actions
 
-      - name: test with tox
-        run:
-          tox
+      - name: Install Spack
+        uses: actions/checkout@v3
+        with:
+          repository: spack/spack
+          ref: 0707ffd4e466402bf19dff1add59eaf2b6d9154e
+          path: spack
+
+      - name: Update PATH
+        run: |
+          echo "$GITHUB_WORKSPACE/spack/bin" >> $GITHUB_PATH
+
+      - name: Run tests
+        run: poetry run tox
 
       - name: Build wheels and source tarball
         run: |
