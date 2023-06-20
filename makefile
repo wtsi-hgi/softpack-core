@@ -1,4 +1,4 @@
-sources = softpack
+sources = softpack_core
 
 .PHONY: test format lint unittest coverage pre-commit clean
 test: format lint unittest
@@ -9,7 +9,7 @@ format:
 
 lint:
 	flake8 $(sources) tests
-	mypy $(sources) tests
+	mypy $(sources)
 
 unittest:
 	pytest

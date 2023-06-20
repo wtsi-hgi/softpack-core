@@ -1,0 +1,30 @@
+server:
+  host: 0.0.0.0
+  port: 8000
+
+  header:
+    origins:
+      - http://localhost
+      - http://localhost:8080
+      - http://localhost:3000
+
+artifacts:
+  repo:
+    url: https://github.com/softpack-io/softpack-artifacts.git
+  path: ./softpack-artifacts
+
+# LVault Config
+#  vault:
+#      url:
+#      path:
+#      token:
+
+# LDAP Config
+#  ldap:
+#    server:
+#    retries:
+#    base:
+#    filter:
+#    group:
+#      attr:
+#      pattern:
