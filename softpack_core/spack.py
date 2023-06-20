@@ -1,4 +1,4 @@
-"""Copyright (c) Wellcome Sanger Institute.
+"""Copyright (c) 2023 Genome Research Ltd.
 
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
@@ -38,7 +38,7 @@ class Spack:
         """Loads all required packages."""
         spack = shutil.which("spack")
         if spack:
-            spack_root = Path(spack).parent.parent
+            spack_root = Path(spack).resolve().parent.parent
         else:
             spack_root = Path.cwd() / "spack"
 

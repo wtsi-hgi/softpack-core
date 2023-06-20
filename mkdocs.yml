@@ -5,6 +5,14 @@ repo_name: wtsi-hgi/softpack-core
 #strict: true
 nav:
   - Introduction: index.md
+  - Topics:
+    - topics/design.md
+  - Tutorials:
+    - tutorials/getting-started.md
+  - How-to Guides:
+      - how-to-guides/create-an-environment.md
+  - Reference:
+    - reference/api.md
   - Contributing: contributing.md
   - Changelog: changelog.md
 theme:
@@ -47,7 +55,6 @@ markdown_extensions:
   - meta
 plugins:
   - include-markdown
-  - render_swagger
   - search:
       lang: en
 watch:
