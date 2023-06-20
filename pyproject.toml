@@ -82,7 +82,6 @@ mkdocs-material = "^9.1.0"
 mkdocstrings = "^0.20.0"
 mkdocstrings-python = "^0.8.3"
 mkdocs-material-extensions = "^1.1.1"
-mkdocs-render-swagger-plugin = "^0.0.4"
 
 [tool.poetry.group.test]
 optional = true

@@ -55,7 +55,6 @@ markdown_extensions:
   - meta
 plugins:
   - include-markdown
-  - render_swagger
   - search:
       lang: en
 watch:
