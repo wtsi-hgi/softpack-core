@@ -11,9 +11,10 @@ server:
 artifacts:
   repo:
     url: https://github.com/softpack-io/softpack-artifacts.git
+    username: softpack-core
   path: ./softpack-artifacts
 
-# LVault Config
+# Vault Config
 #  vault:
 #      url:
 #      path:
