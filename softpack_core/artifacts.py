@@ -215,7 +215,7 @@ class Artifacts:
             return iter(())
 
     def iter(self, user: Optional[str] = None) -> Iterable:
-        """Return am iterator for the specified user.
+        """Return an iterator for the specified user.
 
         Args:
             user: a username
@@ -242,8 +242,16 @@ class Artifacts:
             return iter(())
 
     def get(self, path: Path, name: str) -> Optional[pygit2.Tree]:
+        """Return the environment at the specified name and path.
+        
+        Args:
+            path: the path containing the environment folder
+            name: the name of the environment folder
+            
+        Returns:
+            pygit2.Tree: a pygit2.Tree or None"""
         try: 
-            return self.tree(self.environments_folder(path.as_posix(), name).as_posix())
+            return self.tree(str(self.environments_folder(str(path), name)))
         except KeyError:
             return None
 

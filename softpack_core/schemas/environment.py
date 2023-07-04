@@ -40,10 +40,10 @@ class PackageInput(Package):
     
 @strawberry.input
 class EnvironmentInput:
-    name: Optional[str]
-    path: Optional[str]
-    description: Optional[str]
-    packages: Optional[list[PackageInput]]
+    name: str
+    path: str
+    description: str
+    packages: list[PackageInput]
 
 @strawberry.type
 class Environment:
@@ -54,7 +54,6 @@ class Environment:
     path: str
     description: str
     packages: list[Package]
-    created: Optional[datetime]
     state: Optional[str]
     artifacts = Artifacts()
 
@@ -93,7 +92,6 @@ class Environment:
                 lambda package: Package(id=package, name=package),
                 spec.packages,
             ),  # type: ignore [call-arg]
-            created=None,
             state=None,
         )
 
@@ -105,16 +103,11 @@ class Environment:
         """Create an Environment object.
 
         Args:
-            name: Name for an environment.
-            path: Path for an environment.
-            description: Description for an environment.
-            packages: List of packages in the environment.
+            env: Details of the new environment
 
         Returns:
             Environment: A newly created Environment.
         """
-        if not (env.name and env.path and env.description and env.packages):
-            raise ValueError("Environment name, path, description and packages are required")
         
         # Check if an env with same name already exists at given path
         if cls.artifacts.get(Path(env.path), env.name):
@@ -137,9 +130,6 @@ class Environment:
             path=env.path,
             description=env.description,
             packages=list(map(lambda pkg: pkg.to_package(), env.packages)),
-            created=datetime.strptime(
-                response['created'], '%Y-%m-%dT%H:%M:%S.%f%z'
-            ),
             state=response['state']['type'],
         )  # type: ignore [call-arg]
 
@@ -147,39 +137,42 @@ class Environment:
     def update(
         cls,
         env: EnvironmentInput,
+        path: str,
+        name: str,
     ):
         """Update an Environment object.
 
         Args:
-            name: Name for an environment.
-            path: Path for an environment.
-            description: Description for an environment.
-            packages: List of packages in the environment.
+            env: Details of the updated environment
+            path: The path of the current environment
+            name: The name of the current environment
 
         Returns:
             Environment: An updated Environment.
         """
-        for current in Environment.iter():
-            if current.name == env.name:
-                response = httpx.post(
-                    "http://0.0.0.0:7080/environments/build",
-                    json={
-                        "name": env.name,
-                        "model": {
-                            "description": env.description,
-                            "packages": [pkg.name for pkg in env.packages],
-                        },
+        current_env = cls.artifacts.get(Path(path), name)
+        print(current_env)
+        if current_env:
+            response = httpx.post(
+                "http://0.0.0.0:7080/environments/build",
+                json={
+                    "name": env.name,
+                    "model": {
+                        "description": env.description,
+                        "packages": [pkg.name for pkg in env.packages or []],
                     },
-                ).json()
-                print(f"Update: {response}")
-                if env.path != None:
-                    current.path = env.path
-                if env.description != None:
-                    current.description = env.description
-                if env.packages != None:
-                    current.packages = map(lambda pkg: pkg.to_package(), env.packages)
-                current.state = response['state']['type']
-                return current
+                },
+            ).json()
+            print(f"Update: {response}")
+
+            return Environment(
+                id=uuid.uuid4().hex,
+                name=env.name,
+                path=env.path,
+                description=env.description,
+                packages=[pkg.to_package() for pkg in env.packages],
+                state=response['state']['type'],
+            )
         return EnvironmentNotFoundError(name=env.name)
 
     @classmethod
@@ -196,7 +189,7 @@ class Environment:
 
     @classmethod
     async def upload_file(cls, file: Upload):
-        return (await file.read()).decode("utf-8")
+        return (await file.read()).decode("utf-8") # type: ignore
 
 
 # Error types
