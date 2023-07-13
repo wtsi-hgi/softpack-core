@@ -74,7 +74,7 @@ class Artifacts:
             Returns:
                 Box: A boxed dictionary.
             """
-            spec = self.obj[self.environments_file]
+            spec = self.obj[Artifacts.environments_file]
             return Box.from_yaml(spec.data)
 
         def __iter__(self) -> Iterator["Artifacts.Object"]:
