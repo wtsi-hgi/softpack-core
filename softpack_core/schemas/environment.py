@@ -5,12 +5,11 @@ LICENSE file in the root directory of this source tree.
 """
 
 import os
+import uuid
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Optional
 
-import uuid
 import httpx
 import strawberry
 from strawberry.file_uploads import Upload
@@ -29,7 +28,7 @@ class Package(Spack.PackageBase):
 
 @strawberry.input
 class PackageInput(Package):
-    """A Strawberry input model representing a pacakge."""
+    """A Strawberry input model representing a package."""
 
     def to_package(self):
         """Create a Package object from a PackageInput object.
@@ -37,13 +36,17 @@ class PackageInput(Package):
         Return: a Package object
         """
         return Package(**self.__dict__)
-    
+
+
 @strawberry.input
 class EnvironmentInput:
+    """A Strawberry input model representing an environment."""
+
     name: str
     path: str
     description: str
     packages: list[PackageInput]
+
 
 @strawberry.type
 class Environment:
@@ -96,10 +99,7 @@ class Environment:
         )
 
     @classmethod
-    def create(
-        cls,
-        env: EnvironmentInput
-    ):
+    def create(cls, env: EnvironmentInput):
         """Create an Environment object.
 
         Args:
@@ -108,7 +108,6 @@ class Environment:
         Returns:
             Environment: A newly created Environment.
         """
-        
         # Check if an env with same name already exists at given path
         if cls.artifacts.get(Path(env.path), env.name):
             return EnvironmentAlreadyExistsError(path=env.path, name=env.name)
@@ -124,7 +123,7 @@ class Environment:
             },
         ).json()
         print(f"Create: {response}")
-        return Environment(
+        new_env = Environment(
             id=uuid.uuid4().hex,
             name=response['name'],
             path=env.path,
@@ -132,6 +131,13 @@ class Environment:
             packages=list(map(lambda pkg: pkg.to_package(), env.packages)),
             state=response['state']['type'],
         )  # type: ignore [call-arg]
+
+        cls.artifacts.create_environment(
+            cls.artifacts.repo,
+            new_env,
+            "create new environment",
+        )
+        return new_env
 
     @classmethod
     def update(
@@ -189,20 +195,20 @@ class Environment:
 
     @classmethod
     async def upload_file(cls, file: Upload):
-        return (await file.read()).decode("utf-8") # type: ignore
+        return (await file.read()).decode("utf-8")  # type: ignore
 
 
 # Error types
 @strawberry.type
 class EnvironmentNotFoundError:
-    """Environment not found"""
+    """Environment not found."""
 
     name: str
 
 
 @strawberry.type
 class EnvironmentAlreadyExistsError:
-    """Environment name already exists"""
+    """Environment name already exists."""
 
     path: str
     name: str
@@ -232,4 +238,4 @@ class EnvironmentSchema(BaseSchema):
         createEnvironment: CreateEnvironmentResponse = Environment.create  # type: ignore
         updateEnvironment: UpdateEnvironmentResponse = Environment.update  # type: ignore
         deleteEnvironment: str = Environment.delete  # type: ignore
-        upload_file: str = Environment.upload_file   # type: ignore
+        upload_file: str = Environment.upload_file  # type: ignore

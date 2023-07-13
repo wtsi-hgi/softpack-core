@@ -13,6 +13,8 @@ artifacts:
   repo:
     url: https://github.com/softpack-io/softpack-artifacts.git
     username: softpack-core
+    author: softpack
+    email: softpack@sanger.ac.uk
   path: ./softpack-artifacts
 
 # Vault Config
