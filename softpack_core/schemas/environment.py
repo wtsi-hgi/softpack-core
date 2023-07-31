@@ -143,8 +143,8 @@ class Environment:
     def update(
         cls,
         env: EnvironmentInput,
-        path: str,
-        name: str,
+        current_path: str,
+        current_name: str,
     ):
         """Update an Environment object.
 
@@ -156,7 +156,8 @@ class Environment:
         Returns:
             Environment: An updated Environment.
         """
-        current_env = cls.artifacts.get(Path(path), name)
+        # Check if an environment exists at the specified path and name
+        current_env = cls.artifacts.get(Path(current_path), current_name)
         print(current_env)
         if current_env:
             response = httpx.post(
@@ -171,7 +172,7 @@ class Environment:
             ).json()
             print(f"Update: {response}")
 
-            return Environment(
+            new_env = Environment(
                 id=uuid.uuid4().hex,
                 name=env.name,
                 path=env.path,
@@ -179,6 +180,12 @@ class Environment:
                 packages=[pkg.to_package() for pkg in env.packages],
                 state=response['state']['type'],
             )
+
+            cls.artifacts.update_environment(
+                new_env, current_name, current_path
+            )
+            return new_env
+
         return EnvironmentNotFoundError(name=env.name)
 
     @classmethod
