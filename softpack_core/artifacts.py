@@ -412,12 +412,12 @@ class Artifacts:
         if len(diff) > 1:
             raise RuntimeError("Too many changes to the repo")
         elif len(diff) < 1:
-            raise RuntimeError("No changes made")
+            raise RuntimeError("No changes made to the environment")
         elif len(diff) == 1:
             new_file = diff[0].delta.new_file
             if new_file.path != str(full_path):
                 raise RuntimeError(
-                    f"New file added to incorrect path: \
+                    f"Attempted to add new file added to incorrect path: \
                         {new_file.path} instead of {full_path}"
                 )
 
