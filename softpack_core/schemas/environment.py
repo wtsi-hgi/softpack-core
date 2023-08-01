@@ -30,6 +30,8 @@ class Package(Spack.PackageBase):
 class PackageInput(Package):
     """A Strawberry input model representing a package."""
 
+    id: Optional[str] = None
+
     def to_package(self):
         """Create a Package object from a PackageInput object.
 
