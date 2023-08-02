@@ -110,8 +110,13 @@ class Environment:
         Returns:
             Environment: A newly created Environment.
         """
-        if env.name == "":
-            return InvalidInputError(message="name cannot be empty")
+        # Check if any field has been left empty
+        if any(len(value) == 0 for value in vars(env).values()):
+            return InvalidInputError(message="all fields must be filled in")
+        # Check if a valid path has been provided
+        user = os.environ["USER"]
+        if env.path not in ["groups/hgi", f"users/{user}"]:
+            return InvalidInputError(message="Invalid path")
         # Check if an env with same name already exists at given path
         if cls.artifacts.get(Path(env.path), env.name):
             return EnvironmentAlreadyExistsError(message="An environment of this name already exists in this location", path=env.path, name=env.name)
@@ -164,6 +169,9 @@ class Environment:
         Returns:
             Environment: An updated Environment.
         """
+        # Check if any field has been left empty
+        if any(len(value) == 0 for value in vars(env).values()) or current_name == "" or current_path == "":
+            return InvalidInputError(message="all fields must be filled in")
         # Check if an environment exists at the specified path and name
         if cls.artifacts.get(Path(current_path), current_name):
             response = httpx.post(
@@ -196,7 +204,7 @@ class Environment:
 
             return UpdateEnvironmentSuccess(message="Successfully updated environment", environment=new_env)
 
-        return EnvironmentNotFoundError(message="Unable to find an environment of this name in this location", path=env.path, name=env.name)
+        return EnvironmentNotFoundError(message="Unable to find an environment of this name in this location", path=current_path, name=current_name)
 
     @classmethod
     def delete(cls, name: str):
