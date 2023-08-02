@@ -365,7 +365,6 @@ class Artifacts:
 
     def create_environment(
         self,
-        repo: pygit2.Repository,
         env,
         commit_message: str,
         target_tree: Optional[pygit2.Tree] = None,
@@ -373,23 +372,22 @@ class Artifacts:
         """Create, commit and push a new environment folder to GitLab.
 
         Args:
-            repo: a bare repository
             env: an Environment object
             commit_message: the commit message
             target_tree: pygit2.Tree object with the environment folder you
             want to update as its root
         """
-        root_tree = repo.head.peel(pygit2.Tree)
+        root_tree = self.repo.head.peel(pygit2.Tree)
 
         # Create new file
         contents = self.generate_yaml_contents(env)
-        file_oid = repo.create_blob(contents.encode())
+        file_oid = self.repo.create_blob(contents.encode())
 
         # Put new file into new env folder
         if target_tree:
-            new_treebuilder = repo.TreeBuilder(target_tree)
+            new_treebuilder = self.repo.TreeBuilder(target_tree)
         else:
-            new_treebuilder = repo.TreeBuilder()
+            new_treebuilder = self.repo.TreeBuilder()
         new_treebuilder.insert(
             self.environments_file, file_oid, pygit2.GIT_FILEMODE_BLOB
         )
@@ -403,12 +401,12 @@ class Artifacts:
             / self.environments_file
         )
         full_tree = self.build_tree(
-            repo, root_tree, new_tree, full_path.parent
+            self.repo, root_tree, new_tree, full_path.parent
         )
-        new_tree = repo.get(full_tree)
 
+        new_tree = self.repo.get(full_tree)
         # Check for errors in the new tree
-        diff = repo.diff(new_tree, root_tree)
+        diff = self.repo.diff(new_tree, root_tree)
         if len(diff) > 1:
             raise RuntimeError("Too many changes to the repo")
         elif len(diff) < 1:
@@ -422,16 +420,15 @@ class Artifacts:
                 )
 
         # Commit and push
-        self.commit(repo, full_tree, commit_message)
-        self.push(repo)
+        self.commit(self.repo, full_tree, commit_message)
+        self.push(self.repo)
 
     def update_environment(
-        self, new_env, current_name: str, current_path: str
+        self, new_env, current_name: str, current_path: str, commit_message: str
     ):
         """Update an existing environment folder in GitLab.
 
         Args:
-            repo: a bare repository
             new_env: an updated Environment object
             current_name: the current name of the environment
             current_path: the current path of the environment
@@ -442,9 +439,8 @@ class Artifacts:
             path = Path(self.environments_root) / current_path / current_name
             target_tree = root_tree[path]
             self.create_environment(
-                self.repo,
                 new_env,
-                "update existing environment",
+                commit_message,
                 target_tree,
             )
         else:
@@ -452,3 +448,25 @@ class Artifacts:
             raise KeyError("not matching name or path")
             # self.delete_environment()
             # self.create_environment()
+
+    def delete_environment(self, name, path, commit_message):
+        """Delete an environment folder in GitLab.
+        
+        Args:
+            name: the name of the environment
+            path: the path of the environment
+        """
+        # Get repository tree
+        root_tree = self.repo.head.peel(pygit2.Tree)
+        # Find environment in the tree
+        full_path = Path(self.environments_root) / path 
+        target_tree = root_tree[full_path]
+        # Remove the environment
+        tree_builder = self.repo.TreeBuilder(target_tree)
+        tree_builder.remove(name)
+        new_tree = tree_builder.write()
+        full_tree = self.build_tree(self.repo, root_tree, new_tree, full_path)
+
+        # Commit and push
+        self.commit(self.repo, full_tree, commit_message)
+        self.push(self.repo)

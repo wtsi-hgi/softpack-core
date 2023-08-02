@@ -102,13 +102,13 @@ class Environment:
 
     @classmethod
     def create(cls, env: EnvironmentInput):
-        """Create an Environment object.
+        """Create an Environment.
 
         Args:
             env: Details of the new environment
 
         Returns:
-            Environment: A newly created Environment.
+            A message confirming the success or failure of the operation.
         """
         # Check if any field has been left empty
         if any(len(value) == 0 for value in vars(env).values()):
@@ -143,7 +143,6 @@ class Environment:
 
         try:
             cls.artifacts.create_environment(
-                cls.artifacts.repo,
                 new_env,
                 "create new environment",
             )
@@ -159,7 +158,7 @@ class Environment:
         current_path: str,
         current_name: str,
     ):
-        """Update an Environment object.
+        """Update an Environment.
 
         Args:
             env: Details of the updated environment
@@ -167,7 +166,7 @@ class Environment:
             name: The name of the current environment
 
         Returns:
-            Environment: An updated Environment.
+            A message confirming the success or failure of the operation.
         """
         # Check if any field has been left empty
         if any(len(value) == 0 for value in vars(env).values()) or current_name == "" or current_path == "":
@@ -197,7 +196,7 @@ class Environment:
 
             try:
                 cls.artifacts.update_environment(
-                    new_env, current_name, current_path
+                    new_env, current_name, current_path, "update existing environment"
                 )
             except RuntimeError as e:
                 return InvalidInputError(message=str(e))
@@ -207,16 +206,21 @@ class Environment:
         return EnvironmentNotFoundError(message="Unable to find an environment of this name in this location", path=current_path, name=current_name)
 
     @classmethod
-    def delete(cls, name: str):
-        """Delete an Environment object.
+    def delete(cls, name: str, path: str):
+        """Delete an Environment.
+
+        Args:
+            name: the name of of environment
+            path: the path of the environment
 
         Returns:
-            A string confirming the deletion of the Environment
+            A message confirming the success or failure of the operation.
         """
-        for env in Environment.iter():
-            if env.name == name:
-                return f"Deleted {name}"
-        return "An environment with that name was not found"
+        if cls.artifacts.get(Path(path), name):
+            cls.artifacts.delete_environment(name, path, "delete environment")
+            return DeleteEnvironmentSuccess(message="Successfully deleted the environment")
+
+        return EnvironmentNotFoundError(message="An environment with that name was not found", path=path, name=name)
 
     @classmethod
     async def upload_file(cls, file: Upload):
@@ -252,6 +256,11 @@ class UpdateEnvironmentSuccess(Success):
     message: str
     environment: Environment
 
+@strawberry.type
+class DeleteEnvironmentSuccess(Success):
+    """Environment successfully deleted."""
+
+    message: str
 
 # Error types
 @strawberry.type
@@ -291,6 +300,12 @@ UpdateResponse = strawberry.union(
                         ]
 )
 
+DeleteResponse = strawberry.union(
+    "DeleteResponse", [DeleteEnvironmentSuccess,
+                       EnvironmentNotFoundError,
+                       ]
+)
+
 
 class EnvironmentSchema(BaseSchema):
     """Environment schema."""
@@ -307,5 +322,5 @@ class EnvironmentSchema(BaseSchema):
 
         createEnvironment: CreateResponse = Environment.create  # type: ignore
         updateEnvironment: UpdateResponse = Environment.update  # type: ignore
-        deleteEnvironment: str = Environment.delete  # type: ignore
+        deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
         upload_file: str = Environment.upload_file  # type: ignore
