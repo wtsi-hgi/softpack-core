@@ -349,7 +349,7 @@ class Artifacts:
             path = path.parent
         return new_tree
 
-    def generate_yaml_contents(self, env):
+    def generate_yaml_contents(self, env) -> str:
         """Generate the softpack.yml file contents.
 
         Args:
@@ -365,10 +365,12 @@ class Artifacts:
 
     def create_environment(
         self,
-        env,
+        new_env,
         commit_message: str,
         target_tree: Optional[pygit2.Tree] = None,
-    ):
+        replace: bool = False,
+        push: bool = True,
+    ) -> pygit2.Oid | None:
         """Create, commit and push a new environment folder to GitLab.
 
         Args:
@@ -376,11 +378,16 @@ class Artifacts:
             commit_message: the commit message
             target_tree: pygit2.Tree object with the environment folder you
             want to update as its root
+            replace: if true, it will replace any existing environment at the
+            specified location
+            push: whether or not to push the new environment to the GitLab repo
         """
+        if not replace and self.get(Path(new_env.path), new_env.name):
+            raise FileExistsError()
         root_tree = self.repo.head.peel(pygit2.Tree)
 
         # Create new file
-        contents = self.generate_yaml_contents(env)
+        contents = self.generate_yaml_contents(new_env)
         file_oid = self.repo.create_blob(contents.encode())
 
         # Put new file into new env folder
@@ -396,8 +403,8 @@ class Artifacts:
         # Expand tree to include the whole repo
         full_path = (
             Path(self.environments_root)
-            / env.path
-            / env.name
+            / new_env.path
+            / new_env.name
             / self.environments_file
         )
         full_tree = self.build_tree(
@@ -419,19 +426,23 @@ class Artifacts:
                         {new_file.path} instead of {full_path}"
                 )
 
-        # Commit and push
-        self.commit(self.repo, full_tree, commit_message)
-        self.push(self.repo)
+        if push:
+            # Commit and push
+            self.commit(self.repo, full_tree, commit_message)
+            self.push(self.repo)
+        else:
+            return full_tree
 
     def update_environment(
-        self, new_env, current_name: str, current_path: str, commit_message: str
-    ):
+        self, current_name: str, current_path: str, new_env, commit_message: str
+    ) -> None:
         """Update an existing environment folder in GitLab.
 
         Args:
-            new_env: an updated Environment object
             current_name: the current name of the environment
             current_path: the current path of the environment
+            new_env: an updated Environment object
+            commit_message: the commit_message
         """
         if new_env.name == current_name and new_env.path == current_path:
             # Update environment in the same location
@@ -442,22 +453,28 @@ class Artifacts:
                 new_env,
                 commit_message,
                 target_tree,
+                replace=True,
             )
         else:
             # Update environment in a new location
-            raise KeyError("not matching name or path")
-            # self.delete_environment()
-            # self.create_environment()
+            tree_oid = self.create_environment(new_env, "create new environment", push=False)
+            self.delete_environment(current_name, current_path, commit_message, tree_oid=tree_oid)
 
-    def delete_environment(self, name, path, commit_message):
+    def delete_environment(self, name: str, path: str, commit_message: str, tree_oid: Optional[pygit2.Oid]=None) -> None:
         """Delete an environment folder in GitLab.
         
         Args:
             name: the name of the environment
             path: the path of the environment
+            commit_message: the commit message
+            tree_oid: a Pygit2.Oid object representing a tree. If None, 
+            a tree will be created from the artifacts repo.
         """
         # Get repository tree
-        root_tree = self.repo.head.peel(pygit2.Tree)
+        if not tree_oid:
+            root_tree = self.repo.head.peel(pygit2.Tree)
+        else:
+            root_tree = self.repo.get(tree_oid)
         # Find environment in the tree
         full_path = Path(self.environments_root) / path 
         target_tree = root_tree[full_path]

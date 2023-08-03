@@ -196,10 +196,12 @@ class Environment:
 
             try:
                 cls.artifacts.update_environment(
-                    new_env, current_name, current_path, "update existing environment"
+                    current_name, current_path, new_env, "update existing environment"
                 )
             except RuntimeError as e:
                 return InvalidInputError(message=str(e))
+            except FileExistsError:
+                return EnvironmentAlreadyExistsError(message="An environment of this name already exists in this location", path=env.path, name=env.name)
 
             return UpdateEnvironmentSuccess(message="Successfully updated environment", environment=new_env)
 
@@ -297,6 +299,7 @@ UpdateResponse = strawberry.union(
     "UpdateResponse", [UpdateEnvironmentSuccess,
                        InvalidInputError,
                        EnvironmentNotFoundError,
+                       EnvironmentAlreadyExistsError,
                         ]
 )
 
