@@ -74,8 +74,9 @@ class Environment:
             # TODO: set username from the environment for now
             # eventually this needs to be the name of the authenticated user
             user = os.environ["USER"]
-        environments = cls.artifacts.iter(user=user)
-        return map(cls.from_artifact, environments)
+        environment_folders = cls.artifacts.iter(user=user)
+        environment_objects = map(cls.from_artifact, environment_folders)
+        return filter(lambda x: x is not None, environment_objects)
 
     @classmethod
     def from_artifact(cls, obj: Artifacts.Object) -> "Environment":
@@ -87,18 +88,21 @@ class Environment:
         Returns:
             Environment: An Environment object.
         """
-        spec = obj.spec()
-        return Environment(
-            id=obj.oid,
-            name=obj.name,
-            path=obj.path.parent,
-            description=spec.description,
-            packages=map(
-                lambda package: Package(id=package, name=package),
-                spec.packages,
-            ),  # type: ignore [call-arg]
-            state=None,
-        )
+        try:
+            spec = obj.spec()
+            return Environment(
+                id=obj.oid,
+                name=obj.name,
+                path=obj.path.parent,
+                description=spec.description,
+                packages=map(
+                    lambda package: Package(id=package, name=package),
+                    spec.packages,
+                ),  # type: ignore [call-arg]
+                state=None,
+            )
+        except KeyError:
+            return None
 
     @classmethod
     def create(cls, env: EnvironmentInput):
@@ -113,14 +117,27 @@ class Environment:
         # Check if any field has been left empty
         if any(len(value) == 0 for value in vars(env).values()):
             return InvalidInputError(message="all fields must be filled in")
+        
         # Check if a valid path has been provided
         user = os.environ["USER"]
         if env.path not in ["groups/hgi", f"users/{user}"]:
             return InvalidInputError(message="Invalid path")
+        
         # Check if an env with same name already exists at given path
         if cls.artifacts.get(Path(env.path), env.name):
             return EnvironmentAlreadyExistsError(message="An environment of this name already exists in this location", path=env.path, name=env.name)
 
+        # Create folder with readme
+        new_folder_path = Path(env.path) / env.name
+        file_name = "README.md"
+        try:
+            tree_oid = cls.artifacts.create_file(new_folder_path, file_name, "lorem ipsum", True)
+            cls.artifacts.commit(cls.artifacts.repo, tree_oid, "create empty environment")
+            cls.artifacts.push(cls.artifacts.repo)
+        except RuntimeError as e:
+            return InvalidInputError(message=str(e))
+
+        # Send build request
         response = httpx.post(
             "http://0.0.0.0:7080/environments/build",
             json={
@@ -132,24 +149,8 @@ class Environment:
             },
         ).json()
         print(f"Create: {response}")
-        new_env = Environment(
-            id=uuid.uuid4().hex,
-            name=env.name,
-            path=env.path,
-            description=env.description,
-            packages=list(map(lambda pkg: pkg.to_package(), env.packages)),
-            state=response['state']['type'],
-        )  # type: ignore [call-arg]
-
-        try:
-            cls.artifacts.create_environment(
-                new_env,
-                "create new environment",
-            )
-        except RuntimeError as e:
-            return InvalidInputError(message=str(e))
         
-        return CreateEnvironmentSuccess(message="Successfully scheduled environment creation", environment=new_env)
+        return CreateEnvironmentSuccess(message="Successfully scheduled environment creation")
 
     @classmethod
     def update(
@@ -203,7 +204,7 @@ class Environment:
             except FileExistsError:
                 return EnvironmentAlreadyExistsError(message="An environment of this name already exists in this location", path=env.path, name=env.name)
 
-            return UpdateEnvironmentSuccess(message="Successfully updated environment", environment=new_env)
+            return UpdateEnvironmentSuccess(message="Successfully updated environment")
 
         return EnvironmentNotFoundError(message="Unable to find an environment of this name in this location", path=current_path, name=current_name)
 
@@ -225,8 +226,23 @@ class Environment:
         return EnvironmentNotFoundError(message="An environment with that name was not found", path=path, name=name)
 
     @classmethod
-    async def upload_file(cls, file: Upload):
-        return (await file.read()).decode("utf-8")  # type: ignore
+    async def create_artifact(cls, file: Upload, folder_path: str, file_name: str):
+        """Add a file to the Artifacts repo.
+        
+        Args:
+            file: the file to add to the repo
+            folder_path: the path to the folder that the file will be added to
+            file_name: the name of the file
+        """
+        try:
+            contents = (await file.read()).decode()
+            tree_oid = cls.artifacts.create_file(Path(folder_path), file_name, contents, replace=True)
+            cls.artifacts.commit(cls.artifacts.repo, tree_oid, "create artifact")
+            cls.artifacts.push(cls.artifacts.repo)
+            return "created artifact"
+        except Exception as e:
+            return f"something went wrong when creating the artifact: {e}"
+
 
 
 # Interfaces
@@ -249,14 +265,12 @@ class CreateEnvironmentSuccess(Success):
     """Environment successfully scheduled."""
 
     message: str
-    environment: Environment
 
 @strawberry.type
 class UpdateEnvironmentSuccess(Success):
     """Environment successfully updated."""
 
     message: str
-    environment: Environment
 
 @strawberry.type
 class DeleteEnvironmentSuccess(Success):
@@ -326,4 +340,4 @@ class EnvironmentSchema(BaseSchema):
         createEnvironment: CreateResponse = Environment.create  # type: ignore
         updateEnvironment: UpdateResponse = Environment.update  # type: ignore
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
-        upload_file: str = Environment.upload_file  # type: ignore
+        createArtifact: str = Environment.create_artifact  # type: ignore

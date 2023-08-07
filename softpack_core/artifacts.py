@@ -363,6 +363,60 @@ class Artifacts:
         contents = f"description: {env.description}\npackages:\n{packages}\n"
         return contents
 
+    def create_file(self, folder_path: Path, file_name: str, contents: str, new_folder: bool=False, replace: bool=False) -> pygit2.Oid:
+        """Create a file in the artifacts repo.
+        
+        Args:
+            folder_path: the path to the folder the file will be placed in
+            file_name: the name of the file
+            contents: the contents of the file
+            new_folder: if True, create the file's parent folder as well
+            replace: if True, replace any existing file with the same name in 
+            the specified location
+            
+        Returns:
+            the OID of the new tree structure of the repository
+        """
+        if not replace and self.get(Path(folder_path), file_name):
+            raise FileExistsError()
+
+        root_tree = self.repo.head.peel(pygit2.Tree)
+        full_path = Path(self.environments_root) / folder_path
+
+        # Create file
+        file_oid = self.repo.create_blob(contents.encode())
+
+        # Put file in folder
+        if new_folder:
+            new_treebuilder = self.repo.TreeBuilder()
+        else:
+            folder = root_tree[full_path]
+            new_treebuilder = self.repo.TreeBuilder(folder)
+        new_treebuilder.insert(file_name, file_oid, pygit2.GIT_FILEMODE_BLOB)
+        new_tree = new_treebuilder.write()
+
+        # Expand to include the whole repo
+        full_tree = self.build_tree(self.repo, root_tree, new_tree, full_path)
+
+        # Check for errors in the new tree
+        new_tree = self.repo.get(full_tree)
+        path = Path(self.environments_root) / folder_path / file_name
+        diff = self.repo.diff(new_tree, root_tree)
+        if len(diff) > 1:
+            raise RuntimeError("Too many changes to the repo")
+        elif len(diff) < 1:
+            raise RuntimeError("No changes made to the environment")
+        elif len(diff) == 1:
+            new_file = diff[0].delta.new_file
+            if new_file.path != str(path):
+                raise RuntimeError(
+                    f"Attempted to add new file added to incorrect path: \
+                        {new_file.path} instead of {path}"
+                )
+
+        return full_tree
+
+
     def create_environment(
         self,
         new_env,
@@ -382,56 +436,14 @@ class Artifacts:
             specified location
             push: whether or not to push the new environment to the GitLab repo
         """
-        if not replace and self.get(Path(new_env.path), new_env.name):
-            raise FileExistsError()
-        root_tree = self.repo.head.peel(pygit2.Tree)
+        new_folder_path = Path(new_env.path) / new_env.name
+        file_name = "README.md"
+        tree_oid = self.create_file(new_folder_path, file_name, "lorem ipsum", True)
 
-        # Create new file
-        contents = self.generate_yaml_contents(new_env)
-        file_oid = self.repo.create_blob(contents.encode())
+        # Commit and push
+        self.commit(self.repo, tree_oid, commit_message)
+        self.push(self.repo)
 
-        # Put new file into new env folder
-        if target_tree:
-            new_treebuilder = self.repo.TreeBuilder(target_tree)
-        else:
-            new_treebuilder = self.repo.TreeBuilder()
-        new_treebuilder.insert(
-            self.environments_file, file_oid, pygit2.GIT_FILEMODE_BLOB
-        )
-        new_tree = new_treebuilder.write()
-
-        # Expand tree to include the whole repo
-        full_path = (
-            Path(self.environments_root)
-            / new_env.path
-            / new_env.name
-            / self.environments_file
-        )
-        full_tree = self.build_tree(
-            self.repo, root_tree, new_tree, full_path.parent
-        )
-
-        new_tree = self.repo.get(full_tree)
-        # Check for errors in the new tree
-        diff = self.repo.diff(new_tree, root_tree)
-        if len(diff) > 1:
-            raise RuntimeError("Too many changes to the repo")
-        elif len(diff) < 1:
-            raise RuntimeError("No changes made to the environment")
-        elif len(diff) == 1:
-            new_file = diff[0].delta.new_file
-            if new_file.path != str(full_path):
-                raise RuntimeError(
-                    f"Attempted to add new file added to incorrect path: \
-                        {new_file.path} instead of {full_path}"
-                )
-
-        if push:
-            # Commit and push
-            self.commit(self.repo, full_tree, commit_message)
-            self.push(self.repo)
-        else:
-            return full_tree
 
     def update_environment(
         self, current_name: str, current_path: str, new_env, commit_message: str
