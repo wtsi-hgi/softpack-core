@@ -363,17 +363,24 @@ class Artifacts:
         contents = f"description: {env.description}\npackages:\n{packages}\n"
         return contents
 
-    def create_file(self, folder_path: Path, file_name: str, contents: str, new_folder: bool=False, replace: bool=False) -> pygit2.Oid:
+    def create_file(
+        self,
+        folder_path: Path,
+        file_name: str,
+        contents: str,
+        new_folder: bool = False,
+        replace: bool = False,
+    ) -> pygit2.Oid:
         """Create a file in the artifacts repo.
-        
+
         Args:
             folder_path: the path to the folder the file will be placed in
             file_name: the name of the file
             contents: the contents of the file
             new_folder: if True, create the file's parent folder as well
-            replace: if True, replace any existing file with the same name in 
+            replace: if True, replace any existing file with the same name in
             the specified location
-            
+
         Returns:
             the OID of the new tree structure of the repository
         """
@@ -416,7 +423,6 @@ class Artifacts:
 
         return full_tree
 
-
     def create_environment(
         self,
         new_env,
@@ -428,7 +434,7 @@ class Artifacts:
         """Create, commit and push a new environment folder to GitLab.
 
         Args:
-            env: an Environment object
+            new_env: an Environment object
             commit_message: the commit message
             target_tree: pygit2.Tree object with the environment folder you
             want to update as its root
@@ -438,15 +444,20 @@ class Artifacts:
         """
         new_folder_path = Path(new_env.path) / new_env.name
         file_name = "README.md"
-        tree_oid = self.create_file(new_folder_path, file_name, "lorem ipsum", True)
+        tree_oid = self.create_file(
+            new_folder_path, file_name, "lorem ipsum", True
+        )
 
         # Commit and push
         self.commit(self.repo, tree_oid, commit_message)
         self.push(self.repo)
 
-
     def update_environment(
-        self, current_name: str, current_path: str, new_env, commit_message: str
+        self,
+        current_name: str,
+        current_path: str,
+        new_env,
+        commit_message: str,
     ) -> None:
         """Update an existing environment folder in GitLab.
 
@@ -469,17 +480,27 @@ class Artifacts:
             )
         else:
             # Update environment in a new location
-            tree_oid = self.create_environment(new_env, "create new environment", push=False)
-            self.delete_environment(current_name, current_path, commit_message, tree_oid=tree_oid)
+            tree_oid = self.create_environment(
+                new_env, "create new environment", push=False
+            )
+            self.delete_environment(
+                current_name, current_path, commit_message, tree_oid=tree_oid
+            )
 
-    def delete_environment(self, name: str, path: str, commit_message: str, tree_oid: Optional[pygit2.Oid]=None) -> None:
+    def delete_environment(
+        self,
+        name: str,
+        path: str,
+        commit_message: str,
+        tree_oid: Optional[pygit2.Oid] = None,
+    ) -> None:
         """Delete an environment folder in GitLab.
-        
+
         Args:
             name: the name of the environment
             path: the path of the environment
             commit_message: the commit message
-            tree_oid: a Pygit2.Oid object representing a tree. If None, 
+            tree_oid: a Pygit2.Oid object representing a tree. If None,
             a tree will be created from the artifacts repo.
         """
         # Get repository tree
@@ -488,7 +509,7 @@ class Artifacts:
         else:
             root_tree = self.repo.get(tree_oid)
         # Find environment in the tree
-        full_path = Path(self.environments_root) / path 
+        full_path = Path(self.environments_root) / path
         target_tree = root_tree[full_path]
         # Remove the environment
         tree_builder = self.repo.TreeBuilder(target_tree)

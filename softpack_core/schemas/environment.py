@@ -32,12 +32,12 @@ class PackageInput(Package):
 
     id: Optional[str] = None
 
-    def to_package(self):
+    def to_package(self) -> Package:
         """Create a Package object from a PackageInput object.
 
         Return: a Package object
         """
-        return Package(**self.__dict__)
+        return Package(**vars(self))
 
 
 @strawberry.input
@@ -117,22 +117,30 @@ class Environment:
         # Check if any field has been left empty
         if any(len(value) == 0 for value in vars(env).values()):
             return InvalidInputError(message="all fields must be filled in")
-        
+
         # Check if a valid path has been provided
         user = os.environ["USER"]
         if env.path not in ["groups/hgi", f"users/{user}"]:
             return InvalidInputError(message="Invalid path")
-        
+
         # Check if an env with same name already exists at given path
         if cls.artifacts.get(Path(env.path), env.name):
-            return EnvironmentAlreadyExistsError(message="An environment of this name already exists in this location", path=env.path, name=env.name)
+            return EnvironmentAlreadyExistsError(
+                message="This name is already used in this location",
+                path=env.path,
+                name=env.name,
+            )
 
         # Create folder with readme
         new_folder_path = Path(env.path) / env.name
         file_name = "README.md"
         try:
-            tree_oid = cls.artifacts.create_file(new_folder_path, file_name, "lorem ipsum", True)
-            cls.artifacts.commit(cls.artifacts.repo, tree_oid, "create empty environment")
+            tree_oid = cls.artifacts.create_file(
+                new_folder_path, file_name, "lorem ipsum", True
+            )
+            cls.artifacts.commit(
+                cls.artifacts.repo, tree_oid, "create empty environment"
+            )
             cls.artifacts.push(cls.artifacts.repo)
         except RuntimeError as e:
             return InvalidInputError(message=str(e))
@@ -149,8 +157,10 @@ class Environment:
             },
         ).json()
         print(f"Create: {response}")
-        
-        return CreateEnvironmentSuccess(message="Successfully scheduled environment creation")
+
+        return CreateEnvironmentSuccess(
+            message="Successfully scheduled environment creation"
+        )
 
     @classmethod
     def update(
@@ -170,7 +180,11 @@ class Environment:
             A message confirming the success or failure of the operation.
         """
         # Check if any field has been left empty
-        if any(len(value) == 0 for value in vars(env).values()) or current_name == "" or current_path == "":
+        if (
+            any(len(value) == 0 for value in vars(env).values())
+            or current_name == ""
+            or current_path == ""
+        ):
             return InvalidInputError(message="all fields must be filled in")
         # Check if an environment exists at the specified path and name
         if cls.artifacts.get(Path(current_path), current_name):
@@ -197,16 +211,29 @@ class Environment:
 
             try:
                 cls.artifacts.update_environment(
-                    current_name, current_path, new_env, "update existing environment"
+                    current_name,
+                    current_path,
+                    new_env,
+                    "update existing environment",
                 )
             except RuntimeError as e:
                 return InvalidInputError(message=str(e))
             except FileExistsError:
-                return EnvironmentAlreadyExistsError(message="An environment of this name already exists in this location", path=env.path, name=env.name)
+                return EnvironmentAlreadyExistsError(
+                    message="This name is already used in this location",
+                    path=env.path,
+                    name=env.name,
+                )
 
-            return UpdateEnvironmentSuccess(message="Successfully updated environment")
+            return UpdateEnvironmentSuccess(
+                message="Successfully updated environment"
+            )
 
-        return EnvironmentNotFoundError(message="Unable to find an environment of this name in this location", path=current_path, name=current_name)
+        return EnvironmentNotFoundError(
+            message="No environment with this name found in this location.",
+            path=current_path,
+            name=current_name,
+        )
 
     @classmethod
     def delete(cls, name: str, path: str):
@@ -221,14 +248,22 @@ class Environment:
         """
         if cls.artifacts.get(Path(path), name):
             cls.artifacts.delete_environment(name, path, "delete environment")
-            return DeleteEnvironmentSuccess(message="Successfully deleted the environment")
+            return DeleteEnvironmentSuccess(
+                message="Successfully deleted the environment"
+            )
 
-        return EnvironmentNotFoundError(message="An environment with that name was not found", path=path, name=name)
+        return EnvironmentNotFoundError(
+            message="No environment with this name found in this location.",
+            path=path,
+            name=name,
+        )
 
     @classmethod
-    async def create_artifact(cls, file: Upload, folder_path: str, file_name: str):
+    async def create_artifact(
+        cls, file: Upload, folder_path: str, file_name: str
+    ):
         """Add a file to the Artifacts repo.
-        
+
         Args:
             file: the file to add to the repo
             folder_path: the path to the folder that the file will be added to
@@ -236,13 +271,16 @@ class Environment:
         """
         try:
             contents = (await file.read()).decode()
-            tree_oid = cls.artifacts.create_file(Path(folder_path), file_name, contents, replace=True)
-            cls.artifacts.commit(cls.artifacts.repo, tree_oid, "create artifact")
+            tree_oid = cls.artifacts.create_file(
+                Path(folder_path), file_name, contents, replace=True
+            )
+            cls.artifacts.commit(
+                cls.artifacts.repo, tree_oid, "create artifact"
+            )
             cls.artifacts.push(cls.artifacts.repo)
             return "created artifact"
         except Exception as e:
             return f"something went wrong when creating the artifact: {e}"
-
 
 
 # Interfaces
@@ -251,6 +289,7 @@ class Success:
     """Interface for successful results."""
 
     message: str
+
 
 @strawberry.interface
 class Error:
@@ -266,11 +305,13 @@ class CreateEnvironmentSuccess(Success):
 
     message: str
 
+
 @strawberry.type
 class UpdateEnvironmentSuccess(Success):
     """Environment successfully updated."""
 
     message: str
+
 
 @strawberry.type
 class DeleteEnvironmentSuccess(Success):
@@ -278,12 +319,14 @@ class DeleteEnvironmentSuccess(Success):
 
     message: str
 
+
 # Error types
 @strawberry.type
 class InvalidInputError(Error):
-    """Invalid input data"""
+    """Invalid input data."""
 
     message: str
+
 
 @strawberry.type
 class EnvironmentNotFoundError(Error):
@@ -293,34 +336,41 @@ class EnvironmentNotFoundError(Error):
     path: str
     name: str
 
+
 @strawberry.type
 class EnvironmentAlreadyExistsError(Error):
     """Environment name already exists."""
 
-    message:str
+    message: str
     path: str
     name: str
 
 
 CreateResponse = strawberry.union(
-    "CreateResponse", [CreateEnvironmentSuccess,
-                       InvalidInputError,
-                       EnvironmentAlreadyExistsError,
-                        ]
+    "CreateResponse",
+    [
+        CreateEnvironmentSuccess,
+        InvalidInputError,
+        EnvironmentAlreadyExistsError,
+    ],
 )
 
 UpdateResponse = strawberry.union(
-    "UpdateResponse", [UpdateEnvironmentSuccess,
-                       InvalidInputError,
-                       EnvironmentNotFoundError,
-                       EnvironmentAlreadyExistsError,
-                        ]
+    "UpdateResponse",
+    [
+        UpdateEnvironmentSuccess,
+        InvalidInputError,
+        EnvironmentNotFoundError,
+        EnvironmentAlreadyExistsError,
+    ],
 )
 
 DeleteResponse = strawberry.union(
-    "DeleteResponse", [DeleteEnvironmentSuccess,
-                       EnvironmentNotFoundError,
-                       ]
+    "DeleteResponse",
+    [
+        DeleteEnvironmentSuccess,
+        EnvironmentNotFoundError,
+    ],
 )
 
 
