@@ -138,7 +138,7 @@ class Environment:
                 new_folder_path, file_name, "lorem ipsum", True
             )
             cls.artifacts.commit(
-                cls.artifacts.repo, tree_oid, "create empty environment"
+                cls.artifacts.repo, tree_oid, "create environment folder"
             )
             cls.artifacts.push(cls.artifacts.repo)
         except RuntimeError as e:
@@ -236,8 +236,8 @@ class Environment:
         )
 
     @classmethod
-    async def create_artifact(
-        cls, file: Upload, folder_path: str, file_name: str, overwrite: bool
+    async def write_artifact(
+        cls, file: Upload, folder_path: str, file_name: str
     ):
         """Add a file to the Artifacts repo.
 
@@ -245,18 +245,20 @@ class Environment:
             file: the file to add to the repo
             folder_path: the path to the folder that the file will be added to
             file_name: the name of the file
-            overwrite: if True, overwrite the file at the specified path
         """
         try:
             contents = (await file.read()).decode()
             tree_oid = cls.artifacts.create_file(
-                Path(folder_path), file_name, contents, overwrite=overwrite
+                Path(folder_path), file_name, contents, overwrite=True
             )
             commit_oid = cls.artifacts.commit(
-                cls.artifacts.repo, tree_oid, "create artifact"
+                cls.artifacts.repo, tree_oid, "write artifact"
             )
             cls.artifacts.push(cls.artifacts.repo)
-            return str(commit_oid)
+            return WriteArtifactSuccess(
+                message="Successfully written artifact",
+                commit_oid=str(commit_oid),
+            )
 
         except Exception as e:
             return InvalidInputError(message=str(e))
@@ -300,7 +302,7 @@ class DeleteEnvironmentSuccess(Success):
 
 
 @strawberry.type
-class CreateArtifactSuccess(Success):
+class WriteArtifactSuccess(Success):
     """Artifact successfully created."""
 
     message: str
@@ -361,10 +363,10 @@ DeleteResponse = strawberry.union(
     ],
 )
 
-CreateArtifactResponse = strawberry.union(
-    "CreateArtifactResponse",
+WriteArtifactResponse = strawberry.union(
+    "WriteArtifactResponse",
     [
-        CreateArtifactSuccess,
+        WriteArtifactSuccess,
         InvalidInputError,
     ],
 )
@@ -386,6 +388,6 @@ class EnvironmentSchema(BaseSchema):
         createEnvironment: CreateResponse = Environment.create  # type: ignore
         updateEnvironment: UpdateResponse = Environment.update  # type: ignore
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
-        createArtifact: CreateArtifactResponse = (
-            Environment.create_artifact
+        writeArtifact: WriteArtifactResponse = (
+            Environment.write_artifact
         )  # type: ignore
