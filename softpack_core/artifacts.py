@@ -350,20 +350,6 @@ class Artifacts:
             path = path.parent
         return new_tree
 
-    def generate_yaml_contents(self, env) -> str:
-        """Generate the softpack.yml file contents.
-
-        Args:
-            env: an Environment object
-        """
-        packages = [
-            f"- {pkg.name}@{pkg.version}" if pkg.version else f"- {pkg.name}"
-            for pkg in env.packages
-        ]
-        packages = "\n".join(packages)
-        contents = f"description: {env.description}\npackages:\n{packages}\n"
-        return contents
-
     def create_file(
         self,
         folder_path: Path,
