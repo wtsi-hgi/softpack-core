@@ -5,7 +5,6 @@ LICENSE file in the root directory of this source tree.
 """
 
 import os
-import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
@@ -132,7 +131,7 @@ class Environment:
             )
 
         # Create folder with readme
-        new_folder_path = Path(env.path) / env.name
+        new_folder_path = Path(env.path, env.name)
         file_name = "README.md"
         try:
             tree_oid = cls.artifacts.create_file(
@@ -146,17 +145,16 @@ class Environment:
             return InvalidInputError(message=str(e))
 
         # Send build request
-        response = httpx.post(
+        httpx.post(
             "http://0.0.0.0:7080/environments/build",
             json={
-                "name": env.name,
+                "name": f"{env.path}/{env.name}",
                 "model": {
                     "description": env.description,
                     "packages": [f"{pkg.name}" for pkg in env.packages],
                 },
             },
-        ).json()
-        print(f"Create: {response}")
+        )
 
         return CreateEnvironmentSuccess(
             message="Successfully scheduled environment creation"
@@ -186,44 +184,23 @@ class Environment:
             or current_path == ""
         ):
             return InvalidInputError(message="all fields must be filled in")
+
+        # Check name and path have not been changed.
+        if env.path != current_path or env.name != current_name:
+            return InvalidInputError(message="cannot change name or path")
+
         # Check if an environment exists at the specified path and name
         if cls.artifacts.get(Path(current_path), current_name):
-            response = httpx.post(
+            httpx.post(
                 "http://0.0.0.0:7080/environments/build",
                 json={
-                    "name": env.name,
+                    "name": f"{env.path}/{env.name}",
                     "model": {
                         "description": env.description,
                         "packages": [pkg.name for pkg in env.packages or []],
                     },
                 },
-            ).json()
-            print(f"Update: {response}")
-
-            new_env = Environment(
-                id=uuid.uuid4().hex,
-                name=env.name,
-                path=env.path,
-                description=env.description,
-                packages=[pkg.to_package() for pkg in env.packages],
-                state=response['state']['type'],
             )
-
-            try:
-                cls.artifacts.update_environment(
-                    current_name,
-                    current_path,
-                    new_env,
-                    "update existing environment",
-                )
-            except RuntimeError as e:
-                return InvalidInputError(message=str(e))
-            except FileExistsError:
-                return EnvironmentAlreadyExistsError(
-                    message="This name is already used in this location",
-                    path=env.path,
-                    name=env.name,
-                )
 
             return UpdateEnvironmentSuccess(
                 message="Successfully updated environment"
@@ -260,7 +237,7 @@ class Environment:
 
     @classmethod
     async def create_artifact(
-        cls, file: Upload, folder_path: str, file_name: str
+        cls, file: Upload, folder_path: str, file_name: str, overwrite: bool
     ):
         """Add a file to the Artifacts repo.
 
@@ -268,19 +245,21 @@ class Environment:
             file: the file to add to the repo
             folder_path: the path to the folder that the file will be added to
             file_name: the name of the file
+            overwrite: if True, overwrite the file at the specified path
         """
         try:
             contents = (await file.read()).decode()
             tree_oid = cls.artifacts.create_file(
-                Path(folder_path), file_name, contents, replace=True
+                Path(folder_path), file_name, contents, overwrite=overwrite
             )
-            cls.artifacts.commit(
+            commit_oid = cls.artifacts.commit(
                 cls.artifacts.repo, tree_oid, "create artifact"
             )
             cls.artifacts.push(cls.artifacts.repo)
-            return "created artifact"
+            return str(commit_oid)
+
         except Exception as e:
-            return f"something went wrong when creating the artifact: {e}"
+            return InvalidInputError(message=str(e))
 
 
 # Interfaces
@@ -320,6 +299,14 @@ class DeleteEnvironmentSuccess(Success):
     message: str
 
 
+@strawberry.type
+class CreateArtifactSuccess(Success):
+    """Artifact successfully created."""
+
+    message: str
+    commit_oid: str
+
+
 # Error types
 @strawberry.type
 class InvalidInputError(Error):
@@ -346,6 +333,7 @@ class EnvironmentAlreadyExistsError(Error):
     name: str
 
 
+# Unions
 CreateResponse = strawberry.union(
     "CreateResponse",
     [
@@ -373,6 +361,14 @@ DeleteResponse = strawberry.union(
     ],
 )
 
+CreateArtifactResponse = strawberry.union(
+    "CreateArtifactResponse",
+    [
+        CreateArtifactSuccess,
+        InvalidInputError,
+    ],
+)
+
 
 class EnvironmentSchema(BaseSchema):
     """Environment schema."""
@@ -390,4 +386,6 @@ class EnvironmentSchema(BaseSchema):
         createEnvironment: CreateResponse = Environment.create  # type: ignore
         updateEnvironment: UpdateResponse = Environment.update  # type: ignore
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
-        createArtifact: str = Environment.create_artifact  # type: ignore
+        createArtifact: CreateArtifactResponse = (
+            Environment.create_artifact
+        )  # type: ignore

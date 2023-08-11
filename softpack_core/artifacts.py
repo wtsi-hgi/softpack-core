@@ -260,7 +260,7 @@ class Artifacts:
 
     def commit(
         self, repo: pygit2.Repository, tree_oid: pygit2.Oid, message: str
-    ) -> pygit2.Commit:
+    ) -> pygit2.Oid:
         """Create and return a commit.
 
         Args:
@@ -278,9 +278,10 @@ class Artifacts:
             self.settings.artifacts.repo.email,
         )
         parents = [repo.lookup_reference(ref).target]
-        return repo.create_commit(
+        commit_oid = repo.create_commit(
             ref, author, committer, message, tree_oid, parents
         )
+        return commit_oid
 
     def error_callback(self, refname: str, message: str) -> None:
         """Push update reference callback.
@@ -369,7 +370,7 @@ class Artifacts:
         file_name: str,
         contents: str,
         new_folder: bool = False,
-        replace: bool = False,
+        overwrite: bool = False,
     ) -> pygit2.Oid:
         """Create a file in the artifacts repo.
 
@@ -378,17 +379,16 @@ class Artifacts:
             file_name: the name of the file
             contents: the contents of the file
             new_folder: if True, create the file's parent folder as well
-            replace: if True, replace any existing file with the same name in
-            the specified location
+            overwrite: if True, overwrite the file at the specified path
 
         Returns:
             the OID of the new tree structure of the repository
         """
-        if not replace and self.get(Path(folder_path), file_name):
-            raise FileExistsError()
+        if not overwrite and self.get(Path(folder_path), file_name):
+            raise FileExistsError("File already exists")
 
         root_tree = self.repo.head.peel(pygit2.Tree)
-        full_path = Path(self.environments_root) / folder_path
+        full_path = Path(self.environments_root, folder_path)
 
         # Create file
         file_oid = self.repo.create_blob(contents.encode())
@@ -407,7 +407,7 @@ class Artifacts:
 
         # Check for errors in the new tree
         new_tree = self.repo.get(full_tree)
-        path = Path(self.environments_root) / folder_path / file_name
+        path = Path(self.environments_root, folder_path, file_name)
         diff = self.repo.diff(new_tree, root_tree)
         if len(diff) > 1:
             raise RuntimeError("Too many changes to the repo")
@@ -418,74 +418,10 @@ class Artifacts:
             if new_file.path != str(path):
                 raise RuntimeError(
                     f"Attempted to add new file added to incorrect path: \
-                        {new_file.path} instead of {path}"
+                        {new_file.path} instead of {str(path)}"
                 )
 
         return full_tree
-
-    def create_environment(
-        self,
-        new_env,
-        commit_message: str,
-        target_tree: Optional[pygit2.Tree] = None,
-        replace: bool = False,
-        push: bool = True,
-    ) -> pygit2.Oid | None:
-        """Create, commit and push a new environment folder to GitLab.
-
-        Args:
-            new_env: an Environment object
-            commit_message: the commit message
-            target_tree: pygit2.Tree object with the environment folder you
-            want to update as its root
-            replace: if true, it will replace any existing environment at the
-            specified location
-            push: whether or not to push the new environment to the GitLab repo
-        """
-        new_folder_path = Path(new_env.path) / new_env.name
-        file_name = "README.md"
-        tree_oid = self.create_file(
-            new_folder_path, file_name, "lorem ipsum", True
-        )
-
-        # Commit and push
-        self.commit(self.repo, tree_oid, commit_message)
-        self.push(self.repo)
-
-    def update_environment(
-        self,
-        current_name: str,
-        current_path: str,
-        new_env,
-        commit_message: str,
-    ) -> None:
-        """Update an existing environment folder in GitLab.
-
-        Args:
-            current_name: the current name of the environment
-            current_path: the current path of the environment
-            new_env: an updated Environment object
-            commit_message: the commit_message
-        """
-        if new_env.name == current_name and new_env.path == current_path:
-            # Update environment in the same location
-            root_tree = self.repo.head.peel(pygit2.Tree)
-            path = Path(self.environments_root) / current_path / current_name
-            target_tree = root_tree[path]
-            self.create_environment(
-                new_env,
-                commit_message,
-                target_tree,
-                replace=True,
-            )
-        else:
-            # Update environment in a new location
-            tree_oid = self.create_environment(
-                new_env, "create new environment", push=False
-            )
-            self.delete_environment(
-                current_name, current_path, commit_message, tree_oid=tree_oid
-            )
 
     def delete_environment(
         self,
@@ -509,7 +445,7 @@ class Artifacts:
         else:
             root_tree = self.repo.get(tree_oid)
         # Find environment in the tree
-        full_path = Path(self.environments_root) / path
+        full_path = Path(self.environments_root, path)
         target_tree = root_tree[full_path]
         # Remove the environment
         tree_builder = self.repo.TreeBuilder(target_tree)
