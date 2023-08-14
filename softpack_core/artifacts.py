@@ -200,7 +200,7 @@ class Artifacts:
         Returns:
             Tree: A Tree object
         """
-        return self.repo.lookup_reference(self.reference).peel().tree[path]
+        return self.repo.head.peel(pygit2.Tree)[path]
 
     def environments(self, path: Path) -> Iterable:
         """Return a list of environments in the repo.
@@ -413,9 +413,8 @@ class Artifacts:
         self,
         name: str,
         path: str,
-        commit_message: str,
         tree_oid: Optional[pygit2.Oid] = None,
-    ) -> None:
+    ) -> pygit2.Oid:
         """Delete an environment folder in GitLab.
 
         Args:
@@ -424,6 +423,9 @@ class Artifacts:
             commit_message: the commit message
             tree_oid: a Pygit2.Oid object representing a tree. If None,
             a tree will be created from the artifacts repo.
+
+        Returns:
+            the OID of the new tree structure of the repository
         """
         # Get repository tree
         if not tree_oid:
@@ -437,8 +439,5 @@ class Artifacts:
         tree_builder = self.repo.TreeBuilder(target_tree)
         tree_builder.remove(name)
         new_tree = tree_builder.write()
-        full_tree = self.build_tree(self.repo, root_tree, new_tree, full_path)
 
-        # Commit and push
-        self.commit(self.repo, full_tree, commit_message)
-        self.push(self.repo)
+        return self.build_tree(self.repo, root_tree, new_tree, full_path)

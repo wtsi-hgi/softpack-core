@@ -103,3 +103,31 @@ def test_create_file():
         assert "file.txt" in [obj.name for obj in user_envs_tree[new_test_env]]
         assert user_envs_tree[new_test_env]["file.txt"].data.decode() == "override"
 
+def test_delete_environment():
+    artifacts = Artifacts()
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp_dir:
+        shutil.copytree(artifacts.repo.path, temp_dir, dirs_exist_ok=True)
+        artifacts.repo = pygit2.Repository(temp_dir)
+
+        new_test_env = "test_create_file_env"
+        folder_path = Path("users", os.environ["USER"], new_test_env)
+        oid = artifacts.create_file(str(folder_path), "file.txt", "lorem ipsum", True, False)
+        artifacts.commit(artifacts.repo, oid, "commit file")
+
+        new_tree = artifacts.repo.get(oid)
+        user_envs_tree = new_tree[artifacts.environments_root]["users"][os.environ["USER"]]
+        assert new_test_env in [obj.name for obj in user_envs_tree]
+
+        oid = artifacts.delete_environment(new_test_env, Path("users", os.environ["USER"]), oid)
+
+        artifacts.commit(artifacts.repo, oid, "commit file")
+
+        new_tree = artifacts.repo.get(oid)
+        user_envs_tree = new_tree[artifacts.environments_root]["users"][os.environ["USER"]]
+        assert new_test_env not in [obj.name for obj in user_envs_tree]
+
+
+
+# refactor test stuff above that is repeated a lot
+
+# consider if build_tree is needed by replacing with something simpler

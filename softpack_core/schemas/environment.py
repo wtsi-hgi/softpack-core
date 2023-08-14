@@ -224,7 +224,11 @@ class Environment:
             A message confirming the success or failure of the operation.
         """
         if cls.artifacts.get(Path(path), name):
-            cls.artifacts.delete_environment(name, path, "delete environment")
+            tree_oid = cls.artifacts.delete_environment(name, path)
+            cls.artifacts.commit(
+                cls.artifacts.repo, tree_oid, "delete environment"
+            )
+            cls.artifacts.push(cls.artifacts.repo)
             return DeleteEnvironmentSuccess(
                 message="Successfully deleted the environment"
             )
