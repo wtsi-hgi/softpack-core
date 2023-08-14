@@ -5,17 +5,36 @@ LICENSE file in the root directory of this source tree.
 """
 
 import pytest_mock
+import pygit2
+from pygit2 import Signature
+import tempfile
 from softpack_core.artifacts import Artifacts
 
-def test_commit(mocker):
-    # mocker.patch(
-    #     'softpack_core.artifacts.Artifacts.commit',
-    #     return_value="a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
-    # )
 
-    expected = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+def test_commit():
+    path = tempfile.TemporaryDirectory(ignore_cleanup_errors=True).name
+    repo = pygit2.init_repository(path)
+    open(f"{path}/initial_file.txt", "w").close()
+
+    index = repo.index
+    index.add_all()
+    index.write()
+    ref = "HEAD"
+    author = Signature('Alice Author', 'alice@authors.tld')
+    committer = Signature('Cecil Committer', 'cecil@committers.tld')
+    message = "Initial commit"
+    tree = index.write_tree()
+    parents = []
+    old_commit_oid = repo.create_commit(ref, author, committer, message, tree, parents)
+
+    file_oid = repo.create_blob("test")
+    tree = repo.head.peel(pygit2.Tree)
+    tree_builder = repo.TreeBuilder(tree)
+    tree_builder.insert("new_file.txt", file_oid, pygit2.GIT_FILEMODE_BLOB)
+    new_tree = tree_builder.write()
+    
     artifacts = Artifacts()
-    tree_oid = "5f6e7d8c9b0a1f2e3d4c5b6a7e8d9c0b1a2f3e4"
-    actual = artifacts.commit(artifacts.repo, tree_oid, "pytest commit")
-    print(actual)
-    assert expected == actual
+    new_commit_oid = artifacts.commit(repo, new_tree, "commit new file")
+
+    assert old_commit_oid != new_commit_oid
+    assert new_commit_oid == repo.head.peel(pygit2.Commit).oid
