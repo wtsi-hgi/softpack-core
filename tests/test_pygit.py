@@ -12,7 +12,9 @@ from softpack_core.artifacts import Artifacts
 
 
 def test_commit():
-    path = tempfile.TemporaryDirectory(ignore_cleanup_errors=True).name
+    temp_dir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+    path = temp_dir.name
+    print(path)
     repo = pygit2.init_repository(path)
     open(f"{path}/initial_file.txt", "w").close()
 
@@ -35,6 +37,8 @@ def test_commit():
     
     artifacts = Artifacts()
     new_commit_oid = artifacts.commit(repo, new_tree, "commit new file")
+    repo_head = repo.head.peel(pygit2.Commit).oid
+    temp_dir.cleanup()
 
     assert old_commit_oid != new_commit_oid
-    assert new_commit_oid == repo.head.peel(pygit2.Commit).oid
+    assert new_commit_oid == repo_head
