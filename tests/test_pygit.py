@@ -61,24 +61,29 @@ def test_push(mocker):
     artifacts.push(artifacts.repo)
     push_mock.assert_called_once()
 
+def get_user_envs_tree(artifacts, oid) -> pygit2.Tree:
+    new_tree = artifacts.repo.get(oid)
+    return new_tree[artifacts.user_folder(os.environ["USER"])]
 
+def copy_of_repo(artifacts):
+    temp_dir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+    shutil.copytree(artifacts.repo.path, temp_dir.name, dirs_exist_ok=True)
+    artifacts.repo = pygit2.Repository(temp_dir.name)
+    return temp_dir
+
+def get_user_path_without_environments(artifacts) -> Path:
+    return Path(*(artifacts.user_folder(os.environ["USER"]).parts[1:]))
 
 def test_create_file():
     artifacts = Artifacts()
-    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp_dir:
-        shutil.copytree(artifacts.repo.path, temp_dir, dirs_exist_ok=True)
-        artifacts.repo = pygit2.Repository(temp_dir)
-        tree = artifacts.repo.head.peel(pygit2.Tree)
-
-        user_envs_tree = tree[artifacts.environments_root]["users"][os.environ["USER"]]
+    with copy_of_repo(artifacts):
         new_test_env = "test_create_file_env"
-        assert new_test_env not in [obj.name for obj in user_envs_tree]
+        assert new_test_env not in [obj.name for obj in artifacts.iter_user(os.environ["USER"])]
 
-        folder_path = Path("users", os.environ["USER"], new_test_env)
+        folder_path = Path(get_user_path_without_environments(artifacts), new_test_env)
         oid = artifacts.create_file(str(folder_path), "file.txt", "lorem ipsum", True, False)
 
-        new_tree = artifacts.repo.get(oid)
-        user_envs_tree = new_tree[artifacts.environments_root]["users"][os.environ["USER"]]
+        user_envs_tree = get_user_envs_tree(artifacts, oid)
         assert new_test_env in [obj.name for obj in user_envs_tree]
         assert "file.txt" in [obj.name for obj in user_envs_tree[new_test_env]]
 
@@ -89,8 +94,8 @@ def test_create_file():
         assert exc_info.value.args[0] == 'Too many changes to the repo'
 
         oid = artifacts.create_file(str(folder_path), "second_file.txt", "lorem ipsum", False, False)
-        new_tree = artifacts.repo.get(oid)
-        user_envs_tree = new_tree[artifacts.environments_root]["users"][os.environ["USER"]]
+       
+        user_envs_tree = get_user_envs_tree(artifacts, oid)
         assert "second_file.txt" in [obj.name for obj in user_envs_tree[new_test_env]]
 
         with pytest.raises(FileExistsError) as exc_info:   
@@ -98,32 +103,27 @@ def test_create_file():
         assert exc_info.value.args[0] == 'File already exists'
         
         oid = artifacts.create_file(str(folder_path), "file.txt", "override", False, True)
-        new_tree = artifacts.repo.get(oid)
-        user_envs_tree = new_tree[artifacts.environments_root]["users"][os.environ["USER"]]
+
+        user_envs_tree = get_user_envs_tree(artifacts, oid)
         assert "file.txt" in [obj.name for obj in user_envs_tree[new_test_env]]
         assert user_envs_tree[new_test_env]["file.txt"].data.decode() == "override"
 
 def test_delete_environment():
     artifacts = Artifacts()
-    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp_dir:
-        shutil.copytree(artifacts.repo.path, temp_dir, dirs_exist_ok=True)
-        artifacts.repo = pygit2.Repository(temp_dir)
-
+    with copy_of_repo(artifacts):
         new_test_env = "test_create_file_env"
-        folder_path = Path("users", os.environ["USER"], new_test_env)
+        folder_path = Path(get_user_path_without_environments(artifacts), new_test_env)
         oid = artifacts.create_file(str(folder_path), "file.txt", "lorem ipsum", True, False)
         artifacts.commit(artifacts.repo, oid, "commit file")
 
-        new_tree = artifacts.repo.get(oid)
-        user_envs_tree = new_tree[artifacts.environments_root]["users"][os.environ["USER"]]
+        user_envs_tree = get_user_envs_tree(artifacts, oid)
         assert new_test_env in [obj.name for obj in user_envs_tree]
 
-        oid = artifacts.delete_environment(new_test_env, Path("users", os.environ["USER"]), oid)
+        oid = artifacts.delete_environment(new_test_env, get_user_path_without_environments(artifacts), oid)
 
         artifacts.commit(artifacts.repo, oid, "commit file")
 
-        new_tree = artifacts.repo.get(oid)
-        user_envs_tree = new_tree[artifacts.environments_root]["users"][os.environ["USER"]]
+        user_envs_tree = get_user_envs_tree(artifacts, oid)
         assert new_test_env not in [obj.name for obj in user_envs_tree]
 
 

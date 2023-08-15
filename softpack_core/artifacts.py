@@ -22,6 +22,8 @@ class Artifacts:
 
     environments_root = "environments"
     environments_file = "softpack.yml"
+    users_folder_name = "users"
+    groups_folder_name = "groups"
 
     @dataclass
     class Object:
@@ -134,7 +136,7 @@ class Artifacts:
         Returns:
             Path: A user folder.
         """
-        return self.environments_folder("users", user)
+        return self.environments_folder(self.users_folder_name, user)
 
     def group_folder(self, group: Optional[str] = None) -> Path:
         """Get the group folder for a given group.
@@ -145,7 +147,7 @@ class Artifacts:
         Returns:
             Path: A group folder.
         """
-        return self.environments_folder("groups", group)
+        return self.environments_folder(self.groups_folder_name, group)
 
     def environments_folder(self, *args: Optional[str]) -> Path:
         """Get the folder under the environments folder.
