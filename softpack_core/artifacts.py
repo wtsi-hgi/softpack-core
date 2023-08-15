@@ -227,23 +227,17 @@ class Artifacts:
         Returns:
             Iterator: an iterator
         """
-        try:
-            if user:
-                folders = list(
-                    itertools.chain(
-                        [self.user_folder(user)],
-                        map(self.group_folder, self.ldap.groups(user) or []),
-                    )
+        if user:
+            folders = list(
+                itertools.chain(
+                    [self.user_folder(user)],
+                    map(self.group_folder, self.ldap.groups(user) or []),
                 )
-            else:
-                folders = self.iter_user() + self.iter_group()
-
-            return itertools.chain.from_iterable(
-                map(self.environments, folders)
             )
+        else:
+            folders = self.iter_user() + self.iter_group()
 
-        except KeyError:
-            return iter(())
+        return itertools.chain.from_iterable(map(self.environments, folders))
 
     def get(self, path: Path, name: str) -> Optional[pygit2.Tree]:
         """Return the environment at the specified name and path.
@@ -285,19 +279,6 @@ class Artifacts:
         )
         return commit_oid
 
-    def error_callback(self, refname: str, message: str) -> None:
-        """Push update reference callback.
-
-        Args:
-            refname: the name of the reference (on the remote)
-            message: rejection message from the remote. If None, the update was
-            accepted
-        """
-        if message is not None:
-            print(
-                f"An error occurred during push to ref '{refname}': {message}"
-            )
-
     def push(self, repo: pygit2.Repository) -> None:
         """Push all commits to a repository.
 
@@ -314,7 +295,6 @@ class Artifacts:
         except Exception as e:
             print(e)
         callbacks = pygit2.RemoteCallbacks(credentials=credentials)
-        callbacks.push_update_reference = self.error_callback
         remote.push([repo.head.name], callbacks=callbacks)
 
     def build_tree(
@@ -405,7 +385,7 @@ class Artifacts:
             new_file = diff[0].delta.new_file
             if new_file.path != str(path):
                 raise RuntimeError(
-                    f"Attempted to add new file added to incorrect path: \
+                    f"New file added to incorrect path: \
                         {new_file.path} instead of {str(path)}"
                 )
 
@@ -415,7 +395,6 @@ class Artifacts:
         self,
         name: str,
         path: str,
-        tree_oid: Optional[pygit2.Oid] = None,
     ) -> pygit2.Oid:
         """Delete an environment folder in GitLab.
 
@@ -423,17 +402,15 @@ class Artifacts:
             name: the name of the environment
             path: the path of the environment
             commit_message: the commit message
-            tree_oid: a Pygit2.Oid object representing a tree. If None,
-            a tree will be created from the artifacts repo.
 
         Returns:
             the OID of the new tree structure of the repository
         """
+        if len(Path(path).parts) != 2:
+            raise ValueError("Not a valid environment path")
+
         # Get repository tree
-        if not tree_oid:
-            root_tree = self.repo.head.peel(pygit2.Tree)
-        else:
-            root_tree = self.repo.get(tree_oid)
+        root_tree = self.repo.head.peel(pygit2.Tree)
         # Find environment in the tree
         full_path = Path(self.environments_root, path)
         target_tree = root_tree[full_path]

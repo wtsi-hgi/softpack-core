@@ -39,6 +39,17 @@ def new_repo():
     return (repo, temp_dir, old_commit_oid)
 
 
+def test_clone():
+    artifacts = Artifacts()
+    path = artifacts.repo.path
+
+    shutil.rmtree(path)
+    assert os.path.isdir(path) is False
+
+    artifacts = Artifacts()
+    assert os.path.isdir(path) is True
+
+
 def test_commit(new_repo):
     repo = new_repo[0]
     old_commit_oid = new_repo[2]
@@ -106,6 +117,12 @@ def test_create_file():
         artifacts.commit(artifacts.repo, oid, "commit file")
 
         with pytest.raises(RuntimeError) as exc_info:
+            oid = artifacts.create_file(
+                str(folder_path), fname, "lorem ipsum", False, True
+            )
+        assert exc_info.value.args[0] == 'No changes made to the environment'
+
+        with pytest.raises(RuntimeError) as exc_info:
             artifacts.create_file(
                 str(folder_path), "second_file.txt", "lorem ipsum", True, False
             )
@@ -151,7 +168,7 @@ def test_delete_environment():
         assert new_test_env in [obj.name for obj in user_envs_tree]
 
         oid = artifacts.delete_environment(
-            new_test_env, get_user_path_without_environments(artifacts), oid
+            new_test_env, get_user_path_without_environments(artifacts)
         )
 
         artifacts.commit(artifacts.repo, oid, "commit file")
@@ -159,5 +176,67 @@ def test_delete_environment():
         user_envs_tree = get_user_envs_tree(artifacts, oid)
         assert new_test_env not in [obj.name for obj in user_envs_tree]
 
+        with pytest.raises(ValueError) as exc_info:
+            artifacts.delete_environment(
+                os.environ["USER"], artifacts.users_folder_name
+            )
+        assert exc_info.value.args[0] == 'Not a valid environment path'
 
-# consider if build_tree is needed by replacing with something simpler
+        with pytest.raises(KeyError) as exc_info:
+            artifacts.delete_environment(new_test_env, "foo/bar")
+        assert exc_info
+
+
+def count_user_and_group_envs(artifacts, envs) -> (int, int):
+    num_user_envs = 0
+    num_group_envs = 0
+
+    for env in envs:
+        if str(env.path).startswith(artifacts.users_folder_name):
+            num_user_envs += 1
+        elif str(env.path).startswith(artifacts.groups_folder_name):
+            num_group_envs += 1
+
+    return num_user_envs, num_group_envs
+
+
+def test_iter():
+    artifacts = Artifacts()
+    user = os.environ["USER"]
+    envs = artifacts.iter(user)
+
+    user_found = False
+    only_this_user = True
+    num_user_envs = 0
+    num_group_envs = 0
+
+    for env in envs:
+        if str(env.path).startswith(artifacts.users_folder_name):
+            num_user_envs += 1
+            if str(env.path).startswith(
+                f"{artifacts.users_folder_name}/{user}"
+            ):
+                user_found = True
+            else:
+                only_this_user = False
+        elif str(env.path).startswith(artifacts.groups_folder_name):
+            num_group_envs += 1
+
+    assert user_found is True
+    assert only_this_user is True
+    assert num_group_envs > 0
+
+    envs = artifacts.iter()
+    no_user_num_user_envs, no_user_num_group_envs = count_user_and_group_envs(
+        artifacts, envs
+    )
+    assert no_user_num_user_envs > num_user_envs
+    assert no_user_num_group_envs > num_group_envs
+
+    envs = artifacts.iter("!@£$%")
+    (
+        bad_user_num_user_envs,
+        bad_user_num_group_envs,
+    ) = count_user_and_group_envs(artifacts, envs)
+    assert bad_user_num_user_envs == 0
+    assert bad_user_num_group_envs == 0
