@@ -39,7 +39,7 @@ def new_repo():
     return (repo, temp_dir, old_commit_oid)
 
 
-def test_clone():
+def test_clone() -> None:
     artifacts = Artifacts()
     path = artifacts.repo.path
 
@@ -50,7 +50,7 @@ def test_clone():
     assert os.path.isdir(path) is True
 
 
-def test_commit(new_repo):
+def test_commit(new_repo) -> None:
     repo = new_repo[0]
     old_commit_oid = new_repo[2]
     with new_repo[1]:
@@ -68,7 +68,7 @@ def test_commit(new_repo):
         assert new_commit_oid == repo_head
 
 
-def test_push(mocker):
+def test_push(mocker) -> None:
     artifacts = Artifacts()
 
     push_mock = mocker.patch('pygit2.Remote.push')
@@ -82,7 +82,7 @@ def get_user_envs_tree(artifacts, oid) -> pygit2.Tree:
     return new_tree[artifacts.user_folder(os.environ["USER"])]
 
 
-def copy_of_repo(artifacts):
+def copy_of_repo(artifacts) -> tempfile.TemporaryDirectory:
     temp_dir = tempfile.TemporaryDirectory()
     shutil.copytree(artifacts.repo.path, temp_dir.name, dirs_exist_ok=True)
     return temp_dir
@@ -92,7 +92,7 @@ def get_user_path_without_environments(artifacts) -> Path:
     return Path(*(artifacts.user_folder(os.environ["USER"]).parts[1:]))
 
 
-def test_create_file():
+def test_create_file() -> None:
     artifacts = Artifacts()
     with copy_of_repo(artifacts) as temp_dir:
         artifacts.repo = pygit2.Repository(temp_dir)
@@ -152,7 +152,7 @@ def test_create_file():
         assert user_envs_tree[new_test_env][fname].data.decode() == "override"
 
 
-def test_delete_environment():
+def test_delete_environment() -> None:
     artifacts = Artifacts()
     with copy_of_repo(artifacts):
         new_test_env = "test_create_file_env"
@@ -200,7 +200,7 @@ def count_user_and_group_envs(artifacts, envs) -> (int, int):
     return num_user_envs, num_group_envs
 
 
-def test_iter():
+def test_iter() -> None:
     artifacts = Artifacts()
     user = os.environ["USER"]
     envs = artifacts.iter(user)
