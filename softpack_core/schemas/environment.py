@@ -169,6 +169,7 @@ class Environment:
     state: Optional[str]
     artifacts = Artifacts()
 
+    @classmethod
     def iter(cls, all: bool = False) -> Iterable["Environment"]:
         """Get an iterator over Environment objects.
 
@@ -184,6 +185,7 @@ class Environment:
         environment_objects = map(cls.from_artifact, environment_folders)
         return filter(lambda x: x is not None, environment_objects)
 
+    @classmethod
     def from_artifact(cls, obj: Artifacts.Object) -> Optional["Environment"]:
         """Create an Environment object from an artifact.
 
@@ -209,6 +211,7 @@ class Environment:
         except KeyError:
             return None
 
+    @classmethod
     def create(cls, env: EnvironmentInput) -> CreateResponse:
         """Create an Environment.
 
@@ -265,6 +268,7 @@ class Environment:
             message="Successfully scheduled environment creation"
         )
 
+    @classmethod
     def update(
         cls,
         env: EnvironmentInput,
@@ -316,6 +320,7 @@ class Environment:
             name=current_name,
         )
 
+    @classmethod
     def delete(cls, name: str, path: str) -> DeleteResponse:
         """Delete an Environment.
 
@@ -342,6 +347,7 @@ class Environment:
             name=name,
         )
 
+    @classmethod
     async def write_artifact(
         cls, file: Upload, folder_path: str, file_name: str
     ) -> WriteArtifactResponse:

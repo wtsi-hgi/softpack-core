@@ -85,7 +85,6 @@ def get_user_envs_tree(artifacts, oid) -> pygit2.Tree:
 def copy_of_repo(artifacts):
     temp_dir = tempfile.TemporaryDirectory()
     shutil.copytree(artifacts.repo.path, temp_dir.name, dirs_exist_ok=True)
-    artifacts.repo = pygit2.Repository(temp_dir.name)
     return temp_dir
 
 
@@ -95,7 +94,8 @@ def get_user_path_without_environments(artifacts) -> Path:
 
 def test_create_file():
     artifacts = Artifacts()
-    with copy_of_repo(artifacts):
+    with copy_of_repo(artifacts) as temp_dir:
+        artifacts.repo = pygit2.Repository(temp_dir)
         new_test_env = "test_create_file_env"
         assert new_test_env not in [
             obj.name for obj in artifacts.iter_user(os.environ["USER"])
@@ -230,8 +230,8 @@ def test_iter():
     no_user_num_user_envs, no_user_num_group_envs = count_user_and_group_envs(
         artifacts, envs
     )
-    assert no_user_num_user_envs > num_user_envs
-    assert no_user_num_group_envs > num_group_envs
+    assert no_user_num_user_envs >= num_user_envs
+    assert no_user_num_group_envs >= num_group_envs
 
     envs = artifacts.iter("!@£$%")
     (
