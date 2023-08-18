@@ -15,8 +15,9 @@ from softpack_core.schemas.environment import (
     EnvironmentInput,
     EnvironmentNotFoundError,
     InvalidInputError,
-    PackageInput,
+    Package,
     UpdateEnvironmentSuccess,
+    DeleteEnvironmentSuccess,
 )
 
 from .test_pygit import copy_of_repo, get_user_path_without_environments
@@ -26,29 +27,33 @@ from .test_pygit import copy_of_repo, get_user_path_without_environments
 def temp_git_repo(mocker):
     artifacts = Artifacts()
     environment = Environment(
-        id="", name="", path="", description="", packages=[], state=None
+        id="",
+        name="environment_test",
+        path=str(get_user_path_without_environments(artifacts)),
+        description="description",
+        packages=[Package(id="", name="pkg_test")],
+        state=None,
     )
     with copy_of_repo(artifacts) as temp_dir:
         # repo needs to be modified via environment obj for change to persist
         environment.artifacts.repo = pygit2.Repository(temp_dir)
         mocker.patch('pygit2.Remote.push')
         mocker.patch('httpx.post')
-        env_name = "environment_test"
         env_input = EnvironmentInput(
-            name=env_name,
-            path=str(get_user_path_without_environments(artifacts)),
-            description="description",
-            packages=[PackageInput(name="pkg_test")],
+            name=environment.name,
+            path=environment.path,
+            description=environment.description,
+            packages=environment.packages,
         )
 
         environment.create(env_input)
 
-        yield environment, artifacts, env_input, env_name
+        yield environment, artifacts, env_input
 
 
 def test_create(mocker, temp_git_repo) -> None:
     # Setup
-    environment, artifacts, env_input, env_name = temp_git_repo
+    environment, artifacts, env_input = temp_git_repo
     push_mock = mocker.patch('pygit2.Remote.push')
     post_mock = mocker.patch('httpx.post')
 
@@ -77,7 +82,7 @@ def test_create(mocker, temp_git_repo) -> None:
     result = environment.create(env_input)
     assert isinstance(result, InvalidInputError)
 
-    env_input.name = env_name
+    env_input.name = environment.name
     env_input.path = "invalid/path"
     result = environment.create(env_input)
     assert isinstance(result, InvalidInputError)
@@ -85,7 +90,7 @@ def test_create(mocker, temp_git_repo) -> None:
 
 def test_update(mocker, temp_git_repo) -> None:
     # Setup
-    environment, artifacts, env_input, env_name = temp_git_repo
+    environment, artifacts, env_input = temp_git_repo
     post_mock = mocker.patch('httpx.post')
 
     # Tests
@@ -106,3 +111,21 @@ def test_update(mocker, temp_git_repo) -> None:
     env_input.path = "invalid/path"
     result = environment.update(env_input, "invalid/path", "invalid_name")
     assert isinstance(result, EnvironmentNotFoundError)
+
+
+def test_delete(mocker, temp_git_repo) -> None:
+    # Setup
+    environment, artifacts, env_input = temp_git_repo
+    push_mock = mocker.patch('pygit2.Remote.push')
+    post_mock = mocker.patch('httpx.post')
+
+    # Test
+    result = environment.delete(env_input.name, env_input.path)
+    assert isinstance(result, DeleteEnvironmentSuccess)
+
+    env_input.name = "invalid_name"
+    env_input.path = "invalid/path"
+    result = environment.delete(env_input.name, env_input.path)
+    assert isinstance(result, EnvironmentNotFoundError)
+
+
