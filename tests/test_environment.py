@@ -6,10 +6,12 @@ LICENSE file in the root directory of this source tree.
 
 import pygit2
 import pytest
+from starlette.datastructures import UploadFile
 
 from softpack_core.artifacts import Artifacts
 from softpack_core.schemas.environment import (
     CreateEnvironmentSuccess,
+    DeleteEnvironmentSuccess,
     Environment,
     EnvironmentAlreadyExistsError,
     EnvironmentInput,
@@ -17,7 +19,7 @@ from softpack_core.schemas.environment import (
     InvalidInputError,
     Package,
     UpdateEnvironmentSuccess,
-    DeleteEnvironmentSuccess,
+    WriteArtifactSuccess,
 )
 
 from .test_pygit import copy_of_repo, get_user_path_without_environments
@@ -116,8 +118,8 @@ def test_update(mocker, temp_git_repo) -> None:
 def test_delete(mocker, temp_git_repo) -> None:
     # Setup
     environment, artifacts, env_input = temp_git_repo
-    push_mock = mocker.patch('pygit2.Remote.push')
-    post_mock = mocker.patch('httpx.post')
+    mocker.patch('pygit2.Remote.push')
+    mocker.patch('httpx.post')
 
     # Test
     result = environment.delete(env_input.name, env_input.path)
@@ -129,3 +131,31 @@ def test_delete(mocker, temp_git_repo) -> None:
     assert isinstance(result, EnvironmentNotFoundError)
 
 
+@pytest.mark.asyncio
+async def test_write_artifact(mocker, temp_git_repo):
+    # Setup
+    environment, artifacts, env_input = temp_git_repo
+    push_mock = mocker.patch('pygit2.Remote.push')
+    mocker.patch('httpx.post')
+
+    # Mock the file upload
+    upload = mocker.Mock(spec=UploadFile)
+    upload.filename = "example.txt"
+    upload.content_type = "text/plain"
+    upload.read.return_value = b"mock data"
+
+    # Test
+    result = await environment.write_artifact(
+        file=upload,
+        folder_path=f"{env_input.path}/{env_input.name}",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, WriteArtifactSuccess)
+    push_mock.assert_called_once()
+
+    result = await environment.write_artifact(
+        file=upload,
+        folder_path="invalid/env/path",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, InvalidInputError)
