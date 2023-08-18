@@ -16,6 +16,60 @@ from pygit2 import Signature
 from softpack_core.artifacts import Artifacts
 
 
+# This is a fixture that sets up a new repo in a temporary directory to act
+# as dummy data/repo for tests, instead of creating a copy of the real repo
+# and accessing user folders with os.environ["USERS"].
+@pytest.fixture
+def new_test_repo():
+    # Create new temp folder and repo
+    temp_dir = tempfile.TemporaryDirectory()
+    dir_path = temp_dir.name
+    repo = pygit2.init_repository(dir_path)
+
+    # Create directory structure
+    users_folder = "users"
+    groups_folder = "groups"
+    test_user = "test_user"
+    test_group = "test_group"
+    test_env = "test_environment"
+    user_env_path = Path(
+        dir_path, "environments", users_folder, test_user, test_env
+    )
+    group_env_path = Path(
+        dir_path, "environments", groups_folder, test_group, test_env
+    )
+    os.makedirs(user_env_path)
+    os.makedirs(group_env_path)
+    open(f"{user_env_path}/initial_file.txt", "w").close()
+    open(f"{group_env_path}/initial_file.txt", "w").close()
+
+    # Make initial commit
+    index = repo.index
+    index.add_all()
+    index.write()
+    ref = "HEAD"
+    author = Signature('Alice Author', 'alice@authors.tld')
+    committer = Signature('Cecil Committer', 'cecil@committers.tld')
+    message = "Initial commit"
+    tree = index.write_tree()
+    parents = []
+    initial_commit_oid = repo.create_commit(
+        ref, author, committer, message, tree, parents
+    )
+
+    repo_dict = {
+        "repo": repo,
+        "temp_dir": temp_dir,
+        "initial_commit_oid": initial_commit_oid,
+        "users_folder": users_folder,
+        "groups_folder": groups_folder,
+        "test_user": test_user,
+        "test_group": test_group,
+        "test_environment": test_env,
+    }
+    return repo_dict
+
+
 @pytest.fixture
 def new_repo():
     temp_dir = tempfile.TemporaryDirectory()
