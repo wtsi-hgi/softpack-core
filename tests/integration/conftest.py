@@ -6,16 +6,19 @@ LICENSE file in the root directory of this source tree.
 
 import os
 from pathlib import Path
+import pygit2
 import pytest
 import tempfile
+import shutil
 
 from softpack_core.artifacts import Artifacts, app
 
-import pygit2
+artifacts_dict = dict[str, str | pygit2.Oid | Path
+                      | Artifacts | tempfile.TemporaryDirectory[str]]
 
 
 @pytest.fixture(scope="package", autouse=True)
-def testable_artifacts():
+def testable_artifacts() -> artifacts_dict:
     repo_url = os.getenv("SOFTPACK_TEST_ARTIFACTS_REPO_URL")
     repo_user = os.getenv("SOFTPACK_TEST_ARTIFACTS_REPO_USER")
     repo_token = os.getenv("SOFTPACK_TEST_ARTIFACTS_REPO_TOKEN")
@@ -34,77 +37,42 @@ def testable_artifacts():
     app.settings.artifacts.repo.branch = user
 
     artifacts = Artifacts()
+    dict = reset_test_repo(artifacts)
+    dict["temp_dir"] = temp_dir
+    dict["artifacts"] = artifacts
 
-    try:
-        user_branch = artifacts.repo.branches.remote[f"origin/{user}"]
-    except Exception as e:
-        pytest.fail(f"There must be a branch named after your username. [{e}]")
-
-    artifacts.repo.set_head(user_branch.name)
-    artifacts.head_name = user_branch.name
-
-    tree = artifacts.repo.head.peel(pygit2.Tree)
-    print([(e.name, e) for e in tree])
-
-    oid = reset_test_repo(artifacts)
-
-    tree = artifacts.repo.head.peel(pygit2.Tree)
-    print([(e.name, e) for e in tree])
-
-    dict = {
-        "artifacts": artifacts,
-        "user_branch": user_branch,
-        # "repo": repo,
-        "repo_url": repo_url,
-        "temp_dir": temp_dir,
-        "initial_commit_oid": oid,
-        # "users_folder": users_folder,
-        # "groups_folder": groups_folder,
-        # "test_user": test_user,
-        # "test_group": test_group,
-        # "test_environment": test_env,
-    }
     return dict
 
 
-def reset_test_repo(artifacts: Artifacts) -> pygit2.Oid:
+def reset_test_repo(artifacts: Artifacts) -> artifacts_dict:
+    delete_environments_folder_from_test_repo(artifacts)
+
+    return create_initial_test_repo_state(artifacts)
+
+
+def delete_environments_folder_from_test_repo(artifacts: Artifacts):
     tree = artifacts.repo.head.peel(pygit2.Tree)
-    dir_path = app.settings.artifacts.path
 
     if artifacts.environments_root in tree:
-        exitcode = os.system(
-            f"cd {dir_path} && git rm -r {artifacts.environments_root} && git commit -m 'remove environments'")
-        if exitcode != 0:
-            pytest.fail("failed to remove environments")
+        shutil.rmtree(Path(app.settings.artifacts.path,
+                      artifacts.environments_root))
+        commit_local_file_changes(artifacts, "delete environments")
 
-        # exitcode = os.system(
-        #     f"cd {dir_path} && git commit -m 'remove environements' && git push")
-        # print(exitcode)
-        # tb = artifacts.repo.TreeBuilder(tree)
 
-        # sub_tb = artifacts.repo.TreeBuilder(tree[artifacts.environments_root])
-        # for obj in tree[artifacts.environments_root]:
-        #     sub_tb.remove(obj.name)
+def commit_local_file_changes(artifacts: Artifacts, msg: str) -> pygit2.Oid:
+    index = artifacts.repo.index
+    index.add_all()
+    index.write()
+    ref = artifacts.head_name
+    parents = [artifacts.repo.lookup_reference(ref).target]
+    oid = index.write_tree()
+    return artifacts.repo.create_commit(
+        ref, artifacts.signature, artifacts.signature, msg, oid, parents
+    )
 
-        # tb.insert(artifacts.environments_root,
-        #           sub_tb.write(), pygit2.GIT_FILEMODE_TREE)
-        # tb.remove(artifacts.environments_root)
-        # oid = tb.write()
 
-        # ref = artifacts.head_name
-        # parents = [artifacts.repo.lookup_reference(ref).target]
-        # artifacts.repo.create_commit(
-        #     ref, artifacts.signature, artifacts.signature, "rm environments", oid, parents
-        # )
-
-        # remote = artifacts.repo.remotes[0]
-        # remote.push([artifacts.head_name],
-        #             callbacks=artifacts.credentials_callback)
-        print("removed environments")
-    else:
-        print("repo started empty")
-
-    # Create directory structure
+def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
+    dir_path = app.settings.artifacts.path
     users_folder = "users"
     groups_folder = "groups"
     test_user = "test_user"
@@ -121,14 +89,16 @@ def reset_test_repo(artifacts: Artifacts) -> pygit2.Oid:
     open(f"{user_env_path}/initial_file.txt", "w").close()
     open(f"{group_env_path}/initial_file.txt", "w").close()
 
-    # Commit
-    index = artifacts.repo.index
-    index.add_all()
-    index.write()
-    ref = artifacts.head_name  # "HEAD"
-    parents = [artifacts.repo.lookup_reference(ref).target]
-    message = "Add test environments"
-    tree = index.write_tree()
-    return artifacts.repo.create_commit(
-        ref, artifacts.signature, artifacts.signature, message, tree, parents
-    )
+    oid = commit_local_file_changes(artifacts, "Add test environments")
+
+    dict: artifacts_dict = {
+        "initial_commit_oid": oid,
+        "users_folder": users_folder,
+        "groups_folder": groups_folder,
+        "test_user": test_user,
+        "test_group": test_group,
+        "test_environment": test_env,
+        "user_env_path": user_env_path,
+        "group_env_path": group_env_path,
+    }
+    return dict
