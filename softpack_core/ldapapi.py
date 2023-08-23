@@ -28,6 +28,7 @@ class LDAP:
         Returns:
             None.
         """
+        return
         try:
             self.ldap = ldap.initialize(self.settings.server)
             self.group_regex = re.compile(self.settings.group.pattern)
