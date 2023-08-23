@@ -18,7 +18,7 @@ artifacts_dict = dict[str, str | pygit2.Oid | Path
 
 
 @pytest.fixture(scope="package", autouse=True)
-def testable_artifacts() -> artifacts_dict:
+def testable_artifacts_setup():
     repo_url = os.getenv("SOFTPACK_TEST_ARTIFACTS_REPO_URL")
     repo_user = os.getenv("SOFTPACK_TEST_ARTIFACTS_REPO_USER")
     repo_token = os.getenv("SOFTPACK_TEST_ARTIFACTS_REPO_TOKEN")
@@ -32,9 +32,12 @@ def testable_artifacts() -> artifacts_dict:
     app.settings.artifacts.repo.author = user
     app.settings.artifacts.repo.email = repo_user
     app.settings.artifacts.repo.writer = repo_token
+    app.settings.artifacts.repo.branch = user
+
+
+def new_test_artifacts() -> artifacts_dict:
     temp_dir = tempfile.TemporaryDirectory()
     app.settings.artifacts.path = Path(temp_dir.name)
-    app.settings.artifacts.repo.branch = user
 
     artifacts = Artifacts()
     dict = reset_test_repo(artifacts)
@@ -73,32 +76,32 @@ def commit_local_file_changes(artifacts: Artifacts, msg: str) -> pygit2.Oid:
 
 def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
     dir_path = app.settings.artifacts.path
-    users_folder = "users"
-    groups_folder = "groups"
     test_user = "test_user"
     test_group = "test_group"
     test_env = "test_environment"
     user_env_path = Path(
-        dir_path, "environments", users_folder, test_user, test_env
+        dir_path, "environments", artifacts.users_folder_name, test_user,
+        test_env
     )
     group_env_path = Path(
-        dir_path, "environments", groups_folder, test_group, test_env
+        dir_path, "environments", artifacts.groups_folder_name, test_group,
+        test_env
     )
     os.makedirs(user_env_path)
     os.makedirs(group_env_path)
-    open(f"{user_env_path}/initial_file.txt", "w").close()
-    open(f"{group_env_path}/initial_file.txt", "w").close()
+    file_basename = "file.txt"
+    open(Path(user_env_path, file_basename), "w").close()
+    open(Path(group_env_path, file_basename), "w").close()
 
     oid = commit_local_file_changes(artifacts, "Add test environments")
 
     dict: artifacts_dict = {
         "initial_commit_oid": oid,
-        "users_folder": users_folder,
-        "groups_folder": groups_folder,
         "test_user": test_user,
         "test_group": test_group,
         "test_environment": test_env,
         "user_env_path": user_env_path,
         "group_env_path": group_env_path,
+        "basename": file_basename,
     }
     return dict
