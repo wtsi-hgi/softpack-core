@@ -11,7 +11,6 @@ from typing import Iterable, Iterator, Optional
 
 import pygit2
 from box import Box
-from pygit2 import Signature
 
 from .app import app
 from .ldapapi import LDAP
@@ -24,6 +23,9 @@ class Artifacts:
     environments_file = "softpack.yml"
     users_folder_name = "users"
     groups_folder_name = "groups"
+    head_name = ""
+    credentials_callback = None
+    signature = None
 
     @dataclass
     class Object:
@@ -107,7 +109,12 @@ class Artifacts:
         except Exception as e:
             print(e)
 
-        callbacks = pygit2.RemoteCallbacks(credentials=credentials)
+        self.credentials_callback = pygit2.RemoteCallbacks(
+            credentials=credentials)
+
+        branch = self.settings.artifacts.repo.branch
+        if branch is None:
+            branch = "main"
 
         if path.is_dir():
             self.repo = pygit2.Repository(path)
@@ -115,17 +122,17 @@ class Artifacts:
             self.repo = pygit2.clone_repository(
                 self.settings.artifacts.repo.url,
                 path=path,
-                callbacks=callbacks,
-                bare=True,
+                callbacks=self.credentials_callback,
+                bare=False,
+                checkout_branch=branch,
             )
 
-        self.reference = "/".join(
-            [
-                "refs/remotes",
-                self.repo.remotes[0].name,
-                self.repo.head.shorthand,
-            ]
+        self.signature = pygit2.Signature(
+            self.settings.artifacts.repo.author,
+            self.settings.artifacts.repo.email,
         )
+
+        self.head_name = self.repo.head.name
 
     def user_folder(self, user: Optional[str] = None) -> Path:
         """Get the user folder for a given user.
@@ -268,14 +275,10 @@ class Artifacts:
         Returns:
             pygit2.Commit: the commit oid
         """
-        ref = repo.head.name
-        author = committer = Signature(
-            self.settings.artifacts.repo.author,
-            self.settings.artifacts.repo.email,
-        )
+        ref = self.head_name
         parents = [repo.lookup_reference(ref).target]
         commit_oid = repo.create_commit(
-            ref, author, committer, message, tree_oid, parents
+            ref, self.signature, self.signature, message, tree_oid, parents
         )
         return commit_oid
 
@@ -286,16 +289,7 @@ class Artifacts:
             repo: the repository to push to
         """
         remote = self.repo.remotes[0]
-        credentials = None
-        try:
-            credentials = pygit2.UserPass(
-                self.settings.artifacts.repo.username,
-                self.settings.artifacts.repo.writer,
-            )
-        except Exception as e:
-            print(e)
-        callbacks = pygit2.RemoteCallbacks(credentials=credentials)
-        remote.push([repo.head.name], callbacks=callbacks)
+        remote.push([self.head_name], callbacks=self.credentials_callback)
 
     def build_tree(
         self,
