@@ -170,18 +170,13 @@ class Environment:
     artifacts = Artifacts()
 
     @classmethod
-    def iter(cls, all: bool = False) -> Iterable["Environment"]:
-        """Get an iterator over Environment objects.
+    def iter(cls) -> Iterable["Environment"]:
+        """Get an iterator over all Environment objects.
 
         Returns:
             Iterable[Environment]: An iterator of Environment objects.
         """
-        user = None
-        if not user:
-            # TODO: set username from the environment for now
-            # eventually this needs to be the name of the authenticated user
-            user = os.environ["USER"]
-        environment_folders = cls.artifacts.iter(user=user)
+        environment_folders = cls.artifacts.iter()
         environment_objects = map(cls.from_artifact, environment_folders)
         return filter(lambda x: x is not None, environment_objects)
 

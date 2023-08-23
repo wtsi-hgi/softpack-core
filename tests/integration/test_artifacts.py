@@ -81,9 +81,10 @@ def test_create_file() -> None:
     user = ad["test_user"]
 
     new_test_env = "test_create_file_env"
-    assert new_test_env not in [
-        obj.name for obj in artifacts.iter_user(user)
-    ]
+
+    user_envs_tree = get_user_envs_tree(
+        artifacts, user, artifacts.repo.head.peel(pygit2.Tree).oid)
+    assert new_test_env not in [obj.name for obj in user_envs_tree]
 
     folder_path = Path(
         get_user_path_without_environments(
@@ -184,3 +185,29 @@ def test_delete_environment() -> None:
     with pytest.raises(KeyError) as exc_info:
         artifacts.delete_environment(env_for_deleting, "foo/bar")
     assert exc_info
+
+
+def test_iter() -> None:
+    ad = new_test_artifacts()
+    artifacts: Artifacts = ad["artifacts"]
+    user = ad["test_user"]
+
+    user_found = False
+    num_user_envs = 0
+    num_group_envs = 0
+
+    envs = artifacts.iter()
+
+    for env in envs:
+        if str(env.path).startswith(artifacts.users_folder_name):
+            num_user_envs += 1
+            if str(env.path).startswith(
+                f"{artifacts.users_folder_name}/{user}"
+            ):
+                user_found = True
+        elif str(env.path).startswith(artifacts.groups_folder_name):
+            num_group_envs += 1
+
+    assert user_found is True
+    assert num_user_envs == 1
+    assert num_group_envs == 1

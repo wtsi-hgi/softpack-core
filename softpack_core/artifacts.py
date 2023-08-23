@@ -167,27 +167,21 @@ class Artifacts:
         """
         return Path(self.environments_root, *filter(None, list(args)))
 
-    def iter_user(self, user: Optional[str] = None) -> list[pygit2.Tree]:
-        """Iterate environments for a given user.
-
-        Args:
-            user: A username or None.
+    def iter_users(self) -> list[pygit2.Tree]:
+        """Iterate environments for all users.
 
         Returns:
             list[pygit2.Tree]: List of environments
         """
-        return self.iter_environments(self.user_folder(user))
+        return self.iter_environments(self.environments_folder(self.users_folder_name))
 
-    def iter_group(self, group: Optional[str] = None) -> list[pygit2.Tree]:
-        """Iterate environments for a given group.
-
-        Args:
-            group: A group name or None.
+    def iter_groups(self) -> list[pygit2.Tree]:
+        """Iterate environments for all groups.
 
         Returns:
             list[pygit2.Tree]: List of environments
         """
-        return self.iter_environments(self.group_folder(group))
+        return self.iter_environments(self.environments_folder(self.groups_folder_name))
 
     def iter_environments(self, path: Path) -> list[pygit2.Tree]:
         """Iterate environments under a path.
@@ -212,7 +206,7 @@ class Artifacts:
         return self.repo.head.peel(pygit2.Tree)[path]
 
     def environments(self, path: Path) -> Iterable:
-        """Return a list of environments in the repo.
+        """Return a list of environments in the repo under the given path.
 
         Args:
             path: a searchable path within the repo
@@ -225,24 +219,13 @@ class Artifacts:
         except KeyError:
             return iter(())
 
-    def iter(self, user: Optional[str] = None) -> Iterable:
-        """Return an iterator for the specified user.
-
-        Args:
-            user: a username
+    def iter(self) -> Iterable:
+        """Return an iterator over all environments.
 
         Returns:
             Iterator: an iterator
         """
-        if user:
-            folders = list(
-                itertools.chain(
-                    [self.user_folder(user)],
-                    map(self.group_folder, self.ldap.groups(user) or []),
-                )
-            )
-        else:
-            folders = self.iter_user() + self.iter_group()
+        folders = self.iter_users() + self.iter_groups()
 
         return itertools.chain.from_iterable(map(self.environments, folders))
 
