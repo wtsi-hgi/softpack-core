@@ -248,7 +248,7 @@ class Environment:
             cls.artifacts.commit(
                 cls.artifacts.repo, tree_oid, "create environment folder"
             )
-            cls.artifacts.push(cls.artifacts.repo)
+            cls.artifacts.push()
         except RuntimeError as e:
             return InvalidInputError(message=str(e))
 
@@ -336,7 +336,7 @@ class Environment:
             cls.artifacts.commit(
                 cls.artifacts.repo, tree_oid, "delete environment"
             )
-            cls.artifacts.push(cls.artifacts.repo)
+            cls.artifacts.push()
             return DeleteEnvironmentSuccess(
                 message="Successfully deleted the environment"
             )
@@ -366,7 +366,7 @@ class Environment:
             commit_oid = cls.artifacts.commit(
                 cls.artifacts.repo, tree_oid, "write artifact"
             )
-            cls.artifacts.push(cls.artifacts.repo)
+            cls.artifacts.push()
             return WriteArtifactSuccess(
                 message="Successfully written artifact",
                 commit_oid=str(commit_oid),

@@ -127,7 +127,7 @@ def test_push(mocker) -> None:
 
     push_mock = mocker.patch('pygit2.Remote.push')
 
-    artifacts.push(artifacts.repo)
+    artifacts.push()
     push_mock.assert_called_once()
 
 

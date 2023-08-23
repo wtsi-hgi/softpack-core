@@ -262,12 +262,11 @@ class Artifacts:
             return None
 
     def commit(
-        self, repo: pygit2.Repository, tree_oid: pygit2.Oid, message: str
+        self, tree_oid: pygit2.Oid, message: str
     ) -> pygit2.Oid:
         """Create and return a commit.
 
         Args:
-            repo: the repository to commit to
             tree_oid: the oid of the tree object that will be committed. The
             tree this refers to will replace the entire contents of the repo.
             message: the commit message
@@ -276,17 +275,14 @@ class Artifacts:
             pygit2.Commit: the commit oid
         """
         ref = self.head_name
-        parents = [repo.lookup_reference(ref).target]
-        commit_oid = repo.create_commit(
+        parents = [self.repo.lookup_reference(ref).target]
+        commit_oid = self.repo.create_commit(
             ref, self.signature, self.signature, message, tree_oid, parents
         )
         return commit_oid
 
-    def push(self, repo: pygit2.Repository) -> None:
+    def push(self) -> None:
         """Push all commits to a repository.
-
-        Args:
-            repo: the repository to push to
         """
         remote = self.repo.remotes[0]
         remote.push([self.head_name], callbacks=self.credentials_callback)
