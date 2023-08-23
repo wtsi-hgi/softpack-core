@@ -154,3 +154,33 @@ def get_user_path_without_environments(artifacts: Artifacts, user: str) -> Path:
 def get_user_envs_tree(artifacts: Artifacts, user: str, oid: pygit2.Oid) -> pygit2.Tree:
     new_tree = artifacts.repo.get(oid)
     return new_tree[artifacts.user_folder(user)]
+
+
+def test_delete_environment() -> None:
+    ad = new_test_artifacts()
+    artifacts: Artifacts = ad["artifacts"]
+    user = ad["test_user"]
+    env_for_deleting = ad["test_environment"]
+
+    user_envs_tree = get_user_envs_tree(
+        artifacts, user, artifacts.repo.head.peel(pygit2.Tree).oid)
+    assert env_for_deleting in [obj.name for obj in user_envs_tree]
+
+    oid = artifacts.delete_environment(
+        env_for_deleting, get_user_path_without_environments(artifacts, user)
+    )
+
+    artifacts.commit(oid, "delete new env")
+
+    user_envs_tree = get_user_envs_tree(artifacts, user, oid)
+    assert env_for_deleting not in [obj.name for obj in user_envs_tree]
+
+    with pytest.raises(ValueError) as exc_info:
+        artifacts.delete_environment(
+            user, artifacts.users_folder_name
+        )
+    assert exc_info.value.args[0] == 'Not a valid environment path'
+
+    with pytest.raises(KeyError) as exc_info:
+        artifacts.delete_environment(env_for_deleting, "foo/bar")
+    assert exc_info
