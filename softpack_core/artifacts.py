@@ -110,7 +110,8 @@ class Artifacts:
             print(e)
 
         self.credentials_callback = pygit2.RemoteCallbacks(
-            credentials=credentials)
+            credentials=credentials
+        )
 
         branch = self.settings.artifacts.repo.branch
         if branch is None:
@@ -173,7 +174,9 @@ class Artifacts:
         Returns:
             list[pygit2.Tree]: List of environments
         """
-        return self.iter_environments(self.environments_folder(self.users_folder_name))
+        return self.iter_environments(
+            self.environments_folder(self.users_folder_name)
+        )
 
     def iter_groups(self) -> list[pygit2.Tree]:
         """Iterate environments for all groups.
@@ -181,7 +184,9 @@ class Artifacts:
         Returns:
             list[pygit2.Tree]: List of environments
         """
-        return self.iter_environments(self.environments_folder(self.groups_folder_name))
+        return self.iter_environments(
+            self.environments_folder(self.groups_folder_name)
+        )
 
     def iter_environments(self, path: Path) -> list[pygit2.Tree]:
         """Iterate environments under a path.
@@ -244,9 +249,7 @@ class Artifacts:
         except KeyError:
             return None
 
-    def commit(
-        self, tree_oid: pygit2.Oid, message: str
-    ) -> pygit2.Oid:
+    def commit(self, tree_oid: pygit2.Oid, message: str) -> pygit2.Oid:
         """Create and return a commit.
 
         Args:
@@ -265,8 +268,7 @@ class Artifacts:
         return commit_oid
 
     def push(self) -> None:
-        """Push all commits to a repository.
-        """
+        """Push all commits to a repository."""
         remote = self.repo.remotes[0]
         remote.push([self.head_name], callbacks=self.credentials_callback)
 

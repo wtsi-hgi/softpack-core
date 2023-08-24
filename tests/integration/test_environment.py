@@ -5,6 +5,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 from pathlib import Path
+
 import pytest
 from starlette.datastructures import UploadFile
 
@@ -21,12 +22,11 @@ from softpack_core.schemas.environment import (
     UpdateEnvironmentSuccess,
     WriteArtifactSuccess,
 )
-
-from tests.integration.conftest import (new_test_artifacts,
-                                        get_user_path_without_environments,
-                                        file_was_pushed)
-
-from softpack_core.artifacts import Artifacts
+from tests.integration.conftest import (
+    file_was_pushed,
+    get_user_path_without_environments,
+    new_test_artifacts,
+)
 
 
 @pytest.fixture

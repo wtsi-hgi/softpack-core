@@ -4,7 +4,6 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
@@ -223,8 +222,10 @@ class Environment:
         # Check if a valid path has been provided. TODO: improve this to check
         # that they can only create stuff in their own users folder, or in
         # group folders of unix groups they belong to.
-        valid_dirs = [cls.artifacts.users_folder_name,
-                      cls.artifacts.groups_folder_name]
+        valid_dirs = [
+            cls.artifacts.users_folder_name,
+            cls.artifacts.groups_folder_name,
+        ]
         if not any(env.path.startswith(dir) for dir in valid_dirs):
             return InvalidInputError(message="Invalid path")
 
@@ -291,8 +292,9 @@ class Environment:
 
         # Check name and path have not been changed.
         if env.path != current_path or env.name != current_name:
-            return InvalidInputError(message=("change of name or path not "
-                                              "currently supported"))
+            return InvalidInputError(
+                message=("change of name or path not " "currently supported")
+            )
 
         # Check if an environment exists at the specified path and name
         if cls.artifacts.get(Path(current_path), current_name):

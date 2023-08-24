@@ -5,17 +5,18 @@ LICENSE file in the root directory of this source tree.
 """
 
 import os
+import shutil
 from pathlib import Path
+
 import pygit2
 import pytest
-import shutil
-import tempfile
 
-from softpack_core.artifacts import Artifacts, app
-
-from tests.integration.conftest import (new_test_artifacts,
-                                        get_user_path_without_environments,
-                                        file_was_pushed)
+from softpack_core.artifacts import Artifacts
+from tests.integration.conftest import (
+    file_was_pushed,
+    get_user_path_without_environments,
+    new_test_artifacts,
+)
 
 
 def test_clone() -> None:
@@ -37,9 +38,14 @@ def test_commit_and_push() -> None:
     old_commit_oid = ad["initial_commit_oid"]
 
     new_file_name = "new_file.txt"
-    path = Path(ad["temp_dir"].name, artifacts.environments_root,
-                artifacts.users_folder_name, ad["test_user"],
-                ad["test_environment"], new_file_name)
+    path = Path(
+        ad["temp_dir"].name,
+        artifacts.environments_root,
+        artifacts.users_folder_name,
+        ad["test_user"],
+        ad["test_environment"],
+        new_file_name,
+    )
 
     open(path, "w").close()
 
@@ -56,8 +62,12 @@ def test_commit_and_push() -> None:
 
     artifacts.push()
 
-    path = Path(artifacts.users_folder_name, ad["test_user"],
-                ad["test_environment"], new_file_name)
+    path = Path(
+        artifacts.users_folder_name,
+        ad["test_user"],
+        ad["test_environment"],
+        new_file_name,
+    )
 
     assert file_was_pushed(path)
 
@@ -70,12 +80,12 @@ def test_create_file() -> None:
     new_test_env = "test_create_file_env"
 
     user_envs_tree = get_user_envs_tree(
-        artifacts, user, artifacts.repo.head.peel(pygit2.Tree).oid)
+        artifacts, user, artifacts.repo.head.peel(pygit2.Tree).oid
+    )
     assert new_test_env not in [obj.name for obj in user_envs_tree]
 
     folder_path = Path(
-        get_user_path_without_environments(
-            artifacts, user), new_test_env
+        get_user_path_without_environments(artifacts, user), new_test_env
     )
     basename = "create_file.txt"
 
@@ -109,9 +119,7 @@ def test_create_file() -> None:
     artifacts.commit(oid, "create file2")
 
     user_envs_tree = get_user_envs_tree(artifacts, user, oid)
-    assert basename2 in [
-        obj.name for obj in user_envs_tree[new_test_env]
-    ]
+    assert basename2 in [obj.name for obj in user_envs_tree[new_test_env]]
 
     with pytest.raises(FileExistsError) as exc_info:
         artifacts.create_file(
@@ -119,9 +127,7 @@ def test_create_file() -> None:
         )
     assert exc_info.value.args[0] == 'File already exists'
 
-    oid = artifacts.create_file(
-        folder_path, basename, "override", False, True
-    )
+    oid = artifacts.create_file(folder_path, basename, "override", False, True)
 
     artifacts.commit(oid, "update created file")
 
@@ -131,11 +137,14 @@ def test_create_file() -> None:
 
     artifacts.push()
 
-    assert file_was_pushed(Path(folder_path, basename),
-                           Path(folder_path, basename2))
+    assert file_was_pushed(
+        Path(folder_path, basename), Path(folder_path, basename2)
+    )
 
 
-def get_user_envs_tree(artifacts: Artifacts, user: str, oid: pygit2.Oid) -> pygit2.Tree:
+def get_user_envs_tree(
+    artifacts: Artifacts, user: str, oid: pygit2.Oid
+) -> pygit2.Tree:
     new_tree = artifacts.repo.get(oid)
     return new_tree[artifacts.user_folder(user)]
 
@@ -147,7 +156,8 @@ def test_delete_environment() -> None:
     env_for_deleting = ad["test_environment"]
 
     user_envs_tree = get_user_envs_tree(
-        artifacts, user, artifacts.repo.head.peel(pygit2.Tree).oid)
+        artifacts, user, artifacts.repo.head.peel(pygit2.Tree).oid
+    )
     assert env_for_deleting in [obj.name for obj in user_envs_tree]
 
     oid = artifacts.delete_environment(
@@ -160,9 +170,7 @@ def test_delete_environment() -> None:
     assert env_for_deleting not in [obj.name for obj in user_envs_tree]
 
     with pytest.raises(ValueError) as exc_info:
-        artifacts.delete_environment(
-            user, artifacts.users_folder_name
-        )
+        artifacts.delete_environment(user, artifacts.users_folder_name)
     assert exc_info.value.args[0] == 'Not a valid environment path'
 
     with pytest.raises(KeyError) as exc_info:

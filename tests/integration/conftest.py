@@ -5,16 +5,18 @@ LICENSE file in the root directory of this source tree.
 """
 
 import os
+import shutil
+import tempfile
 from pathlib import Path
+
 import pygit2
 import pytest
-import tempfile
-import shutil
 
 from softpack_core.artifacts import Artifacts, app
 
-artifacts_dict = dict[str, str | pygit2.Oid | Path
-                      | Artifacts | tempfile.TemporaryDirectory[str]]
+artifacts_dict = dict[
+    str, str | pygit2.Oid | Path | Artifacts | tempfile.TemporaryDirectory[str]
+]
 
 
 @pytest.fixture(scope="package", autouse=True)
@@ -23,8 +25,12 @@ def testable_artifacts_setup():
     repo_user = os.getenv("SOFTPACK_TEST_ARTIFACTS_REPO_USER")
     repo_token = os.getenv("SOFTPACK_TEST_ARTIFACTS_REPO_TOKEN")
     if repo_url is None or repo_user is None or repo_token is None:
-        pytest.skip(("SOFTPACK_TEST_ARTIFACTS_REPO_URL, _USER and _TOKEN "
-                     "env vars are all required for these tests"))
+        pytest.skip(
+            (
+                "SOFTPACK_TEST_ARTIFACTS_REPO_URL, _USER and _TOKEN "
+                "env vars are all required for these tests"
+            )
+        )
 
     user = repo_user.split('@', 1)[0]
     app.settings.artifacts.repo.url = repo_url
@@ -57,8 +63,9 @@ def delete_environments_folder_from_test_repo(artifacts: Artifacts):
     tree = artifacts.repo.head.peel(pygit2.Tree)
 
     if artifacts.environments_root in tree:
-        shutil.rmtree(Path(app.settings.artifacts.path,
-                      artifacts.environments_root))
+        shutil.rmtree(
+            Path(app.settings.artifacts.path, artifacts.environments_root)
+        )
         commit_local_file_changes(artifacts, "delete environments")
 
 
@@ -80,12 +87,18 @@ def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
     test_group = "test_group"
     test_env = "test_environment"
     user_env_path = Path(
-        dir_path, "environments", artifacts.users_folder_name, test_user,
-        test_env
+        dir_path,
+        "environments",
+        artifacts.users_folder_name,
+        test_user,
+        test_env,
     )
     group_env_path = Path(
-        dir_path, "environments", artifacts.groups_folder_name, test_group,
-        test_env
+        dir_path,
+        "environments",
+        artifacts.groups_folder_name,
+        test_group,
+        test_env,
     )
     os.makedirs(user_env_path)
     os.makedirs(group_env_path)
@@ -107,7 +120,9 @@ def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
     return dict
 
 
-def get_user_path_without_environments(artifacts: Artifacts, user: str) -> Path:
+def get_user_path_without_environments(
+    artifacts: Artifacts, user: str
+) -> Path:
     return Path(*(artifacts.user_folder(user).parts[1:]))
 
 
@@ -117,8 +132,11 @@ def file_was_pushed(*paths_without_environment: str | Path) -> bool:
     artifacts = Artifacts()
 
     for path_without_environment in paths_without_environment:
-        path = Path(temp_dir.name, artifacts.environments_root,
-                    path_without_environment)
+        path = Path(
+            temp_dir.name,
+            artifacts.environments_root,
+            path_without_environment,
+        )
         if not os.path.isfile(path):
             return False
 
