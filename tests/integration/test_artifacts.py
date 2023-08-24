@@ -33,8 +33,6 @@ def test_commit_and_push() -> None:
     artifacts: Artifacts = ad["artifacts"]
     old_commit_oid = ad["initial_commit_oid"]
 
-    tree = artifacts.repo.head.peel(pygit2.Tree)
-
     new_file_name = "new_file.txt"
     path = Path(ad["temp_dir"].name, artifacts.environments_root,
                 artifacts.users_folder_name, ad["test_user"],
@@ -61,7 +59,7 @@ def test_commit_and_push() -> None:
     assert file_was_pushed(path)
 
 
-def file_was_pushed(*paths_without_environment: str) -> bool:
+def file_was_pushed(*paths_without_environment: str | Path) -> bool:
     temp_dir = tempfile.TemporaryDirectory()
     app.settings.artifacts.path = Path(temp_dir.name)
     artifacts = Artifacts()
@@ -93,7 +91,7 @@ def test_create_file() -> None:
     basename = "create_file.txt"
 
     oid = artifacts.create_file(
-        str(folder_path), basename, "lorem ipsum", True, False
+        folder_path, basename, "lorem ipsum", True, False
     )
 
     user_envs_tree = get_user_envs_tree(artifacts, user, oid)
@@ -104,19 +102,19 @@ def test_create_file() -> None:
 
     with pytest.raises(RuntimeError) as exc_info:
         artifacts.create_file(
-            str(folder_path), basename, "lorem ipsum", False, True
+            folder_path, basename, "lorem ipsum", False, True
         )
     assert exc_info.value.args[0] == 'No changes made to the environment'
 
     basename2 = "create_file2.txt"
     with pytest.raises(RuntimeError) as exc_info:
         artifacts.create_file(
-            str(folder_path), basename2, "lorem ipsum", True, False
+            folder_path, basename2, "lorem ipsum", True, False
         )
     assert exc_info.value.args[0] == 'Too many changes to the repo'
 
     oid = artifacts.create_file(
-        str(folder_path), basename2, "lorem ipsum", False, False
+        folder_path, basename2, "lorem ipsum", False, False
     )
 
     artifacts.commit(oid, "create file2")
@@ -128,12 +126,12 @@ def test_create_file() -> None:
 
     with pytest.raises(FileExistsError) as exc_info:
         artifacts.create_file(
-            str(folder_path), basename, "lorem ipsum", False, False
+            folder_path, basename, "lorem ipsum", False, False
         )
     assert exc_info.value.args[0] == 'File already exists'
 
     oid = artifacts.create_file(
-        str(folder_path), basename, "override", False, True
+        folder_path, basename, "override", False, True
     )
 
     artifacts.commit(oid, "update created file")
