@@ -220,9 +220,12 @@ class Environment:
         if any(len(value) == 0 for value in vars(env).values()):
             return InvalidInputError(message="all fields must be filled in")
 
-        # Check if a valid path has been provided
-        user = os.environ["USER"]
-        if env.path not in ["groups/hgi", f"users/{user}"]:
+        # Check if a valid path has been provided. TODO: improve this to check
+        # that they can only create stuff in their own users folder, or in
+        # group folders of unix groups they belong to.
+        valid_dirs = [cls.artifacts.users_folder_name,
+                      cls.artifacts.groups_folder_name]
+        if not any(env.path.startswith(dir) for dir in valid_dirs):
             return InvalidInputError(message="Invalid path")
 
         # Check if an env with same name already exists at given path

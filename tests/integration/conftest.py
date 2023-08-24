@@ -105,3 +105,7 @@ def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
         "basename": file_basename,
     }
     return dict
+
+
+def get_user_path_without_environments(artifacts: Artifacts, user: str) -> Path:
+    return Path(*(artifacts.user_folder(user).parts[1:]))

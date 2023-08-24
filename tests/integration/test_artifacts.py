@@ -12,7 +12,9 @@ import shutil
 import tempfile
 
 from softpack_core.artifacts import Artifacts, app
-from tests.integration.conftest import new_test_artifacts
+
+from tests.integration.conftest import (new_test_artifacts,
+                                        get_user_path_without_environments)
 
 
 def test_clone() -> None:
@@ -144,10 +146,6 @@ def test_create_file() -> None:
 
     assert file_was_pushed(Path(folder_path, basename),
                            Path(folder_path, basename2))
-
-
-def get_user_path_without_environments(artifacts: Artifacts, user: str) -> Path:
-    return Path(*(artifacts.user_folder(user).parts[1:]))
 
 
 def get_user_envs_tree(artifacts: Artifacts, user: str, oid: pygit2.Oid) -> pygit2.Tree:
