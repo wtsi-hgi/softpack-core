@@ -236,7 +236,7 @@ class Environment:
                 name=env.name,
             )
 
-        # Create folder with readme
+        # Create folder with place-holder file
         new_folder_path = Path(env.path, env.name)
         file_name = ".created"
         try:

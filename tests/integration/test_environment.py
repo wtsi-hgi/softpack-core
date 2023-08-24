@@ -181,3 +181,41 @@ async def test_write_artifact(mocker, testable_environment):
         file_name=upload.filename,
     )
     assert isinstance(result, InvalidInputError)
+
+
+@pytest.mark.asyncio
+async def test_iter(mocker, testable_environment):
+    environment, env_input = testable_environment
+
+    envs_filter = environment.iter()
+    count = 0
+    for env in envs_filter:
+        count += 1
+
+    assert count == 0
+
+    post_mock = mocker.patch('httpx.post')
+    result = environment.create(env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+    post_mock.assert_called_once()
+
+    upload = mocker.Mock(spec=UploadFile)
+    upload.filename = Artifacts.environments_file
+    upload.content_type = "text/plain"
+    upload.read.return_value = b"description: test env\npackages:\n- zlib\n"
+
+    result = await environment.write_artifact(
+        file=upload,
+        folder_path=f"{env_input.path}/{env_input.name}",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, WriteArtifactSuccess)
+
+    envs_filter = environment.iter()
+    count = 0
+    for env in envs_filter:
+        assert env.name == env_input.name
+        assert any(p.name == "zlib" for p in env.packages)
+        count += 1
+
+    assert count == 1
