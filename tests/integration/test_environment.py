@@ -65,17 +65,8 @@ def test_create(mocker, testable_environment) -> None:
     path = Path(env_input.path, env_input.name, ".created")
     assert file_was_pushed(path)
 
-    # TODO: don't mock this; actually have a real builder service to test with?
-    post_mock.assert_called_once_with(
-        "http://0.0.0.0:7080/environments/build",
-        json={
-            "name": f"{env_input.path}/{env_input.name}",
-            "model": {
-                "description": env_input.description,
-                "packages": [f"{pkg.name}" for pkg in env_input.packages],
-            },
-        },
-    )
+    post_mock.assert_called_once()
+    builder_called_correctly(post_mock, env_input)
 
     result = environment.create(env_input)
     assert isinstance(result, EnvironmentAlreadyExistsError)
@@ -88,3 +79,45 @@ def test_create(mocker, testable_environment) -> None:
     env_input.path = "invalid/path"
     result = environment.create(env_input)
     assert isinstance(result, InvalidInputError)
+
+
+def builder_called_correctly(post_mock, env_input: EnvironmentInput) -> None:
+    # TODO: don't mock this; actually have a real builder service to test with?
+    # Also need to not hard-code the url here.
+    post_mock.assert_called_with(
+        "http://0.0.0.0:7080/environments/build",
+        json={
+            "name": f"{env_input.path}/{env_input.name}",
+            "model": {
+                "description": env_input.description,
+                "packages": [f"{pkg.name}" for pkg in env_input.packages],
+            },
+        },
+    )
+
+
+def test_update(mocker, testable_environment) -> None:
+    _, environment, env_input = testable_environment
+    post_mock = mocker.patch('httpx.post')
+
+    result = environment.create(env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+    post_mock.assert_called_once()
+
+    env_input.description = "updated description"
+    result = environment.update(env_input, env_input.path, env_input.name)
+    assert isinstance(result, UpdateEnvironmentSuccess)
+
+    builder_called_correctly(post_mock, env_input)
+
+    result = environment.update(env_input, "invalid/path", "invalid_name")
+    assert isinstance(result, InvalidInputError)
+
+    env_input.name = ""
+    result = environment.update(env_input, env_input.path, env_input.name)
+    assert isinstance(result, InvalidInputError)
+
+    env_input.name = "invalid_name"
+    env_input.path = "invalid/path"
+    result = environment.update(env_input, "invalid/path", "invalid_name")
+    assert isinstance(result, EnvironmentNotFoundError)

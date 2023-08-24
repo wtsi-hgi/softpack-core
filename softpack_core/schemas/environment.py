@@ -291,7 +291,8 @@ class Environment:
 
         # Check name and path have not been changed.
         if env.path != current_path or env.name != current_name:
-            return InvalidInputError(message="cannot change name or path")
+            return InvalidInputError(message=("change of name or path not "
+                                              "currently supported"))
 
         # Check if an environment exists at the specified path and name
         if cls.artifacts.get(Path(current_path), current_name):
