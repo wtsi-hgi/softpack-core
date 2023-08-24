@@ -6,6 +6,7 @@ LICENSE file in the root directory of this source tree.
 
 from pathlib import Path
 import pytest
+from starlette.datastructures import UploadFile
 
 from softpack_core.artifacts import Artifacts
 from softpack_core.schemas.environment import (
@@ -52,11 +53,11 @@ def testable_environment(mocker):
         packages=environment.packages,
     )
 
-    yield artifacts, environment, env_input
+    yield environment, env_input
 
 
 def test_create(mocker, testable_environment) -> None:
-    _, environment, env_input = testable_environment
+    environment, env_input = testable_environment
     post_mock = mocker.patch('httpx.post')
 
     result = environment.create(env_input)
@@ -97,7 +98,7 @@ def builder_called_correctly(post_mock, env_input: EnvironmentInput) -> None:
 
 
 def test_update(mocker, testable_environment) -> None:
-    _, environment, env_input = testable_environment
+    environment, env_input = testable_environment
     post_mock = mocker.patch('httpx.post')
 
     result = environment.create(env_input)
@@ -124,7 +125,7 @@ def test_update(mocker, testable_environment) -> None:
 
 
 def test_delete(mocker, testable_environment) -> None:
-    _, environment, env_input = testable_environment
+    environment, env_input = testable_environment
 
     result = environment.delete(env_input.name, env_input.path)
     assert isinstance(result, EnvironmentNotFoundError)
@@ -141,3 +142,42 @@ def test_delete(mocker, testable_environment) -> None:
     assert isinstance(result, DeleteEnvironmentSuccess)
 
     assert not file_was_pushed(path)
+
+
+@pytest.mark.asyncio
+async def test_write_artifact(mocker, testable_environment):
+    environment, env_input = testable_environment
+
+    upload = mocker.Mock(spec=UploadFile)
+    upload.filename = "example.txt"
+    upload.content_type = "text/plain"
+    upload.read.return_value = b"mock data"
+
+    result = await environment.write_artifact(
+        file=upload,
+        folder_path=f"{env_input.path}/{env_input.name}",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, InvalidInputError)
+
+    post_mock = mocker.patch('httpx.post')
+    result = environment.create(env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+    post_mock.assert_called_once()
+
+    result = await environment.write_artifact(
+        file=upload,
+        folder_path=f"{env_input.path}/{env_input.name}",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, WriteArtifactSuccess)
+
+    path = Path(env_input.path, env_input.name, upload.filename)
+    assert file_was_pushed(path)
+
+    result = await environment.write_artifact(
+        file=upload,
+        folder_path="invalid/env/path",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, InvalidInputError)
