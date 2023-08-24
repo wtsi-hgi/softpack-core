@@ -238,10 +238,10 @@ class Environment:
 
         # Create folder with readme
         new_folder_path = Path(env.path, env.name)
-        file_name = "README.md"
+        file_name = ".created"
         try:
             tree_oid = cls.artifacts.create_file(
-                new_folder_path, file_name, "lorem ipsum", True
+                new_folder_path, file_name, "", True
             )
             cls.artifacts.commit(tree_oid, "create environment folder")
             cls.artifacts.push()

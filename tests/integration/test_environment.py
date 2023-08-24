@@ -4,6 +4,7 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+from pathlib import Path
 import pytest
 
 from softpack_core.artifacts import Artifacts
@@ -22,8 +23,9 @@ from softpack_core.schemas.environment import (
 
 from tests.integration.conftest import (new_test_artifacts,
                                         get_user_path_without_environments)
+from .test_artifacts import file_was_pushed
 
-from softpack_core.artifacts import Artifacts, app
+from softpack_core.artifacts import Artifacts
 
 
 @pytest.fixture
@@ -59,7 +61,9 @@ def test_create(mocker, testable_environment) -> None:
 
     result = environment.create(env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
-    # push_mock.assert_called_once()
+
+    path = Path(env_input.path, env_input.name, ".created")
+    assert file_was_pushed(path)
 
     # TODO: don't mock this; actually have a real builder service to test with?
     post_mock.assert_called_once_with(
