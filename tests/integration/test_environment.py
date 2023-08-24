@@ -22,8 +22,8 @@ from softpack_core.schemas.environment import (
 )
 
 from tests.integration.conftest import (new_test_artifacts,
-                                        get_user_path_without_environments)
-from .test_artifacts import file_was_pushed
+                                        get_user_path_without_environments,
+                                        file_was_pushed)
 
 from softpack_core.artifacts import Artifacts
 
@@ -121,3 +121,23 @@ def test_update(mocker, testable_environment) -> None:
     env_input.path = "invalid/path"
     result = environment.update(env_input, "invalid/path", "invalid_name")
     assert isinstance(result, EnvironmentNotFoundError)
+
+
+def test_delete(mocker, testable_environment) -> None:
+    _, environment, env_input = testable_environment
+
+    result = environment.delete(env_input.name, env_input.path)
+    assert isinstance(result, EnvironmentNotFoundError)
+
+    post_mock = mocker.patch('httpx.post')
+    result = environment.create(env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+    post_mock.assert_called_once()
+
+    path = Path(env_input.path, env_input.name, ".created")
+    assert file_was_pushed(path)
+
+    result = environment.delete(env_input.name, env_input.path)
+    assert isinstance(result, DeleteEnvironmentSuccess)
+
+    assert not file_was_pushed(path)

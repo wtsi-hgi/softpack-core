@@ -109,3 +109,17 @@ def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
 
 def get_user_path_without_environments(artifacts: Artifacts, user: str) -> Path:
     return Path(*(artifacts.user_folder(user).parts[1:]))
+
+
+def file_was_pushed(*paths_without_environment: str | Path) -> bool:
+    temp_dir = tempfile.TemporaryDirectory()
+    app.settings.artifacts.path = Path(temp_dir.name)
+    artifacts = Artifacts()
+
+    for path_without_environment in paths_without_environment:
+        path = Path(temp_dir.name, artifacts.environments_root,
+                    path_without_environment)
+        if not os.path.isfile(path):
+            return False
+
+    return True

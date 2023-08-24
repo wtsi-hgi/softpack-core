@@ -14,7 +14,8 @@ import tempfile
 from softpack_core.artifacts import Artifacts, app
 
 from tests.integration.conftest import (new_test_artifacts,
-                                        get_user_path_without_environments)
+                                        get_user_path_without_environments,
+                                        file_was_pushed)
 
 
 def test_clone() -> None:
@@ -59,20 +60,6 @@ def test_commit_and_push() -> None:
                 ad["test_environment"], new_file_name)
 
     assert file_was_pushed(path)
-
-
-def file_was_pushed(*paths_without_environment: str | Path) -> bool:
-    temp_dir = tempfile.TemporaryDirectory()
-    app.settings.artifacts.path = Path(temp_dir.name)
-    artifacts = Artifacts()
-
-    for path_without_environment in paths_without_environment:
-        path = Path(temp_dir.name, artifacts.environments_root,
-                    path_without_environment)
-        if not os.path.isfile(path):
-            return False
-
-    return True
 
 
 def test_create_file() -> None:
