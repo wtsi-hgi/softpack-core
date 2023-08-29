@@ -22,7 +22,7 @@ from softpack_core.schemas.environment import (
     UpdateEnvironmentSuccess,
     WriteArtifactSuccess,
 )
-from tests.integration.conftest import (
+from tests.integration.utils import (
     file_was_pushed,
     get_user_path_without_environments,
     new_test_artifacts,
