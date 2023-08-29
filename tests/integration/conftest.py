@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pygit2
 import pytest
+from starlette.datastructures import UploadFile
 
 from softpack_core.artifacts import Artifacts, app
 
@@ -38,6 +39,11 @@ def testable_artifacts_setup():
 
 
 @pytest.fixture(autouse=True)
-def patch_post(mocker):
+def post(mocker):
     post_mock = mocker.patch('httpx.post')
     return post_mock
+
+
+@pytest.fixture()
+def upload(mocker):
+    return mocker.Mock(spec=UploadFile)
