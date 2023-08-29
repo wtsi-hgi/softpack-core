@@ -35,3 +35,9 @@ def testable_artifacts_setup():
     app.settings.artifacts.repo.email = repo_user
     app.settings.artifacts.repo.writer = repo_token
     app.settings.artifacts.repo.branch = user
+
+
+@pytest.fixture(autouse=True)
+def patch_post(mocker):
+    post_mock = mocker.patch('httpx.post')
+    return post_mock
