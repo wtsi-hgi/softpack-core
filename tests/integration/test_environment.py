@@ -28,6 +28,9 @@ from tests.integration.utils import (
 )
 
 
+pytestmark = pytest.mark.repo
+
+
 @pytest.fixture
 def testable_environment(mocker):
     ad = new_test_artifacts()

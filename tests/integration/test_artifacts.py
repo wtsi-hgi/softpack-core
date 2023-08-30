@@ -19,6 +19,9 @@ from tests.integration.utils import (
 )
 
 
+pytestmark = pytest.mark.repo
+
+
 def test_clone() -> None:
     ad = new_test_artifacts()
     artifacts: Artifacts = ad["artifacts"]

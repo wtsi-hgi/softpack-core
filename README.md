@@ -100,19 +100,40 @@ poetry run tox
 ```
 
 To run integration tests, you need a git repository set up with token access and
-a branch named after your git repo username. Then set these environment
-variables:
+a branch named after your git repo username (stripped of any @domain if your
+username is an email address).
+
+Make sure the artifacts/repo section of ~/.softpack/core/config.yml is
+configured correctly:
 
 ```
-export SOFTPACK_TEST_ARTIFACTS_REPO_URL='https://[...]artifacts.git'
-export SOFTPACK_TEST_ARTIFACTS_REPO_USER='username@domain'
-export SOFTPACK_TEST_ARTIFACTS_REPO_TOKEN='token'
+artifacts:
+  repo:
+    url: https://github.com/[your-org]/development-softpack-artifacts.git
+    username: [your-username]
+    author: [your-name]
+    email: [your-email]
+    writer: [your-token]
+```
+
+Then enable the integration tests by suppling --repo to `poetry run pytest`.
+
+To discover all tests and run them (skipping integration tests with no --repo):
+
+``` console
+poetry run pytest tests -sv
+```
+
+To run just the integration tests:
+
+``` console
+poetry run pytest tests/integration -sv --repo
 ```
 
 To run an individual test:
 
 ``` console
-poetry run pytest tests/integration/artifacts.py::test_commit -sv
+poetry run pytest tests/integration/test_artifacts.py::test_clone -sv --repo
 ```
 
 Run [MkDocs] server to view documentation:
