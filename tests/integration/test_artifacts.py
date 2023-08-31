@@ -16,6 +16,7 @@ from tests.integration.utils import (
     file_was_pushed,
     get_user_path_without_environments,
     new_test_artifacts,
+    delete_environments_folder_from_test_repo,
 )
 
 
@@ -34,6 +35,11 @@ def test_clone() -> None:
     artifacts = Artifacts()
     assert os.path.isdir(path) is True
 
+    # add test where we make a change to the repo in a different clone dir,
+    # then call Artifacts() in an existing clone dir, and we should see the
+    # change: ie. implement pull on init.
+    # And then possibly something to test pull on every iter?
+
 
 def test_commit_and_push() -> None:
     ad = new_test_artifacts()
@@ -43,8 +49,13 @@ def test_commit_and_push() -> None:
     new_file_name = "new_file.txt"
     oid = artifacts.repo.create_blob(b"")
 
-    tb = artifacts.repo.TreeBuilder()
+    root = artifacts.repo.head.peel(pygit2.Tree)
+    tree = root[artifacts.environments_root]
+    tb = artifacts.repo.TreeBuilder(tree)
     tb.insert(new_file_name, oid, pygit2.GIT_FILEMODE_BLOB)
+    oid = tb.write()
+    tb = artifacts.repo.TreeBuilder(root)
+    tb.insert(artifacts.environments_root, oid, pygit2.GIT_FILEMODE_TREE)
     new_tree = tb.write()
 
     new_commit_oid = artifacts.commit_and_push(new_tree, "commit new file")
@@ -53,7 +64,7 @@ def test_commit_and_push() -> None:
     assert old_commit_oid != new_commit_oid
     assert new_commit_oid == repo_head
 
-    assert file_was_pushed(Path(new_file_name))
+    assert file_was_pushed(Path(artifacts.environments_root, new_file_name))
 
 
 def test_create_file() -> None:
