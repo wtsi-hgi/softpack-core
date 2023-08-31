@@ -126,6 +126,7 @@ class Artifacts:
                 path=path,
                 callbacks=self.credentials_callback,
                 bare=True,
+                checkout_branch=branch
             )
 
         self.signature = pygit2.Signature(

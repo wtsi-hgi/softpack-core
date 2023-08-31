@@ -25,18 +25,15 @@ def new_test_artifacts() -> artifacts_dict:
 
     artifacts = Artifacts()
 
-    branch_name = "origin/" + app.settings.artifacts.repo.branch
+    branch_name = app.settings.artifacts.repo.branch
     branch = artifacts.repo.branches.get(branch_name)
 
-    if branch is None:
+    if branch is None or branch_name == "main":
         pytest.skip(
             (
                 "Your artifacts repo must have a branch named after your username."
             )
         )
-
-    artifacts.head_name = branch.branch_name
-    artifacts.head = branch
 
     dict = reset_test_repo(artifacts)
     dict["temp_dir"] = temp_dir
@@ -59,7 +56,7 @@ def delete_environments_folder_from_test_repo(artifacts: Artifacts):
         commit_changes(artifacts, oid, "delete environments")
 
         remote = artifacts.repo.remotes[0]
-        remote.push(["refs/remotes/" + artifacts.head_name],
+        remote.push([artifacts.head_name],
                     callbacks=artifacts.credentials_callback)
 
 
