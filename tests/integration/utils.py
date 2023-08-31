@@ -24,6 +24,20 @@ def new_test_artifacts() -> artifacts_dict:
     app.settings.artifacts.path = Path(temp_dir.name)
 
     artifacts = Artifacts()
+
+    branch_name = "origin/" + app.settings.artifacts.repo.branch
+    branch = artifacts.repo.branches.get(branch_name)
+
+    if branch is None:
+        pytest.skip(
+            (
+                "Your artifacts repo must have a branch named after your username."
+            )
+        )
+
+    artifacts.head_name = branch.branch_name
+    artifacts.head = branch
+
     dict = reset_test_repo(artifacts)
     dict["temp_dir"] = temp_dir
     dict["artifacts"] = artifacts
@@ -38,24 +52,36 @@ def reset_test_repo(artifacts: Artifacts) -> artifacts_dict:
 
 
 def delete_environments_folder_from_test_repo(artifacts: Artifacts):
-    tree = artifacts.repo.head.peel(pygit2.Tree)
-
+    tree = artifacts.head.peel(pygit2.Tree)
     if artifacts.environments_root in tree:
-        shutil.rmtree(
-            Path(app.settings.artifacts.path, artifacts.environments_root)
-        )
-        commit_local_file_changes(artifacts, "delete environments")
+        oid = delete_all_files_from_tree(
+            artifacts.repo, tree[artifacts.environments_root])
+        commit_changes(artifacts, oid, "delete environments")
+
+        remote = artifacts.repo.remotes[0]
+        remote.push(["refs/remotes/" + artifacts.head_name],
+                    callbacks=artifacts.credentials_callback)
 
 
-def commit_local_file_changes(artifacts: Artifacts, msg: str) -> pygit2.Oid:
-    index = artifacts.repo.index
-    index.add_all()
-    index.write()
+def delete_all_files_from_tree(repo: pygit2.Repository, tree: pygit2.Tree) -> pygit2.Oid:
+    treeBuilder = repo.TreeBuilder(tree)
+    for entry in tree:
+        if entry is pygit2.Tree:
+            delete_all_files_from_tree(entry)
+        else:
+            treeBuilder.remove(entry.name)
+    return treeBuilder.write()
+
+
+def commit_changes(artifacts: Artifacts, oid: pygit2.Oid, msg: str) -> pygit2.Oid:
     ref = artifacts.head_name
-    parents = [artifacts.repo.lookup_reference(ref).target]
-    oid = index.write_tree()
     return artifacts.repo.create_commit(
-        ref, artifacts.signature, artifacts.signature, msg, oid, parents
+        ref,
+        artifacts.signature,
+        artifacts.signature,
+        msg,
+        oid,
+        [artifacts.head.target]
     )
 
 

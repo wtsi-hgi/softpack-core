@@ -24,6 +24,7 @@ class Artifacts:
     users_folder_name = "users"
     groups_folder_name = "groups"
     head_name = ""
+    head = None
     credentials_callback = None
     signature = None
 
@@ -124,8 +125,7 @@ class Artifacts:
                 self.settings.artifacts.repo.url,
                 path=path,
                 callbacks=self.credentials_callback,
-                bare=False,
-                checkout_branch=branch,
+                bare=True,
             )
 
         self.signature = pygit2.Signature(
@@ -134,6 +134,7 @@ class Artifacts:
         )
 
         self.head_name = self.repo.head.name
+        self.head = self.repo.head
 
     def user_folder(self, user: Optional[str] = None) -> Path:
         """Get the user folder for a given user.
