@@ -51,23 +51,14 @@ def reset_test_repo(artifacts: Artifacts) -> artifacts_dict:
 def delete_environments_folder_from_test_repo(artifacts: Artifacts):
     tree = artifacts.head.peel(pygit2.Tree)
     if artifacts.environments_root in tree:
-        oid = delete_all_files_from_tree(
-            artifacts.repo, tree[artifacts.environments_root])
+        treeBuilder = artifacts.repo.TreeBuilder(tree)
+        treeBuilder.remove(artifacts.environments_root)
+        oid = treeBuilder.write()
         commit_changes(artifacts, oid, "delete environments")
 
         remote = artifacts.repo.remotes[0]
         remote.push([artifacts.head_name],
                     callbacks=artifacts.credentials_callback)
-
-
-def delete_all_files_from_tree(repo: pygit2.Repository, tree: pygit2.Tree) -> pygit2.Oid:
-    treeBuilder = repo.TreeBuilder(tree)
-    for entry in tree:
-        if entry is pygit2.Tree:
-            delete_all_files_from_tree(entry)
-        else:
-            treeBuilder.remove(entry.name)
-    return treeBuilder.write()
 
 
 def commit_changes(artifacts: Artifacts, oid: pygit2.Oid, msg: str) -> pygit2.Oid:
