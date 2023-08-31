@@ -35,6 +35,10 @@ $ git clone -c feature.manyFiles=true --depth 1 https://github.com/spack/spack.g
 $ source spack/share/spack/setup-env.sh
 ```
 
+To start the service, you will also need to configure a git repository to store
+artifacts. That respository must have at least 1 file in
+environments/users/<subdir> and another file in environments/groups/<subdir>.
+
 ### Stable release
 
 To install SoftPack Core, run this command in your
