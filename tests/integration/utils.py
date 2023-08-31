@@ -31,7 +31,8 @@ def new_test_artifacts() -> artifacts_dict:
     if branch is None or branch_name == "main":
         pytest.skip(
             (
-                "Your artifacts repo must have a branch named after your username."
+                "Your artifacts repo must have a branch named after your "
+                "username."
             )
         )
 
@@ -49,27 +50,23 @@ def reset_test_repo(artifacts: Artifacts) -> artifacts_dict:
 
 
 def delete_environments_folder_from_test_repo(artifacts: Artifacts):
-    tree = artifacts.head.peel(pygit2.Tree)
+    tree = artifacts.repo.head.peel(pygit2.Tree)
     if artifacts.environments_root in tree:
         treeBuilder = artifacts.repo.TreeBuilder(tree)
         treeBuilder.remove(artifacts.environments_root)
         oid = treeBuilder.write()
-        commit_changes(artifacts, oid, "delete environments")
-
-        remote = artifacts.repo.remotes[0]
-        remote.push([artifacts.head_name],
-                    callbacks=artifacts.credentials_callback)
+        commit_test_repo_changes(artifacts, oid, "delete environments")
 
 
-def commit_changes(artifacts: Artifacts, oid: pygit2.Oid, msg: str) -> pygit2.Oid:
-    ref = artifacts.head_name
+def commit_test_repo_changes(artifacts: Artifacts, oid: pygit2.Oid, msg: str) -> pygit2.Oid:
+    ref = artifacts.repo.head.name
     return artifacts.repo.create_commit(
         ref,
         artifacts.signature,
         artifacts.signature,
         msg,
         oid,
-        [artifacts.head.target]
+        [artifacts.repo.lookup_reference(ref).target]
     )
 
 
@@ -92,13 +89,44 @@ def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
         test_group,
         test_env,
     )
-    os.makedirs(user_env_path)
-    os.makedirs(group_env_path)
     file_basename = "file.txt"
-    open(Path(user_env_path, file_basename), "w").close()
-    open(Path(group_env_path, file_basename), "w").close()
 
-    oid = commit_local_file_changes(artifacts, "Add test environments")
+    oid = artifacts.repo.create_blob(b"")
+
+    userTestEnv = artifacts.repo.TreeBuilder()
+    userTestEnv.insert(file_basename, oid, pygit2.GIT_FILEMODE_BLOB)
+
+    testUser = artifacts.repo.TreeBuilder()
+    testUser.insert(test_env, userTestEnv.write(), pygit2.GIT_FILEMODE_TREE)
+
+    usersFolder = artifacts.repo.TreeBuilder()
+    usersFolder.insert(test_user, testUser.write(), pygit2.GIT_FILEMODE_TREE)
+
+    oid = artifacts.repo.create_blob(b"")
+
+    userGroupEnv = artifacts.repo.TreeBuilder()
+    userGroupEnv.insert(file_basename, oid, pygit2.GIT_FILEMODE_BLOB)
+
+    testGroup = artifacts.repo.TreeBuilder()
+    testGroup.insert(test_env, userGroupEnv.write(), pygit2.GIT_FILEMODE_TREE)
+
+    groupsFolder = artifacts.repo.TreeBuilder()
+    groupsFolder.insert(test_group, testGroup.write(),
+                        pygit2.GIT_FILEMODE_TREE)
+
+    environments = artifacts.repo.TreeBuilder()
+    environments.insert(artifacts.users_folder_name,
+                        usersFolder.write(), pygit2.GIT_FILEMODE_TREE)
+    environments.insert(artifacts.groups_folder_name,
+                        groupsFolder.write(), pygit2.GIT_FILEMODE_TREE)
+
+    tree = artifacts.repo.head.peel(pygit2.Tree)
+    treeBuilder = artifacts.repo.TreeBuilder(tree)
+    treeBuilder.insert(artifacts.environments_root,
+                       environments.write(), pygit2.GIT_FILEMODE_TREE)
+
+    oid = commit_test_repo_changes(artifacts, treeBuilder.write(),
+                                   "Add test environments")
 
     dict: artifacts_dict = {
         "initial_commit_oid": oid,
@@ -118,18 +146,18 @@ def get_user_path_without_environments(
     return Path(*(artifacts.user_folder(user).parts[1:]))
 
 
-def file_was_pushed(*paths_without_environment: str | Path) -> bool:
+def file_was_pushed(*paths_with_environment: str | Path) -> bool:
     temp_dir = tempfile.TemporaryDirectory()
     app.settings.artifacts.path = Path(temp_dir.name)
     artifacts = Artifacts()
 
-    for path_without_environment in paths_without_environment:
-        path = Path(
-            temp_dir.name,
-            artifacts.environments_root,
-            path_without_environment,
-        )
-        if not os.path.isfile(path):
-            return False
+    for path_with_environment in paths_with_environment:
+        path = Path(path_with_environment)
+
+        current = artifacts.repo.head.peel(pygit2.Tree)
+        for part in path.parts:
+            if part not in current:
+                return False
+            current = current[part]
 
     return True

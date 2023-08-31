@@ -30,9 +30,11 @@ from tests.integration.utils import (
 
 pytestmark = pytest.mark.repo
 
+tetype = tuple[Environment, EnvironmentInput]
+
 
 @pytest.fixture
-def testable_environment(mocker):
+def testable_environment(mocker) -> tetype:
     ad = new_test_artifacts()
     artifacts: Artifacts = ad["artifacts"]
     user = ad["test_user"]
@@ -58,13 +60,14 @@ def testable_environment(mocker):
     yield environment, env_input
 
 
-def test_create(post, testable_environment) -> None:
+def test_create(post, testable_environment: tetype) -> None:
     environment, env_input = testable_environment
 
     result = environment.create(env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
 
-    path = Path(env_input.path, env_input.name, ".created")
+    path = Path(environment.artifacts.environments_root, env_input.path,
+                env_input.name, ".created")
     assert file_was_pushed(path)
 
     post.assert_called_once()
@@ -134,7 +137,8 @@ def test_delete(post, testable_environment) -> None:
     assert isinstance(result, CreateEnvironmentSuccess)
     post.assert_called_once()
 
-    path = Path(env_input.path, env_input.name, ".created")
+    path = Path(environment.artifacts.environments_root, env_input.path,
+                env_input.name, ".created")
     assert file_was_pushed(path)
 
     result = environment.delete(env_input.name, env_input.path)
@@ -169,7 +173,8 @@ async def test_write_artifact(post, testable_environment, upload):
     )
     assert isinstance(result, WriteArtifactSuccess)
 
-    path = Path(env_input.path, env_input.name, upload.filename)
+    path = Path(environment.artifacts.environments_root, env_input.path,
+                env_input.name, upload.filename)
     assert file_was_pushed(path)
 
     result = await environment.write_artifact(

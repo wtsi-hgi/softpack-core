@@ -23,8 +23,6 @@ class Artifacts:
     environments_file = "softpack.yml"
     users_folder_name = "users"
     groups_folder_name = "groups"
-    head_name = ""
-    head = None
     credentials_callback = None
     signature = None
 
@@ -133,9 +131,6 @@ class Artifacts:
             self.settings.artifacts.repo.author,
             self.settings.artifacts.repo.email,
         )
-
-        self.head_name = self.repo.head.name
-        self.head = self.repo.head
 
     def user_folder(self, user: Optional[str] = None) -> Path:
         """Get the user folder for a given user.
@@ -262,7 +257,7 @@ class Artifacts:
         Returns:
             pygit2.Commit: the commit oid
         """
-        ref = self.head_name
+        ref = self.repo.head.name
         parents = [self.repo.lookup_reference(ref).target]
         commit_oid = self.repo.create_commit(
             ref, self.signature, self.signature, message, tree_oid, parents
@@ -272,7 +267,7 @@ class Artifacts:
     def push(self) -> None:
         """Push all commits to a repository."""
         remote = self.repo.remotes[0]
-        remote.push([self.head_name], callbacks=self.credentials_callback)
+        remote.push([self.repo.head.name], callbacks=self.credentials_callback)
 
     def build_tree(
         self,

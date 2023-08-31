@@ -41,21 +41,11 @@ def test_commit_and_push() -> None:
     old_commit_oid = ad["initial_commit_oid"]
 
     new_file_name = "new_file.txt"
-    path = Path(
-        ad["temp_dir"].name,
-        artifacts.environments_root,
-        artifacts.users_folder_name,
-        ad["test_user"],
-        ad["test_environment"],
-        new_file_name,
-    )
+    oid = artifacts.repo.create_blob(b"")
 
-    open(path, "w").close()
-
-    index = artifacts.repo.index
-    index.add_all()
-    index.write()
-    new_tree = index.write_tree()
+    tb = artifacts.repo.TreeBuilder()
+    tb.insert(new_file_name, oid, pygit2.GIT_FILEMODE_BLOB)
+    new_tree = tb.write()
 
     new_commit_oid = artifacts.commit(new_tree, "commit new file")
     repo_head = artifacts.repo.head.peel(pygit2.Commit).oid
@@ -64,15 +54,7 @@ def test_commit_and_push() -> None:
     assert new_commit_oid == repo_head
 
     artifacts.push()
-
-    path = Path(
-        artifacts.users_folder_name,
-        ad["test_user"],
-        ad["test_environment"],
-        new_file_name,
-    )
-
-    assert file_was_pushed(path)
+    assert file_was_pushed(Path(new_file_name))
 
 
 def test_create_file() -> None:
@@ -141,7 +123,8 @@ def test_create_file() -> None:
     artifacts.push()
 
     assert file_was_pushed(
-        Path(folder_path, basename), Path(folder_path, basename2)
+        Path(artifacts.environments_root, folder_path, basename),
+        Path(artifacts.environments_root, folder_path, basename2)
     )
 
 
