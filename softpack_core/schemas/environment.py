@@ -244,8 +244,8 @@ class Environment:
             tree_oid = cls.artifacts.create_file(
                 new_folder_path, file_name, "", True
             )
-            cls.artifacts.commit(tree_oid, "create environment folder")
-            cls.artifacts.push()
+            cls.artifacts.commit_and_push(
+                tree_oid, "create environment folder")
         except RuntimeError as e:
             return InvalidInputError(message=str(e))
 
@@ -332,8 +332,7 @@ class Environment:
         """
         if cls.artifacts.get(Path(path), name):
             tree_oid = cls.artifacts.delete_environment(name, path)
-            cls.artifacts.commit(tree_oid, "delete environment")
-            cls.artifacts.push()
+            cls.artifacts.commit_and_push(tree_oid, "delete environment")
             return DeleteEnvironmentSuccess(
                 message="Successfully deleted the environment"
             )
@@ -360,8 +359,8 @@ class Environment:
             tree_oid = cls.artifacts.create_file(
                 Path(folder_path), file_name, contents, overwrite=True
             )
-            commit_oid = cls.artifacts.commit(tree_oid, "write artifact")
-            cls.artifacts.push()
+            commit_oid = cls.artifacts.commit_and_push(
+                tree_oid, "write artifact")
             return WriteArtifactSuccess(
                 message="Successfully written artifact",
                 commit_oid=str(commit_oid),

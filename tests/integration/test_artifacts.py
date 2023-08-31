@@ -47,13 +47,12 @@ def test_commit_and_push() -> None:
     tb.insert(new_file_name, oid, pygit2.GIT_FILEMODE_BLOB)
     new_tree = tb.write()
 
-    new_commit_oid = artifacts.commit(new_tree, "commit new file")
+    new_commit_oid = artifacts.commit_and_push(new_tree, "commit new file")
     repo_head = artifacts.repo.head.peel(pygit2.Commit).oid
 
     assert old_commit_oid != new_commit_oid
     assert new_commit_oid == repo_head
 
-    artifacts.push()
     assert file_was_pushed(Path(new_file_name))
 
 
@@ -82,7 +81,7 @@ def test_create_file() -> None:
     assert new_test_env in [obj.name for obj in user_envs_tree]
     assert basename in [obj.name for obj in user_envs_tree[new_test_env]]
 
-    artifacts.commit(oid, "create file")
+    artifacts.commit_and_push(oid, "create file")
 
     with pytest.raises(RuntimeError) as exc_info:
         artifacts.create_file(
@@ -101,7 +100,7 @@ def test_create_file() -> None:
         folder_path, basename2, "lorem ipsum", False, False
     )
 
-    artifacts.commit(oid, "create file2")
+    artifacts.commit_and_push(oid, "create file2")
 
     user_envs_tree = get_user_envs_tree(artifacts, user, oid)
     assert basename2 in [obj.name for obj in user_envs_tree[new_test_env]]
@@ -114,13 +113,11 @@ def test_create_file() -> None:
 
     oid = artifacts.create_file(folder_path, basename, "override", False, True)
 
-    artifacts.commit(oid, "update created file")
+    artifacts.commit_and_push(oid, "update created file")
 
     user_envs_tree = get_user_envs_tree(artifacts, user, oid)
     assert basename in [obj.name for obj in user_envs_tree[new_test_env]]
     assert user_envs_tree[new_test_env][basename].data.decode() == "override"
-
-    artifacts.push()
 
     assert file_was_pushed(
         Path(artifacts.environments_root, folder_path, basename),
@@ -150,7 +147,7 @@ def test_delete_environment() -> None:
         env_for_deleting, get_user_path_without_environments(artifacts, user)
     )
 
-    artifacts.commit(oid, "delete new env")
+    artifacts.commit_and_push(oid, "delete new env")
 
     user_envs_tree = get_user_envs_tree(artifacts, user, oid)
     assert env_for_deleting not in [obj.name for obj in user_envs_tree]

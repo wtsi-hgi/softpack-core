@@ -55,12 +55,13 @@ def delete_environments_folder_from_test_repo(artifacts: Artifacts):
         treeBuilder = artifacts.repo.TreeBuilder(tree)
         treeBuilder.remove(artifacts.environments_root)
         oid = treeBuilder.write()
-        commit_test_repo_changes(artifacts, oid, "delete environments")
+        commit_and_push_test_repo_changes(
+            artifacts, oid, "delete environments")
 
 
-def commit_test_repo_changes(artifacts: Artifacts, oid: pygit2.Oid, msg: str) -> pygit2.Oid:
+def commit_and_push_test_repo_changes(artifacts: Artifacts, oid: pygit2.Oid, msg: str) -> pygit2.Oid:
     ref = artifacts.repo.head.name
-    return artifacts.repo.create_commit(
+    oid = artifacts.repo.create_commit(
         ref,
         artifacts.signature,
         artifacts.signature,
@@ -68,6 +69,10 @@ def commit_test_repo_changes(artifacts: Artifacts, oid: pygit2.Oid, msg: str) ->
         oid,
         [artifacts.repo.lookup_reference(ref).target]
     )
+    remote = artifacts.repo.remotes[0]
+    remote.push([artifacts.repo.head.name],
+                callbacks=artifacts.credentials_callback)
+    return oid
 
 
 def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
@@ -125,8 +130,8 @@ def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
     treeBuilder.insert(artifacts.environments_root,
                        environments.write(), pygit2.GIT_FILEMODE_TREE)
 
-    oid = commit_test_repo_changes(artifacts, treeBuilder.write(),
-                                   "Add test environments")
+    oid = commit_and_push_test_repo_changes(artifacts, treeBuilder.write(),
+                                            "Add test environments")
 
     dict: artifacts_dict = {
         "initial_commit_oid": oid,

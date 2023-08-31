@@ -127,6 +127,14 @@ class Artifacts:
                 checkout_branch=branch
             )
 
+        self.reference = "/".join(
+            [
+                "refs/remotes",
+                self.repo.remotes[0].name,
+                self.repo.head.shorthand,
+            ]
+        )
+
         self.signature = pygit2.Signature(
             self.settings.artifacts.repo.author,
             self.settings.artifacts.repo.email,
@@ -205,7 +213,7 @@ class Artifacts:
         Returns:
             Tree: A Tree object
         """
-        return self.repo.head.peel(pygit2.Tree)[path]
+        return self.repo.lookup_reference(self.reference).peel().tree[path]
 
     def environments(self, path: Path) -> Iterable:
         """Return a list of environments in the repo under the given path.
@@ -246,28 +254,22 @@ class Artifacts:
         except KeyError:
             return None
 
-    def commit(self, tree_oid: pygit2.Oid, message: str) -> pygit2.Oid:
-        """Create and return a commit.
+    def commit_and_push(self, tree_oid: pygit2.Oid, message: str) -> pygit2.Oid:
+        """Commit and push current changes to the remote repository.
 
         Args:
             tree_oid: the oid of the tree object that will be committed. The
             tree this refers to will replace the entire contents of the repo.
             message: the commit message
-
-        Returns:
-            pygit2.Commit: the commit oid
         """
         ref = self.repo.head.name
         parents = [self.repo.lookup_reference(ref).target]
-        commit_oid = self.repo.create_commit(
+        oid = self.repo.create_commit(
             ref, self.signature, self.signature, message, tree_oid, parents
         )
-        return commit_oid
-
-    def push(self) -> None:
-        """Push all commits to a repository."""
         remote = self.repo.remotes[0]
         remote.push([self.repo.head.name], callbacks=self.credentials_callback)
+        return oid
 
     def build_tree(
         self,
