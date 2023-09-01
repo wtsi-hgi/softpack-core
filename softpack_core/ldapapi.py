@@ -19,8 +19,9 @@ class LDAP:
 
     def __init__(self) -> None:
         """Constructor."""
-        self.settings = cast(LDAPConfig, app.settings.ldap)
-        self.initialize()
+        if app.settings.ldap is not None:
+            self.settings = cast(LDAPConfig, app.settings.ldap)
+            self.initialize()
 
     def initialize(self) -> None:
         """Initialize an LDAP client.
@@ -28,7 +29,6 @@ class LDAP:
         Returns:
             None.
         """
-        return
         try:
             self.ldap = ldap.initialize(self.settings.server)
             self.group_regex = re.compile(self.settings.group.pattern)
