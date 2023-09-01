@@ -13,13 +13,12 @@ import pytest
 
 from softpack_core.artifacts import Artifacts, app
 from tests.integration.utils import (
+    commit_and_push_test_repo_changes,
+    file_in_repo,
     file_was_pushed,
     get_user_path_without_environments,
     new_test_artifacts,
-    commit_and_push_test_repo_changes,
-    file_in_repo,
 )
-
 
 pytestmark = pytest.mark.repo
 
@@ -143,7 +142,7 @@ def test_create_file() -> None:
 
     assert file_was_pushed(
         Path(artifacts.environments_root, folder_path, basename),
-        Path(artifacts.environments_root, folder_path, basename2)
+        Path(artifacts.environments_root, folder_path, basename2),
     )
 
 

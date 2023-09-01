@@ -245,7 +245,8 @@ class Environment:
                 new_folder_path, file_name, "", True
             )
             cls.artifacts.commit_and_push(
-                tree_oid, "create environment folder")
+                tree_oid, "create environment folder"
+            )
         except RuntimeError as e:
             return InvalidInputError(message=str(e))
 
@@ -360,7 +361,8 @@ class Environment:
                 Path(folder_path), file_name, contents, overwrite=True
             )
             commit_oid = cls.artifacts.commit_and_push(
-                tree_oid, "write artifact")
+                tree_oid, "write artifact"
+            )
             return WriteArtifactSuccess(
                 message="Successfully written artifact",
                 commit_oid=str(commit_oid),

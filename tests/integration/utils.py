@@ -4,8 +4,6 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-import os
-import shutil
 import tempfile
 from pathlib import Path
 
@@ -56,10 +54,13 @@ def delete_environments_folder_from_test_repo(artifacts: Artifacts):
         treeBuilder.remove(artifacts.environments_root)
         oid = treeBuilder.write()
         commit_and_push_test_repo_changes(
-            artifacts, oid, "delete environments")
+            artifacts, oid, "delete environments"
+        )
 
 
-def commit_and_push_test_repo_changes(artifacts: Artifacts, oid: pygit2.Oid, msg: str) -> pygit2.Oid:
+def commit_and_push_test_repo_changes(
+    artifacts: Artifacts, oid: pygit2.Oid, msg: str
+) -> pygit2.Oid:
     ref = artifacts.repo.head.name
     oid = artifacts.repo.create_commit(
         ref,
@@ -67,11 +68,12 @@ def commit_and_push_test_repo_changes(artifacts: Artifacts, oid: pygit2.Oid, msg
         artifacts.signature,
         msg,
         oid,
-        [artifacts.repo.lookup_reference(ref).target]
+        [artifacts.repo.lookup_reference(ref).target],
     )
     remote = artifacts.repo.remotes[0]
-    remote.push([artifacts.repo.head.name],
-                callbacks=artifacts.credentials_callback)
+    remote.push(
+        [artifacts.repo.head.name], callbacks=artifacts.credentials_callback
+    )
     return oid
 
 
@@ -116,22 +118,33 @@ def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
     testGroup.insert(test_env, userGroupEnv.write(), pygit2.GIT_FILEMODE_TREE)
 
     groupsFolder = artifacts.repo.TreeBuilder()
-    groupsFolder.insert(test_group, testGroup.write(),
-                        pygit2.GIT_FILEMODE_TREE)
+    groupsFolder.insert(
+        test_group, testGroup.write(), pygit2.GIT_FILEMODE_TREE
+    )
 
     environments = artifacts.repo.TreeBuilder()
-    environments.insert(artifacts.users_folder_name,
-                        usersFolder.write(), pygit2.GIT_FILEMODE_TREE)
-    environments.insert(artifacts.groups_folder_name,
-                        groupsFolder.write(), pygit2.GIT_FILEMODE_TREE)
+    environments.insert(
+        artifacts.users_folder_name,
+        usersFolder.write(),
+        pygit2.GIT_FILEMODE_TREE,
+    )
+    environments.insert(
+        artifacts.groups_folder_name,
+        groupsFolder.write(),
+        pygit2.GIT_FILEMODE_TREE,
+    )
 
     tree = artifacts.repo.head.peel(pygit2.Tree)
     treeBuilder = artifacts.repo.TreeBuilder(tree)
-    treeBuilder.insert(artifacts.environments_root,
-                       environments.write(), pygit2.GIT_FILEMODE_TREE)
+    treeBuilder.insert(
+        artifacts.environments_root,
+        environments.write(),
+        pygit2.GIT_FILEMODE_TREE,
+    )
 
-    oid = commit_and_push_test_repo_changes(artifacts, treeBuilder.write(),
-                                            "Add test environments")
+    oid = commit_and_push_test_repo_changes(
+        artifacts, treeBuilder.write(), "Add test environments"
+    )
 
     dict: artifacts_dict = {
         "initial_commit_oid": oid,

@@ -5,10 +5,10 @@ LICENSE file in the root directory of this source tree.
 """
 
 import itertools
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
-import shutil
 
 import pygit2
 from box import Box
@@ -125,7 +125,7 @@ class Artifacts:
             path=path,
             callbacks=self.credentials_callback,
             bare=True,
-            checkout_branch=branch
+            checkout_branch=branch,
         )
 
         self.reference = "/".join(
@@ -255,7 +255,9 @@ class Artifacts:
         except KeyError:
             return None
 
-    def commit_and_push(self, tree_oid: pygit2.Oid, message: str) -> pygit2.Oid:
+    def commit_and_push(
+        self, tree_oid: pygit2.Oid, message: str
+    ) -> pygit2.Oid:
         """Commit and push current changes to the remote repository.
 
         Args:
