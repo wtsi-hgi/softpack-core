@@ -1,6 +1,0 @@
-description: |
-  Line 1
-  
-   - line 2 "$@"
-packages:
-  - quay.io/biocontainers/ldsc@1.0.1--pyhdfd78af_2
