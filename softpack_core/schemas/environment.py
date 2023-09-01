@@ -6,15 +6,19 @@ LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
 from pathlib import Path
+import io
 from typing import Iterable, Optional
 
 import httpx
 import strawberry
 from strawberry.file_uploads import Upload
 
+from starlette.datastructures import UploadFile
+
 from softpack_core.artifacts import Artifacts
 from softpack_core.schemas.base import BaseSchema
 from softpack_core.spack import Spack
+from softpack_core.moduleparse import ToSoftpackYML
 
 
 # Interfaces
@@ -219,6 +223,28 @@ class Environment:
         if any(len(value) == 0 for value in vars(env).values()):
             return InvalidInputError(message="all fields must be filled in")
 
+        response = cls.create_new_env()
+        if not isinstance(response, CreateEnvironmentSuccess):
+            return response
+
+        # Send build request
+        httpx.post(
+            "http://0.0.0.0:7080/environments/build",
+            json={
+                "name": f"{env.path}/{env.name}",
+                "model": {
+                    "description": env.description,
+                    "packages": [f"{pkg.name}" for pkg in env.packages],
+                },
+            },
+        )
+
+        return CreateEnvironmentSuccess(
+            message="Successfully scheduled environment creation"
+        )
+
+    @classmethod
+    def create_new_env(cls, env: EnvironmentInput) -> CreateResponse:
         # Check if a valid path has been provided. TODO: improve this to check
         # that they can only create stuff in their own users folder, or in
         # group folders of unix groups they belong to.
@@ -250,20 +276,8 @@ class Environment:
         except RuntimeError as e:
             return InvalidInputError(message=str(e))
 
-        # Send build request
-        httpx.post(
-            "http://0.0.0.0:7080/environments/build",
-            json={
-                "name": f"{env.path}/{env.name}",
-                "model": {
-                    "description": env.description,
-                    "packages": [f"{pkg.name}" for pkg in env.packages],
-                },
-            },
-        )
-
         return CreateEnvironmentSuccess(
-            message="Successfully scheduled environment creation"
+            message="Successfully created environment in artifacts repo"
         )
 
     @classmethod
@@ -345,6 +359,86 @@ class Environment:
         )
 
     @classmethod
+    async def create_from_module(cls, file: Upload, module_path: str,
+                                 environment_path: str) -> CreateResponse:
+        """Create an Environment based on an existing module.
+
+        The environment will not be built; a "fake" softpack.yml and the
+        supplied module file will be written as artifacts in a newly created
+        environment instead, so that they can be discovered.
+
+        Args:
+            file: the module file to add to the repo, and to parse to fake a
+                  corresponding softpack.yml. It should have a format similar
+                  to that produced by shpc, with `module whatis` outputting
+                  a "Name: " line, a "Version: " line, and optionally a
+                  "Packages: " line to say what packages are available.
+                  `module help` output will be translated into the description
+                  in the softpack.yml.
+            module_path: the local path that users can `module load` - this is
+                         used to auto-generate usage help text for this
+                         environment.
+            environment_path: the subdirectories of environments folder that
+                              artifacts will be stored in, eg.
+                              users/username/software_name
+
+        Returns:
+            A message confirming the success or failure of the operation.
+        """
+        environment_dirs = environment_path.split("/")
+        environment_name = environment_dirs.pop()
+
+        contents = (await file.read()).decode()
+        yml = ToSoftpackYML(contents)
+
+        env = EnvironmentInput(
+            name=environment_name,
+            path="/".join(environment_dirs),
+        )
+
+        response = cls.create_new_env(env)
+        if not isinstance(response, CreateEnvironmentSuccess):
+            return response
+
+        module_file = UploadFile(file=io.StringIO(contents))
+        softpack_file = UploadFile(file=io.StringIO(yml))
+
+        result = cls.write_module_artifacts(
+            module_file=module_file,
+            softpack_file=softpack_file,
+            environment_path=environment_path
+        )
+
+        if not isinstance(result, WriteArtifactSuccess):
+            cls.delete(name=environment_name, path=environment_path)
+            return InvalidInputError(
+                msg="Write of module file failed: " + result.msg
+            )
+
+        return CreateEnvironmentSuccess(
+            message="Successfully created environment in artifacts repo"
+        )
+
+    @classmethod
+    async def write_module_artifacts(
+        cls, module_file: Upload, softpack_file: Upload, environment_path: str
+    ) -> WriteArtifactResponse:
+        result = await cls.write_artifact(
+            file=module_file,
+            folder_path=environment_path,
+            file_name=cls.artifacts.module_file
+        )
+
+        if not isinstance(result, WriteArtifactSuccess):
+            return result
+
+        return await cls.write_artifact(
+            file=softpack_file,
+            folder_path=environment_path,
+            file_name=cls.artifacts.environments_file
+        )
+
+    @classmethod
     async def write_artifact(
         cls, file: Upload, folder_path: str, file_name: str
     ) -> WriteArtifactResponse:
@@ -390,4 +484,7 @@ class EnvironmentSchema(BaseSchema):
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
         writeArtifact: WriteArtifactResponse = (
             Environment.write_artifact
+        )  # type: ignore
+        createFromModule: CreateResponse = (
+            Environment.create_from_module
         )  # type: ignore
