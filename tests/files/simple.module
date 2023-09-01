@@ -1,0 +1,24 @@
+#%Module
+
+proc ModulesHelp { } {
+
+    puts stderr "Line 1"
+    
+    puts stderr ""
+    puts stderr " - line 2 \"\$@\""
+
+}
+
+set view_dir "[file dirname [file dirname ${ModulesCurrentModulefile}] ]"
+
+#=====
+# Module options
+#=====
+module-whatis "    Name: quay.io/biocontainers/ldsc:1.0.1--pyhdfd78af_2"
+module-whatis "    Version: 1.0.1--pyhdfd78af_2"
+
+
+module-whatis "    busybox: BusyBox v1.32.1 (2021-04-13 11:15:36 UTC) multi-call binary."
+module-whatis "    Packages: gcc-8-base, libc6, libgcc1, bash, libc-bin, libtinfo6, ncurses-base, base-files"
+
+module load /software/modules/ISG/singularity/3.10.0
