@@ -11,12 +11,13 @@ from pathlib import Path
 import pygit2
 import pytest
 
-from softpack_core.artifacts import Artifacts
+from softpack_core.artifacts import Artifacts, app
 from tests.integration.utils import (
     file_was_pushed,
     get_user_path_without_environments,
     new_test_artifacts,
-    delete_environments_folder_from_test_repo,
+    commit_and_push_test_repo_changes,
+    file_in_repo,
 )
 
 
@@ -35,10 +36,17 @@ def test_clone() -> None:
     artifacts = Artifacts()
     assert os.path.isdir(path) is True
 
-    # add test where we make a change to the repo in a different clone dir,
-    # then call Artifacts() in an existing clone dir, and we should see the
-    # change: ie. implement pull on init.
-    # And then possibly something to test pull on every iter?
+    orig_repo_path = app.settings.artifacts.path
+    ad_for_changing = new_test_artifacts()
+    artifacts_for_changing: Artifacts = ad_for_changing["artifacts"]
+
+    oid, file_path = add_test_file_to_repo(artifacts_for_changing)
+    commit_and_push_test_repo_changes(artifacts_for_changing, oid, "add file")
+
+    app.settings.artifacts.path = orig_repo_path
+    artifacts = Artifacts()
+
+    assert file_in_repo(artifacts, file_path)
 
 
 def test_commit_and_push() -> None:
@@ -46,17 +54,7 @@ def test_commit_and_push() -> None:
     artifacts: Artifacts = ad["artifacts"]
     old_commit_oid = ad["initial_commit_oid"]
 
-    new_file_name = "new_file.txt"
-    oid = artifacts.repo.create_blob(b"")
-
-    root = artifacts.repo.head.peel(pygit2.Tree)
-    tree = root[artifacts.environments_root]
-    tb = artifacts.repo.TreeBuilder(tree)
-    tb.insert(new_file_name, oid, pygit2.GIT_FILEMODE_BLOB)
-    oid = tb.write()
-    tb = artifacts.repo.TreeBuilder(root)
-    tb.insert(artifacts.environments_root, oid, pygit2.GIT_FILEMODE_TREE)
-    new_tree = tb.write()
+    new_tree, file_path = add_test_file_to_repo(artifacts)
 
     new_commit_oid = artifacts.commit_and_push(new_tree, "commit new file")
     repo_head = artifacts.repo.head.peel(pygit2.Commit).oid
@@ -64,7 +62,20 @@ def test_commit_and_push() -> None:
     assert old_commit_oid != new_commit_oid
     assert new_commit_oid == repo_head
 
-    assert file_was_pushed(Path(artifacts.environments_root, new_file_name))
+    assert file_was_pushed(file_path)
+
+
+def add_test_file_to_repo(artifacts: Artifacts) -> tuple[pygit2.Oid, Path]:
+    new_file_name = "new_file.txt"
+    oid = artifacts.repo.create_blob(b"")
+    root = artifacts.repo.head.peel(pygit2.Tree)
+    tree = root[artifacts.environments_root]
+    tb = artifacts.repo.TreeBuilder(tree)
+    tb.insert(new_file_name, oid, pygit2.GIT_FILEMODE_BLOB)
+    oid = tb.write()
+    tb = artifacts.repo.TreeBuilder(root)
+    tb.insert(artifacts.environments_root, oid, pygit2.GIT_FILEMODE_TREE)
+    return tb.write(), Path(artifacts.environments_root, new_file_name)
 
 
 def test_create_file() -> None:

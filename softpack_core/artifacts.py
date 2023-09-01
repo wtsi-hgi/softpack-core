@@ -8,6 +8,7 @@ import itertools
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
+import shutil
 
 import pygit2
 from box import Box
@@ -117,15 +118,15 @@ class Artifacts:
             branch = "main"
 
         if path.is_dir():
-            self.repo = pygit2.Repository(path)
-        else:
-            self.repo = pygit2.clone_repository(
-                self.settings.artifacts.repo.url,
-                path=path,
-                callbacks=self.credentials_callback,
-                bare=True,
-                checkout_branch=branch
-            )
+            shutil.rmtree(path)
+
+        self.repo = pygit2.clone_repository(
+            self.settings.artifacts.repo.url,
+            path=path,
+            callbacks=self.credentials_callback,
+            bare=True,
+            checkout_branch=branch
+        )
 
         self.reference = "/".join(
             [

@@ -159,10 +159,17 @@ def file_was_pushed(*paths_with_environment: str | Path) -> bool:
     for path_with_environment in paths_with_environment:
         path = Path(path_with_environment)
 
-        current = artifacts.repo.head.peel(pygit2.Tree)
-        for part in path.parts:
-            if part not in current:
-                return False
-            current = current[part]
+        if not file_in_repo(artifacts, path):
+            return False
+
+    return True
+
+
+def file_in_repo(artifacts: Artifacts, path: Path) -> bool:
+    current = artifacts.repo.head.peel(pygit2.Tree)
+    for part in path.parts:
+        if part not in current:
+            return False
+        current = current[part]
 
     return True
