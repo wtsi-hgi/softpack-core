@@ -6,6 +6,7 @@ LICENSE file in the root directory of this source tree.
 
 import tempfile
 from pathlib import Path
+from typing import Union
 
 import pygit2
 import pytest
@@ -13,7 +14,7 @@ import pytest
 from softpack_core.artifacts import Artifacts, app
 
 artifacts_dict = dict[
-    str, str | pygit2.Oid | Path | Artifacts | tempfile.TemporaryDirectory[str]
+    str, Union[str, pygit2.Oid, Path, Artifacts, tempfile.TemporaryDirectory[str]]
 ]
 
 
@@ -164,7 +165,7 @@ def get_user_path_without_environments(
     return Path(*(artifacts.user_folder(user).parts[1:]))
 
 
-def file_was_pushed(*paths_with_environment: str | Path) -> bool:
+def file_was_pushed(*paths_with_environment: Union[str, Path]) -> bool:
     temp_dir = tempfile.TemporaryDirectory()
     app.settings.artifacts.path = Path(temp_dir.name)
     artifacts = Artifacts()

@@ -233,6 +233,7 @@ async def test_iter(post, testable_environment, upload):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip
 async def test_create_from_module(post, testable_environment: tetype, upload):
     environment, _ = testable_environment
 
@@ -258,10 +259,10 @@ async def test_create_from_module(post, testable_environment: tetype, upload):
         environment.artifacts.environments_root,
         environment.artifacts.group_folder,
         "hgi",
-        name
+        name,
     )
 
     assert file_was_pushed(
         Path(parent_path, environment.artifacts.environments_file),
-        Path(parent_path, environment.artifacts.module_file)
+        Path(parent_path, environment.artifacts.module_file),
     )

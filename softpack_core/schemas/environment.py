@@ -223,7 +223,7 @@ class Environment:
         if any(len(value) == 0 for value in vars(env).values()):
             return InvalidInputError(message="all fields must be filled in")
 
-        response = cls.create_new_env()
+        response = cls.create_new_env(env)
         if not isinstance(response, CreateEnvironmentSuccess):
             return response
 
@@ -359,8 +359,9 @@ class Environment:
         )
 
     @classmethod
-    async def create_from_module(cls, file: Upload, module_path: str,
-                                 environment_path: str) -> CreateResponse:
+    async def create_from_module(
+        cls, file: Upload, module_path: str, environment_path: str
+    ) -> CreateResponse:
         """Create an Environment based on an existing module.
 
         The environment will not be built; a "fake" softpack.yml and the
@@ -406,7 +407,7 @@ class Environment:
         result = cls.write_module_artifacts(
             module_file=module_file,
             softpack_file=softpack_file,
-            environment_path=environment_path
+            environment_path=environment_path,
         )
 
         if not isinstance(result, WriteArtifactSuccess):
@@ -426,7 +427,7 @@ class Environment:
         result = await cls.write_artifact(
             file=module_file,
             folder_path=environment_path,
-            file_name=cls.artifacts.module_file
+            file_name=cls.artifacts.module_file,
         )
 
         if not isinstance(result, WriteArtifactSuccess):
@@ -435,7 +436,7 @@ class Environment:
         return await cls.write_artifact(
             file=softpack_file,
             folder_path=environment_path,
-            file_name=cls.artifacts.environments_file
+            file_name=cls.artifacts.environments_file,
         )
 
     @classmethod
