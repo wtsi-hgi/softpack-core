@@ -4,21 +4,20 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import io
 from dataclasses import dataclass
 from pathlib import Path
-import io
 from typing import Iterable, Optional
 
 import httpx
 import strawberry
+from starlette.datastructures import UploadFile
 from strawberry.file_uploads import Upload
 
-from starlette.datastructures import UploadFile
-
 from softpack_core.artifacts import Artifacts
+from softpack_core.moduleparse import ToSoftpackYML
 from softpack_core.schemas.base import BaseSchema
 from softpack_core.spack import Spack
-from softpack_core.moduleparse import ToSoftpackYML
 
 
 # Interfaces
@@ -245,6 +244,18 @@ class Environment:
 
     @classmethod
     def create_new_env(cls, env: EnvironmentInput) -> CreateResponse:
+        """Create a new environment in the repository.
+
+        Adds an empty .created file in the desired location. Fails if this
+        already exists.
+
+        Args:
+            env (EnvironmentInput): Details of the new environment.
+
+        Returns:
+            CreateResponse: a CreateEnvironmentSuccess on success, or one of
+            (InvalidInputError, EnvironmentAlreadyExistsError) on error.
+        """
         # Check if a valid path has been provided. TODO: improve this to check
         # that they can only create stuff in their own users folder, or in
         # group folders of unix groups they belong to.
@@ -424,6 +435,19 @@ class Environment:
     async def write_module_artifacts(
         cls, module_file: Upload, softpack_file: Upload, environment_path: str
     ) -> WriteArtifactResponse:
+        """Writes the given module and softpack files to the artifacts repo.
+
+        Args:
+            module_file (Upload): An shpc-style module file.
+            softpack_file (Upload): A "fake" softpack.yml file describing what
+            the module file offers.
+            environment_path (str): Path to the environment, eg.
+            users/user/env.
+
+        Returns:
+            WriteArtifactResponse: contains message and commit hash of
+            softpack.yml upload.
+        """
         result = await cls.write_artifact(
             file=module_file,
             folder_path=environment_path,

@@ -5,7 +5,9 @@ LICENSE file in the root directory of this source tree.
 """
 
 from pathlib import Path
+
 import pytest
+
 from softpack_core.moduleparse import ToSoftpackYML
 
 

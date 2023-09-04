@@ -6,6 +6,19 @@ LICENSE file in the root directory of this source tree.
 
 
 def ToSoftpackYML(contents: bytes) -> bytes:
+    """Converts an shpc-style module file to a softpack.yml file.
+
+    It should have a format similar to that produced by shpc, with `module
+    whatis` outputting a "Name: " line, a "Version: " line, and optionally a
+    "Packages: " line to say what packages are available. `module help` output
+    will be translated into the description in the softpack.yml.
+
+    Args:
+        contents (bytes): The byte content of the module file.
+
+    Returns:
+        bytes: The byte content of the softpack.yml file.
+    """
     mode = "0"
 
     name = ""
@@ -15,12 +28,17 @@ def ToSoftpackYML(contents: bytes) -> bytes:
 
     for line in contents.splitlines():
         line = line.lstrip()
-        if mode is "0":
+        if mode == "0":
             if line.startswith(b"proc ModulesHelp"):
                 mode = "1"
             elif line.startswith(b"module-whatis "):
-                line = line.removeprefix(
-                    b"module-whatis ").decode('unicode_escape').removeprefix("\"").removesuffix("\"").lstrip()
+                line = (
+                    line.removeprefix(b"module-whatis ")
+                    .decode('unicode_escape')
+                    .removeprefix("\"")
+                    .removesuffix("\"")
+                    .lstrip()
+                )
                 print(line)
                 if line.startswith("Name: "):
                     nv = line.removeprefix("Name: ").split(":")
@@ -35,8 +53,13 @@ def ToSoftpackYML(contents: bytes) -> bytes:
             if line == b"}":
                 mode = "0"
             elif line.startswith(b"puts stderr "):
-                line = line.removeprefix(b"puts stderr ").decode(
-                    'unicode_escape').replace("\\$", "$").removeprefix("\"").removesuffix("\"")
+                line = (
+                    line.removeprefix(b"puts stderr ")
+                    .decode('unicode_escape')
+                    .replace("\\$", "$")
+                    .removeprefix("\"")
+                    .removesuffix("\"")
+                )
                 description += "  " + line + "\n"
 
     if version != "":
@@ -46,4 +69,6 @@ def ToSoftpackYML(contents: bytes) -> bytes:
 
     package_str = "\n  - ".join(packages)
 
-    return f"description: |\n{description}packages:\n  - {package_str}\n".encode()
+    return (
+        f"description: |\n{description}packages:\n  - {package_str}\n".encode()
+    )

@@ -14,7 +14,8 @@ import pytest
 from softpack_core.artifacts import Artifacts, app
 
 artifacts_dict = dict[
-    str, Union[str, pygit2.Oid, Path, Artifacts, tempfile.TemporaryDirectory[str]]
+    str,
+    Union[str, pygit2.Oid, Path, Artifacts, tempfile.TemporaryDirectory[str]],
 ]
 
 
