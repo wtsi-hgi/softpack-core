@@ -139,6 +139,7 @@ ignore_missing_imports = true
 filterwarnings = [
     "ignore::DeprecationWarning:starlette"
 ]
+markers = "repo: mark test as altering a real git repo"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
