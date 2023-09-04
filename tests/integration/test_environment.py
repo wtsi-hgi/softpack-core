@@ -59,7 +59,7 @@ def testable_environment(mocker) -> tetype:
     yield environment, env_input
 
 
-def test_create(post, testable_environment: tetype) -> None:
+def test_create(httpx_post, testable_environment: tetype) -> None:
     environment, env_input = testable_environment
 
     result = environment.create(env_input)
@@ -73,8 +73,8 @@ def test_create(post, testable_environment: tetype) -> None:
     )
     assert file_was_pushed(path)
 
-    post.assert_called_once()
-    builder_called_correctly(post, env_input)
+    httpx_post.assert_called_once()
+    builder_called_correctly(httpx_post, env_input)
 
     result = environment.create(env_input)
     assert isinstance(result, EnvironmentAlreadyExistsError)
@@ -104,18 +104,18 @@ def builder_called_correctly(post_mock, env_input: EnvironmentInput) -> None:
     )
 
 
-def test_update(post, testable_environment) -> None:
+def test_update(httpx_post, testable_environment) -> None:
     environment, env_input = testable_environment
 
     result = environment.create(env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
-    post.assert_called_once()
+    httpx_post.assert_called_once()
 
     env_input.description = "updated description"
     result = environment.update(env_input, env_input.path, env_input.name)
     assert isinstance(result, UpdateEnvironmentSuccess)
 
-    builder_called_correctly(post, env_input)
+    builder_called_correctly(httpx_post, env_input)
 
     result = environment.update(env_input, "invalid/path", "invalid_name")
     assert isinstance(result, InvalidInputError)
@@ -130,7 +130,7 @@ def test_update(post, testable_environment) -> None:
     assert isinstance(result, EnvironmentNotFoundError)
 
 
-def test_delete(post, testable_environment) -> None:
+def test_delete(httpx_post, testable_environment) -> None:
     environment, env_input = testable_environment
 
     result = environment.delete(env_input.name, env_input.path)
@@ -138,7 +138,7 @@ def test_delete(post, testable_environment) -> None:
 
     result = environment.create(env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
-    post.assert_called_once()
+    httpx_post.assert_called_once()
 
     path = Path(
         environment.artifacts.environments_root,
@@ -155,7 +155,7 @@ def test_delete(post, testable_environment) -> None:
 
 
 @pytest.mark.asyncio
-async def test_write_artifact(post, testable_environment, upload):
+async def test_write_artifact(httpx_post, testable_environment, upload):
     environment, env_input = testable_environment
 
     upload.filename = "example.txt"
@@ -171,7 +171,7 @@ async def test_write_artifact(post, testable_environment, upload):
 
     result = environment.create(env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
-    post.assert_called_once()
+    httpx_post.assert_called_once()
 
     result = await environment.write_artifact(
         file=upload,
@@ -197,7 +197,7 @@ async def test_write_artifact(post, testable_environment, upload):
 
 
 @pytest.mark.asyncio
-async def test_iter(post, testable_environment, upload):
+async def test_iter(httpx_post, testable_environment, upload):
     environment, env_input = testable_environment
 
     envs_filter = environment.iter()
@@ -209,7 +209,7 @@ async def test_iter(post, testable_environment, upload):
 
     result = environment.create(env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
-    post.assert_called_once()
+    httpx_post.assert_called_once()
 
     upload.filename = Artifacts.environments_file
     upload.content_type = "text/plain"
