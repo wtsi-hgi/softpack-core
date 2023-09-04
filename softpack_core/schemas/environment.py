@@ -221,6 +221,7 @@ class Environment:
         if not isinstance(response, CreateEnvironmentSuccess):
             return response
 
+        # TODO: remove hard-coding of URL.
         # Send build request
         httpx.post(
             "http://0.0.0.0:7080/environments/build",
