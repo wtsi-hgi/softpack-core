@@ -139,8 +139,6 @@ class Package(Spack.PackageBase):
 class PackageInput(Package):
     """A Strawberry input model representing a package."""
 
-    id: Optional[str] = None
-
     def to_package(self) -> Package:
         """Create a Package object from a PackageInput object.
 
@@ -200,7 +198,7 @@ class Environment:
                 path=obj.path.parent,
                 description=spec.description,
                 packages=map(
-                    lambda package: Package(id=package, name=package),
+                    lambda package: Package(name=package),
                     spec.packages,
                 ),  # type: ignore [call-arg]
                 state=None,

@@ -41,11 +41,11 @@ def testable_environment(mocker) -> tetype:
     mocker.patch.object(Environment, 'artifacts', new=artifacts)
 
     environment = Environment(
-        id="",
+        id="test env id",
         name="test_env_create",
         path=str(get_user_path_without_environments(artifacts, user)),
         description="description",
-        packages=[Package(id="", name="pkg_test")],
+        packages=[Package(name="pkg_test")],
         state=None,
     )
 
