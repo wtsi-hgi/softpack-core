@@ -4,14 +4,12 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-import io
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
 
 import httpx
 import strawberry
-from starlette.datastructures import UploadFile
 from strawberry.file_uploads import Upload
 
 from softpack_core.artifacts import Artifacts
@@ -412,6 +410,6 @@ class EnvironmentSchema(BaseSchema):
         createEnvironment: CreateResponse = Environment.create  # type: ignore
         updateEnvironment: UpdateResponse = Environment.update  # type: ignore
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
-        writeArtifact: WriteArtifactResponse = (
+        writeArtifact: WriteArtifactResponse = (  # type: ignore
             Environment.write_artifact
-        )  # type: ignore
+        )
