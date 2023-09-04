@@ -52,7 +52,7 @@ class PackageCollection:
         return PackageCollection(
             id=collection.id,
             name=collection.name,
-            packages=map(cls.from_package, collection.packages),
+            packages=list(map(cls.from_package, collection.packages)),
         )  # type: ignore [call-arg]
 
     @classmethod
@@ -67,7 +67,7 @@ class PackageCollection:
 
         """
         return PackageMultiVersion(
-            id=package.id, name=package.name, versions=package.versions
+            name=package.name, versions=package.versions
         )  # type: ignore [call-arg]
 
 
