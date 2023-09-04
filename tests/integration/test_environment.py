@@ -29,166 +29,171 @@ from tests.integration.utils import (
 
 pytestmark = pytest.mark.repo
 
-tetype = tuple[Environment, EnvironmentInput]
-
 
 @pytest.fixture
-def testable_environment(mocker) -> tetype:
+def testable_environment_input(mocker) -> EnvironmentInput:
     ad = new_test_artifacts()
     artifacts: Artifacts = ad["artifacts"]
     user = ad["test_user"]
 
     mocker.patch.object(Environment, 'artifacts', new=artifacts)
 
-    environment = Environment(
-        id="test env id",
+    testable_environment_input = EnvironmentInput(
         name="test_env_create",
         path=str(get_user_path_without_environments(artifacts, user)),
         description="description",
         packages=[Package(name="pkg_test")],
-        state=None,
     )
 
-    env_input = EnvironmentInput(
-        name=environment.name,
-        path=environment.path,
-        description=environment.description,
-        packages=environment.packages,
-    )
-
-    yield environment, env_input
+    yield testable_environment_input
 
 
-def test_create(httpx_post, testable_environment: tetype) -> None:
-    environment, env_input = testable_environment
-
-    result = environment.create(env_input)
+def test_create(
+    httpx_post, testable_environment_input: EnvironmentInput
+) -> None:
+    result = Environment.create(testable_environment_input)
     assert isinstance(result, CreateEnvironmentSuccess)
 
     path = Path(
-        environment.artifacts.environments_root,
-        env_input.path,
-        env_input.name,
+        Environment.artifacts.environments_root,
+        testable_environment_input.path,
+        testable_environment_input.name,
         ".created",
     )
     assert file_was_pushed(path)
 
     httpx_post.assert_called_once()
-    builder_called_correctly(httpx_post, env_input)
+    builder_called_correctly(httpx_post, testable_environment_input)
 
-    result = environment.create(env_input)
+    result = Environment.create(testable_environment_input)
     assert isinstance(result, EnvironmentAlreadyExistsError)
 
-    env_input.name = ""
-    result = environment.create(env_input)
+    orig_name = testable_environment_input.name
+    testable_environment_input.name = ""
+    result = Environment.create(testable_environment_input)
     assert isinstance(result, InvalidInputError)
 
-    env_input.name = environment.name
-    env_input.path = "invalid/path"
-    result = environment.create(env_input)
+    testable_environment_input.name = orig_name
+    testable_environment_input.path = "invalid/path"
+    result = Environment.create(testable_environment_input)
     assert isinstance(result, InvalidInputError)
 
 
-def builder_called_correctly(post_mock, env_input: EnvironmentInput) -> None:
+def builder_called_correctly(
+    post_mock, testable_environment_input: EnvironmentInput
+) -> None:
     # TODO: don't mock this; actually have a real builder service to test with?
     # Also need to not hard-code the url here.
     post_mock.assert_called_with(
         "http://0.0.0.0:7080/environments/build",
         json={
-            "name": f"{env_input.path}/{env_input.name}",
+            "name": f"{testable_environment_input.path}/{testable_environment_input.name}",
             "model": {
-                "description": env_input.description,
-                "packages": [f"{pkg.name}" for pkg in env_input.packages],
+                "description": testable_environment_input.description,
+                "packages": [
+                    f"{pkg.name}"
+                    for pkg in testable_environment_input.packages
+                ],
             },
         },
     )
 
 
-def test_update(httpx_post, testable_environment) -> None:
-    environment, env_input = testable_environment
-
-    result = environment.create(env_input)
+def test_update(httpx_post, testable_environment_input) -> None:
+    result = Environment.create(testable_environment_input)
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_called_once()
 
-    env_input.description = "updated description"
-    result = environment.update(env_input, env_input.path, env_input.name)
+    testable_environment_input.description = "updated description"
+    result = Environment.update(
+        testable_environment_input,
+        testable_environment_input.path,
+        testable_environment_input.name,
+    )
     assert isinstance(result, UpdateEnvironmentSuccess)
 
-    builder_called_correctly(httpx_post, env_input)
+    builder_called_correctly(httpx_post, testable_environment_input)
 
-    result = environment.update(env_input, "invalid/path", "invalid_name")
+    result = Environment.update(
+        testable_environment_input, "invalid/path", "invalid_name"
+    )
     assert isinstance(result, InvalidInputError)
 
-    env_input.name = ""
-    result = environment.update(env_input, env_input.path, env_input.name)
+    testable_environment_input.name = ""
+    result = Environment.update(
+        testable_environment_input,
+        testable_environment_input.path,
+        testable_environment_input.name,
+    )
     assert isinstance(result, InvalidInputError)
 
-    env_input.name = "invalid_name"
-    env_input.path = "invalid/path"
-    result = environment.update(env_input, "invalid/path", "invalid_name")
+    testable_environment_input.name = "invalid_name"
+    testable_environment_input.path = "invalid/path"
+    result = Environment.update(
+        testable_environment_input, "invalid/path", "invalid_name"
+    )
     assert isinstance(result, EnvironmentNotFoundError)
 
 
-def test_delete(httpx_post, testable_environment) -> None:
-    environment, env_input = testable_environment
-
-    result = environment.delete(env_input.name, env_input.path)
+def test_delete(httpx_post, testable_environment_input) -> None:
+    result = Environment.delete(
+        testable_environment_input.name, testable_environment_input.path
+    )
     assert isinstance(result, EnvironmentNotFoundError)
 
-    result = environment.create(env_input)
+    result = Environment.create(testable_environment_input)
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_called_once()
 
     path = Path(
-        environment.artifacts.environments_root,
-        env_input.path,
-        env_input.name,
+        Environment.artifacts.environments_root,
+        testable_environment_input.path,
+        testable_environment_input.name,
         ".created",
     )
     assert file_was_pushed(path)
 
-    result = environment.delete(env_input.name, env_input.path)
+    result = Environment.delete(
+        testable_environment_input.name, testable_environment_input.path
+    )
     assert isinstance(result, DeleteEnvironmentSuccess)
 
     assert not file_was_pushed(path)
 
 
 @pytest.mark.asyncio
-async def test_write_artifact(httpx_post, testable_environment, upload):
-    environment, env_input = testable_environment
-
+async def test_write_artifact(httpx_post, testable_environment_input, upload):
     upload.filename = "example.txt"
     upload.content_type = "text/plain"
     upload.read.return_value = b"mock data"
 
-    result = await environment.write_artifact(
+    result = await Environment.write_artifact(
         file=upload,
-        folder_path=f"{env_input.path}/{env_input.name}",
+        folder_path=f"{testable_environment_input.path}/{testable_environment_input.name}",
         file_name=upload.filename,
     )
     assert isinstance(result, InvalidInputError)
 
-    result = environment.create(env_input)
+    result = Environment.create(testable_environment_input)
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_called_once()
 
-    result = await environment.write_artifact(
+    result = await Environment.write_artifact(
         file=upload,
-        folder_path=f"{env_input.path}/{env_input.name}",
+        folder_path=f"{testable_environment_input.path}/{testable_environment_input.name}",
         file_name=upload.filename,
     )
     assert isinstance(result, WriteArtifactSuccess)
 
     path = Path(
-        environment.artifacts.environments_root,
-        env_input.path,
-        env_input.name,
+        Environment.artifacts.environments_root,
+        testable_environment_input.path,
+        testable_environment_input.name,
         upload.filename,
     )
     assert file_was_pushed(path)
 
-    result = await environment.write_artifact(
+    result = await Environment.write_artifact(
         file=upload,
         folder_path="invalid/env/path",
         file_name=upload.filename,
@@ -197,17 +202,15 @@ async def test_write_artifact(httpx_post, testable_environment, upload):
 
 
 @pytest.mark.asyncio
-async def test_iter(httpx_post, testable_environment, upload):
-    environment, env_input = testable_environment
-
-    envs_filter = environment.iter()
+async def test_iter(httpx_post, testable_environment_input, upload):
+    envs_filter = Environment.iter()
     count = 0
     for env in envs_filter:
         count += 1
 
     assert count == 0
 
-    result = environment.create(env_input)
+    result = Environment.create(testable_environment_input)
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_called_once()
 
@@ -215,17 +218,17 @@ async def test_iter(httpx_post, testable_environment, upload):
     upload.content_type = "text/plain"
     upload.read.return_value = b"description: test env\npackages:\n- zlib\n"
 
-    result = await environment.write_artifact(
+    result = await Environment.write_artifact(
         file=upload,
-        folder_path=f"{env_input.path}/{env_input.name}",
+        folder_path=f"{testable_environment_input.path}/{testable_environment_input.name}",
         file_name=upload.filename,
     )
     assert isinstance(result, WriteArtifactSuccess)
 
-    envs_filter = environment.iter()
+    envs_filter = Environment.iter()
     count = 0
     for env in envs_filter:
-        assert env.name == env_input.name
+        assert env.name == testable_environment_input.name
         assert any(p.name == "zlib" for p in env.packages)
         count += 1
 
