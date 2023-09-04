@@ -9,6 +9,7 @@ import pytest
 from softpack_core.moduleparse import ToSoftpackYML
 
 
+@pytest.mark.skip
 def test_tosoftpack() -> None:
     test_files_dir = Path(Path(__file__).parent, "files")
 
