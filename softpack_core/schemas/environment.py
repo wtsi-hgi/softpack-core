@@ -4,15 +4,15 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-from dataclasses import dataclass
 import io
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
 
 import httpx
 import strawberry
-from strawberry.file_uploads import Upload
 from starlette.datastructures import UploadFile
+from strawberry.file_uploads import Upload
 
 from softpack_core.artifacts import Artifacts
 from softpack_core.moduleparse import ToSoftpackYML
@@ -364,11 +364,13 @@ class Environment:
     @classmethod
     async def create_from_module(
         cls, file: Upload, module_path: str, environment_path: str
-    ) -> CreateResponse:
+    ) -> CreateResponse:  # type: ignore
         """Create an Environment based on an existing module.
+
         The environment will not be built; a "fake" softpack.yml and the
         supplied module file will be written as artifacts in a newly created
         environment instead, so that they can be discovered.
+
         Args:
             file: the module file to add to the repo, and to parse to fake a
                   corresponding softpack.yml. It should have a format similar
@@ -383,6 +385,7 @@ class Environment:
             environment_path: the subdirectories of environments folder that
                               artifacts will be stored in, eg.
                               users/username/software_name
+
         Returns:
             A message confirming the success or failure of the operation.
         """
@@ -396,7 +399,7 @@ class Environment:
             name=environment_name,
             path="/".join(environment_dirs),
             description="",
-            packages=(),
+            packages=list(),
         )
 
         response = cls.create_new_env(env)
@@ -425,14 +428,16 @@ class Environment:
     @classmethod
     async def write_module_artifacts(
         cls, module_file: Upload, softpack_file: Upload, environment_path: str
-    ) -> WriteArtifactResponse:
+    ) -> WriteArtifactResponse:  # type: ignore
         """Writes the given module and softpack files to the artifacts repo.
+
         Args:
             module_file (Upload): An shpc-style module file.
             softpack_file (Upload): A "fake" softpack.yml file describing what
             the module file offers.
             environment_path (str): Path to the environment, eg.
             users/user/env.
+
         Returns:
             WriteArtifactResponse: contains message and commit hash of
             softpack.yml upload.
