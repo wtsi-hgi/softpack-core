@@ -39,8 +39,11 @@ class ArtifactsConfig(BaseModel):
 
         url: AnyUrl
         username: Optional[str]
+        author: str
+        email: str
         reader: Optional[str]
         writer: Optional[str]
+        branch: Optional[str]
 
     path: Path
     repo: Repo

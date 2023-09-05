@@ -26,6 +26,19 @@ SoftPack Core - GraphQL backend service
 
 ## Installation
 
+### External dependencies
+
+SoftPack Core relies on Spack. Install that first:
+
+``` console
+$ git clone -c feature.manyFiles=true --depth 1 https://github.com/spack/spack.git
+$ source spack/share/spack/setup-env.sh
+```
+
+To start the service, you will also need to configure a git repository to store
+artifacts. That respository must have at least 1 file in
+environments/users/<subdir> and another file in environments/groups/<subdir>.
+
 ### Stable release
 
 To install SoftPack Core, run this command in your
@@ -88,6 +101,43 @@ Run tests with [Tox][]
 
 ``` console
 poetry run tox
+```
+
+To run integration tests, you need a git repository set up with token access and
+a branch named after your git repo username (stripped of any @domain if your
+username is an email address).
+
+Make sure the artifacts/repo section of ~/.softpack/core/config.yml is
+configured correctly:
+
+```
+artifacts:
+  repo:
+    url: https://github.com/[your-org]/development-softpack-artifacts.git
+    username: [your-username]
+    author: [your-name]
+    email: [your-email]
+    writer: [your-token]
+```
+
+Then enable the integration tests by suppling --repo to `poetry run pytest`.
+
+To discover all tests and run them (skipping integration tests with no --repo):
+
+``` console
+poetry run pytest tests -sv
+```
+
+To run just the integration tests:
+
+``` console
+poetry run pytest tests/integration -sv --repo
+```
+
+To run an individual test:
+
+``` console
+poetry run pytest tests/integration/test_artifacts.py::test_clone -sv --repo
 ```
 
 Run [MkDocs] server to view documentation:

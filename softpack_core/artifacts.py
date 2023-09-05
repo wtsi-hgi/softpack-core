@@ -5,6 +5,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 import itertools
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
@@ -20,6 +21,12 @@ class Artifacts:
     """Artifacts repo access class."""
 
     environments_root = "environments"
+    environments_file = "softpack.yml"
+    module_file = "module"
+    users_folder_name = "users"
+    groups_folder_name = "groups"
+    credentials_callback = None
+    signature = None
 
     @dataclass
     class Object:
@@ -72,7 +79,7 @@ class Artifacts:
             Returns:
                 Box: A boxed dictionary.
             """
-            spec = self.obj["softpack.yml"]
+            spec = self.obj[Artifacts.environments_file]
             return Box.from_yaml(spec.data)
 
         def __iter__(self) -> Iterator["Artifacts.Object"]:
@@ -98,22 +105,29 @@ class Artifacts:
         try:
             credentials = pygit2.UserPass(
                 self.settings.artifacts.repo.username,
-                self.settings.artifacts.repo.reader,
+                self.settings.artifacts.repo.writer,
             )
         except Exception as e:
             print(e)
 
-        callbacks = pygit2.RemoteCallbacks(credentials=credentials)
+        self.credentials_callback = pygit2.RemoteCallbacks(
+            credentials=credentials
+        )
+
+        branch = self.settings.artifacts.repo.branch
+        if branch is None:
+            branch = "main"
 
         if path.is_dir():
-            self.repo = pygit2.Repository(path)
-        else:
-            self.repo = pygit2.clone_repository(
-                self.settings.artifacts.repo.url,
-                path=path,
-                callbacks=callbacks,
-                bare=True,
-            )
+            shutil.rmtree(path)
+
+        self.repo = pygit2.clone_repository(
+            self.settings.artifacts.repo.url,
+            path=path,
+            callbacks=self.credentials_callback,
+            bare=True,
+            checkout_branch=branch,
+        )
 
         self.reference = "/".join(
             [
@@ -121,6 +135,11 @@ class Artifacts:
                 self.repo.remotes[0].name,
                 self.repo.head.shorthand,
             ]
+        )
+
+        self.signature = pygit2.Signature(
+            self.settings.artifacts.repo.author,
+            self.settings.artifacts.repo.email,
         )
 
     def user_folder(self, user: Optional[str] = None) -> Path:
@@ -132,7 +151,7 @@ class Artifacts:
         Returns:
             Path: A user folder.
         """
-        return self.environments_folder("users", user)
+        return self.environments_folder(self.users_folder_name, user)
 
     def group_folder(self, group: Optional[str] = None) -> Path:
         """Get the group folder for a given group.
@@ -143,7 +162,7 @@ class Artifacts:
         Returns:
             Path: A group folder.
         """
-        return self.environments_folder("groups", group)
+        return self.environments_folder(self.groups_folder_name, group)
 
     def environments_folder(self, *args: Optional[str]) -> Path:
         """Get the folder under the environments folder.
@@ -156,27 +175,25 @@ class Artifacts:
         """
         return Path(self.environments_root, *filter(None, list(args)))
 
-    def iter_user(self, user: Optional[str] = None) -> list[pygit2.Tree]:
-        """Iterate environments for a given user.
-
-        Args:
-            user: A username or None.
+    def iter_users(self) -> list[pygit2.Tree]:
+        """Iterate environments for all users.
 
         Returns:
             list[pygit2.Tree]: List of environments
         """
-        return self.iter_environments(self.user_folder(user))
+        return self.iter_environments(
+            self.environments_folder(self.users_folder_name)
+        )
 
-    def iter_group(self, group: Optional[str] = None) -> list[pygit2.Tree]:
-        """Iterate environments for a given group.
-
-        Args:
-            group: A group name or None.
+    def iter_groups(self) -> list[pygit2.Tree]:
+        """Iterate environments for all groups.
 
         Returns:
             list[pygit2.Tree]: List of environments
         """
-        return self.iter_environments(self.group_folder(group))
+        return self.iter_environments(
+            self.environments_folder(self.groups_folder_name)
+        )
 
     def iter_environments(self, path: Path) -> list[pygit2.Tree]:
         """Iterate environments under a path.
@@ -201,7 +218,7 @@ class Artifacts:
         return self.repo.lookup_reference(self.reference).peel().tree[path]
 
     def environments(self, path: Path) -> Iterable:
-        """Return a list of environments in the repo.
+        """Return a list of environments in the repo under the given path.
 
         Args:
             path: a searchable path within the repo
@@ -214,29 +231,170 @@ class Artifacts:
         except KeyError:
             return iter(())
 
-    def iter(self, user: Optional[str] = None) -> Iterable:
-        """Return am iterator for the specified user.
-
-        Args:
-            user: a username
+    def iter(self) -> Iterable:
+        """Return an iterator over all environments.
 
         Returns:
             Iterator: an iterator
         """
+        folders = self.iter_users() + self.iter_groups()
+
+        return itertools.chain.from_iterable(map(self.environments, folders))
+
+    def get(self, path: Path, name: str) -> Optional[pygit2.Tree]:
+        """Return the environment at the specified name and path.
+
+        Args:
+            path: the path containing the environment folder
+            name: the name of the environment folder
+
+        Returns:
+            pygit2.Tree: a pygit2.Tree or None
+        """
         try:
-            if user:
-                folders = list(
-                    itertools.chain(
-                        [self.user_folder(user)],
-                        map(self.group_folder, self.ldap.groups(user) or []),
-                    )
-                )
-            else:
-                folders = self.iter_user() + self.iter_group()
-
-            return itertools.chain.from_iterable(
-                map(self.environments, folders)
-            )
-
+            return self.tree(str(self.environments_folder(str(path), name)))
         except KeyError:
-            return iter(())
+            return None
+
+    def commit_and_push(
+        self, tree_oid: pygit2.Oid, message: str
+    ) -> pygit2.Oid:
+        """Commit and push current changes to the remote repository.
+
+        Args:
+            tree_oid: the oid of the tree object that will be committed. The
+            tree this refers to will replace the entire contents of the repo.
+            message: the commit message
+        """
+        ref = self.repo.head.name
+        parents = [self.repo.lookup_reference(ref).target]
+        oid = self.repo.create_commit(
+            ref, self.signature, self.signature, message, tree_oid, parents
+        )
+        remote = self.repo.remotes[0]
+        remote.push([self.repo.head.name], callbacks=self.credentials_callback)
+        return oid
+
+    def build_tree(
+        self,
+        repo: pygit2.Repository,
+        root_tree: pygit2.Tree,
+        new_tree: pygit2.Oid,
+        path: Path,
+    ) -> pygit2.Oid:
+        """Expand new/updated sub tree to include the entire repository.
+
+        Args:
+            repo: a bare repository
+            root_tree: the tree containing the entire repository
+            new_tree: the oid of the new/updated sub tree to be added to the
+            repository
+            path: the path from root_tree root to new_tree root
+        """
+        while str(path) != ".":
+            try:
+                sub_tree = (
+                    root_tree[str(path.parent)]
+                    if str(path.parent) != "."
+                    else root_tree
+                )
+            except KeyError:
+                raise KeyError(
+                    f"{path.parent} does not exist in the repository"
+                )
+            sub_treebuilder = repo.TreeBuilder(sub_tree)
+            sub_treebuilder.insert(
+                path.name, new_tree, pygit2.GIT_FILEMODE_TREE
+            )
+            new_tree = sub_treebuilder.write()
+            path = path.parent
+        return new_tree
+
+    def create_file(
+        self,
+        folder_path: Path,
+        file_name: str,
+        contents: str,
+        new_folder: bool = False,
+        overwrite: bool = False,
+    ) -> pygit2.Oid:
+        """Create a file in the artifacts repo.
+
+        Args:
+            folder_path: the path to the folder the file will be placed in
+            file_name: the name of the file
+            contents: the contents of the file
+            new_folder: if True, create the file's parent folder as well
+            overwrite: if True, overwrite the file at the specified path
+
+        Returns:
+            the OID of the new tree structure of the repository
+        """
+        if not overwrite and self.get(Path(folder_path), file_name):
+            raise FileExistsError("File already exists")
+
+        root_tree = self.repo.head.peel(pygit2.Tree)
+        full_path = Path(self.environments_root, folder_path)
+
+        # Create file
+        file_oid = self.repo.create_blob(contents.encode())
+
+        # Put file in folder
+        if new_folder:
+            new_treebuilder = self.repo.TreeBuilder()
+        else:
+            folder = root_tree[full_path]
+            new_treebuilder = self.repo.TreeBuilder(folder)
+        new_treebuilder.insert(file_name, file_oid, pygit2.GIT_FILEMODE_BLOB)
+        new_tree = new_treebuilder.write()
+
+        # Expand to include the whole repo
+        full_tree = self.build_tree(self.repo, root_tree, new_tree, full_path)
+
+        # Check for errors in the new tree
+        new_tree = self.repo.get(full_tree)
+        path = Path(self.environments_root, folder_path, file_name)
+        diff = self.repo.diff(new_tree, root_tree)
+        if len(diff) > 1:
+            raise RuntimeError("Too many changes to the repo")
+        elif len(diff) < 1:
+            raise RuntimeError("No changes made to the environment")
+        elif len(diff) == 1:
+            new_file = diff[0].delta.new_file
+            if new_file.path != str(path):
+                raise RuntimeError(
+                    f"New file added to incorrect path: \
+                        {new_file.path} instead of {str(path)}"
+                )
+
+        return full_tree
+
+    def delete_environment(
+        self,
+        name: str,
+        path: str,
+    ) -> pygit2.Oid:
+        """Delete an environment folder in GitLab.
+
+        Args:
+            name: the name of the environment
+            path: the path of the environment
+            commit_message: the commit message
+
+        Returns:
+            the OID of the new tree structure of the repository
+        """
+        if len(Path(path).parts) != 2:
+            raise ValueError("Not a valid environment path")
+
+        # Get repository tree
+        root_tree = self.repo.head.peel(pygit2.Tree)
+        # Find environment in the tree
+        full_path = Path(self.environments_root, path)
+        target_tree = root_tree[full_path]
+        # Remove the environment
+        tree_builder = self.repo.TreeBuilder(target_tree)
+        tree_builder.remove(name)
+        new_tree = tree_builder.write()
+
+        return self.build_tree(self.repo, root_tree, new_tree, full_path)

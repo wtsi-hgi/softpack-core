@@ -48,6 +48,8 @@ singleton-decorator = "^1.0.0"
 sqlalchemy = "1.4.45"
 strawberry-graphql = "^0.177.1"
 typer = "^0.9.0"
+pytest-mock = "^3.11.1"
+pytest-asyncio = "^0.21.1"
 
 [tool.poetry.group.dev]
 optional = true
@@ -132,11 +134,13 @@ skip_gitignore = true
 disallow_untyped_calls = true
 disallow_untyped_defs = true
 ignore_missing_imports = true
+plugins = "strawberry.ext.mypy_plugin"
 
 [tool.pytest.ini_options]
 filterwarnings = [
     "ignore::DeprecationWarning:starlette"
 ]
+markers = "repo: mark test as altering a real git repo"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
