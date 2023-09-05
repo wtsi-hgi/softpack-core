@@ -120,7 +120,12 @@ artifacts:
     writer: [your-token]
 ```
 
-Then enable the integration tests by suppling --repo to `poetry run pytest`.
+Then enable the integration tests by suppling --repo to `poetry run pytest`, or
+to tox like this:
+
+```
+poetry run tox -- -- --repo
+```
 
 To discover all tests and run them (skipping integration tests with no --repo):
 
