@@ -6,18 +6,38 @@ LICENSE file in the root directory of this source tree.
 
 from pathlib import Path
 
+import yaml
+
 from softpack_core.moduleparse import ToSoftpackYML
 
 
-def test_tosoftpack() -> None:
-    test_files_dir = Path(Path(__file__).parent, "files")
+def pytest_generate_tests(metafunc):
+    if "module_spec" not in metafunc.fixturenames:
+        return
 
-    with open(Path(test_files_dir, "ldsc.module"), "rb") as fh:
+    with open(Path(__file__).parent / "data/specs/modules/tests.yml") as f:
+        yml = yaml.safe_load(f)
+
+    metafunc.parametrize(
+        "module_spec",
+        yml["tests"],
+    )
+
+
+def test_tosoftpack(module_spec) -> None:
+    path = module_spec["path"]
+    output = module_spec.get("output")
+    fail_message = module_spec.get("fail")
+
+    with open(Path(Path(__file__).parent, path), "rb") as fh:
         module_data = fh.read()
 
-    with open(Path(test_files_dir, "ldsc.yml"), "rb") as fh:
+    try:
+        yml = ToSoftpackYML(module_data)
+    except any as e:
+        assert e.message == fail_message
+        return
+
+    with open(Path(Path(__file__).parent, output), "rb") as fh:
         expected_yml = fh.read()
-
-    yml = ToSoftpackYML(module_data)
-
-    assert yml == expected_yml
+        assert yml == expected_yml

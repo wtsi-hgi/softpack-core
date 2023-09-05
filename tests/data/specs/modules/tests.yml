@@ -1,0 +1,6 @@
+tests:
+  - path: data/specs/env-a.yml
+    expect: CreateEnvironmentSuccess
+  
+  - path: data/specs/env-b.yml
+    expect: dfdffddfdEnvironmentSuccess
