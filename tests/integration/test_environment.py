@@ -213,7 +213,7 @@ async def test_iter(httpx_post, testable_env_input, upload):
 
     upload.filename = Artifacts.environments_file
     upload.content_type = "text/plain"
-    upload.read.return_value = b"description: test env\npackages:\n- zlib\n"
+    upload.read.return_value = b"description: test env\npackages:\n  - zlib\n"
 
     result = await Environment.write_artifact(
         file=upload,
