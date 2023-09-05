@@ -51,6 +51,19 @@ def testable_env_input(mocker) -> EnvironmentInput:
 def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     result = Environment.create(testable_env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
+    httpx_post.assert_called_once()
+    builder_called_correctly(httpx_post, testable_env_input)
+
+    result = Environment.create(
+        EnvironmentInput(
+            name="test_env_create2",
+            path="groups/not_already_in_repo",
+            description="description2",
+            packages=[Package(name="pkg_test2")],
+        )
+    )
+    assert isinstance(result, CreateEnvironmentSuccess)
+    httpx_post.assert_called()
 
     path = Path(
         Environment.artifacts.environments_root,
@@ -59,9 +72,6 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
         ".created",
     )
     assert file_in_remote(path)
-
-    httpx_post.assert_called_once()
-    builder_called_correctly(httpx_post, testable_env_input)
 
     result = Environment.create(testable_env_input)
     assert isinstance(result, EnvironmentAlreadyExistsError)

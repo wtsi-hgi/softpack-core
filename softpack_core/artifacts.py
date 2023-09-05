@@ -293,16 +293,14 @@ class Artifacts:
         """
         while str(path) != ".":
             try:
-                sub_tree = (
+                sub_treebuilder = repo.TreeBuilder(
                     root_tree[str(path.parent)]
                     if str(path.parent) != "."
                     else root_tree
                 )
             except KeyError:
-                raise KeyError(
-                    f"{path.parent} does not exist in the repository"
-                )
-            sub_treebuilder = repo.TreeBuilder(sub_tree)
+                sub_treebuilder = repo.TreeBuilder()
+
             sub_treebuilder.insert(
                 path.name, new_tree, pygit2.GIT_FILEMODE_TREE
             )
