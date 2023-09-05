@@ -14,8 +14,8 @@ import pytest
 from softpack_core.artifacts import Artifacts, app
 from tests.integration.utils import (
     commit_and_push_test_repo_changes,
-    file_in_repo,
     file_in_remote,
+    file_in_repo,
     get_user_path_without_environments,
     new_test_artifacts,
 )
