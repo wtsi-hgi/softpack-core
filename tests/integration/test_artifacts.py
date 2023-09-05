@@ -15,7 +15,7 @@ from softpack_core.artifacts import Artifacts, app
 from tests.integration.utils import (
     commit_and_push_test_repo_changes,
     file_in_repo,
-    file_was_pushed,
+    file_in_remote,
     get_user_path_without_environments,
     new_test_artifacts,
 )
@@ -61,7 +61,7 @@ def test_commit_and_push() -> None:
     assert old_commit_oid != new_commit_oid
     assert new_commit_oid == repo_head
 
-    assert file_was_pushed(file_path)
+    assert file_in_remote(file_path)
 
 
 def add_test_file_to_repo(artifacts: Artifacts) -> tuple[pygit2.Oid, Path]:
@@ -140,7 +140,7 @@ def test_create_file() -> None:
     assert basename in [obj.name for obj in user_envs_tree[new_test_env]]
     assert user_envs_tree[new_test_env][basename].data.decode() == "override"
 
-    assert file_was_pushed(
+    assert file_in_remote(
         Path(artifacts.environments_root, folder_path, basename),
         Path(artifacts.environments_root, folder_path, basename2),
     )

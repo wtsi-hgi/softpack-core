@@ -166,7 +166,7 @@ def get_user_path_without_environments(
     return Path(*(artifacts.user_folder(user).parts[1:]))
 
 
-def file_was_pushed(*paths_with_environment: Union[str, Path]) -> bool:
+def file_in_remote(*paths_with_environment: Union[str, Path]) -> bool:
     temp_dir = tempfile.TemporaryDirectory()
     app.settings.artifacts.path = Path(temp_dir.name)
     artifacts = Artifacts()

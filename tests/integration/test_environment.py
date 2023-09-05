@@ -22,7 +22,7 @@ from softpack_core.schemas.environment import (
     WriteArtifactSuccess,
 )
 from tests.integration.utils import (
-    file_was_pushed,
+    file_in_remote,
     get_user_path_without_environments,
     new_test_artifacts,
 )
@@ -58,7 +58,7 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
         testable_env_input.name,
         ".created",
     )
-    assert file_was_pushed(path)
+    assert file_in_remote(path)
 
     httpx_post.assert_called_once()
     builder_called_correctly(httpx_post, testable_env_input)
@@ -148,14 +148,14 @@ def test_delete(httpx_post, testable_env_input) -> None:
         testable_env_input.name,
         ".created",
     )
-    assert file_was_pushed(path)
+    assert file_in_remote(path)
 
     result = Environment.delete(
         testable_env_input.name, testable_env_input.path
     )
     assert isinstance(result, DeleteEnvironmentSuccess)
 
-    assert not file_was_pushed(path)
+    assert not file_in_remote(path)
 
 
 @pytest.mark.asyncio
@@ -188,7 +188,7 @@ async def test_write_artifact(httpx_post, testable_env_input, upload):
         testable_env_input.name,
         upload.filename,
     )
-    assert file_was_pushed(path)
+    assert file_in_remote(path)
 
     result = await Environment.write_artifact(
         file=upload,
