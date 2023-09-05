@@ -37,28 +37,21 @@ class Error:
 class CreateEnvironmentSuccess(Success):
     """Environment successfully scheduled."""
 
-    message: str
-
 
 @strawberry.type
 class UpdateEnvironmentSuccess(Success):
     """Environment successfully updated."""
-
-    message: str
 
 
 @strawberry.type
 class DeleteEnvironmentSuccess(Success):
     """Environment successfully deleted."""
 
-    message: str
-
 
 @strawberry.type
 class WriteArtifactSuccess(Success):
     """Artifact successfully created."""
 
-    message: str
     commit_oid: str
 
 
@@ -72,7 +65,6 @@ class InvalidInputError(Error):
 class EnvironmentNotFoundError(Error):
     """Environment not found."""
 
-    message: str
     path: str
     name: str
 
@@ -81,7 +73,6 @@ class EnvironmentNotFoundError(Error):
 class EnvironmentAlreadyExistsError(Error):
     """Environment name already exists."""
 
-    message: str
     path: str
     name: str
 
