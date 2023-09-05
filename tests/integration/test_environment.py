@@ -240,3 +240,36 @@ async def test_iter(httpx_post, testable_env_input, upload):
         count += 1
 
     assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_create_from_module(httpx_post, testable_env_input, upload):
+    test_file_path = Path(Path(__file__).parent.parent, "files", "ldsc.module")
+
+    with open(test_file_path, "rb") as fh:
+        upload.filename = "ldsc.module"
+        upload.content_type = "text/plain"
+        upload.read.return_value = fh.read()
+
+    env_name = "some-environment"
+    name = "groups/hgi/" + env_name
+    module_path = "HGI/common/some_environment"
+
+    result = await Environment.create_from_module(
+        file=upload,
+        module_path=module_path,
+        environment_path=name,
+    )
+
+    assert isinstance(result, CreateEnvironmentSuccess)
+
+    parent_path = Path(
+        Environment.artifacts.group_folder(),
+        "hgi",
+        env_name,
+    )
+
+    assert file_in_remote(
+        Path(parent_path, Environment.artifacts.environments_file),
+        Path(parent_path, Environment.artifacts.module_file),
+    )
