@@ -6,8 +6,6 @@ LICENSE file in the root directory of this source tree.
 
 from pathlib import Path
 
-import yaml
-
 from softpack_core.moduleparse import ToSoftpackYML
 
 

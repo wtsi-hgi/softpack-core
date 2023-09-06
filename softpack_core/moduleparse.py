@@ -4,9 +4,8 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-from typing import Union, cast
-
 import re
+from typing import Union, cast
 
 
 def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
@@ -14,8 +13,8 @@ def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
 
     It should have a format similar to that produced by shpc, with `module
     whatis` outputting a "Name: " line, a "Version: " line, and optionally a
-    "Packages: " line to say what packages are available. Each package should be
-    separated by a comma.
+    "Packages: " line to say what packages are available. Each package should
+    be separated by a comma.
 
     `module help` output will be translated into the description in the
     softpack.yml.
