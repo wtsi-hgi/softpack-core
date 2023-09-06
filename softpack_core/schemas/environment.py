@@ -154,6 +154,7 @@ class Environment:
     name: str
     path: str
     description: str
+    readme: str
     packages: list[Package]
     state: Optional[str]
     artifacts = Artifacts()
@@ -193,6 +194,7 @@ class Environment:
                     )
                 ),  # type: ignore [call-arg]
                 state=None,
+                readme=spec.get("readme", ""),
             )
         except KeyError:
             return None

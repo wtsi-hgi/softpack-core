@@ -75,13 +75,19 @@ class Artifacts:
             return Artifacts.Object(path=self.path, obj=self.obj[key])
 
         def spec(self) -> Box:
-            """Get spec dictionary.
+            """Get dictionary of the softpack.yml file contents.
+
+            Also includes the contents of any README.md file.
 
             Returns:
                 Box: A boxed dictionary.
             """
-            spec = self.obj[Artifacts.environments_file]
-            return Box.from_yaml(spec.data)
+            info = Box.from_yaml(self.obj[Artifacts.environments_file].data)
+
+            if Artifacts.readme_file in self.obj:
+                info["readme"] = self.obj[Artifacts.readme_file].data.decode()
+
+            return info
 
         def __iter__(self) -> Iterator["Artifacts.Object"]:
             """A generator for returning items under an artifacts.

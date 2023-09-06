@@ -285,3 +285,15 @@ async def test_create_from_module(httpx_post, testable_env_input, upload):
     obj = tree[str(readme_path)]
     assert obj is not None
     assert obj.data == expected_readme_data
+
+    envs = list(Environment.iter())
+
+    assert len(envs) == 1
+
+    env = envs[0]
+
+    package_name = "quay.io/biocontainers/ldsc@1.0.1--pyhdfd78af_2"
+
+    assert env.name == env_name
+    assert len(env.packages) == 1 and env.packages[0].name == package_name
+    assert "module load " + module_path in env.readme
