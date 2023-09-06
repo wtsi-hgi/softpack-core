@@ -5,6 +5,8 @@ LICENSE file in the root directory of this source tree.
 """
 
 import re
+from pathlib import Path
+from string import Template
 from typing import Union, cast
 
 
@@ -117,25 +119,7 @@ def GenerateEnvReadme(module_path: str) -> bytes:
     Returns:
         bytes: The byte content of the README.md file.
     """
-    return (
-        """# Usage
+    with open(Path(__file__).parent / "templates" / "readme.tmpl", "r") as fh:
+        tmpl = Template(fh.read())
 
-To use this environment, run:
-
-```
-module load """
-        + module_path
-        + """
-```
-
-This will usually add your desired software to your PATH. Check the description
-of the environement for more information, which might also be available by
-running:
-
-```
-module help """
-        + module_path
-        + """
-```
-"""
-    ).encode()
+    return tmpl.substitute({"module_path": module_path}).encode()
