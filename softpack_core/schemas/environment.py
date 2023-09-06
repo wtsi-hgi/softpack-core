@@ -15,7 +15,7 @@ from starlette.datastructures import UploadFile
 from strawberry.file_uploads import Upload
 
 from softpack_core.artifacts import Artifacts
-from softpack_core.module import ToSoftpackYML, GenerateEnvReadme
+from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 from softpack_core.schemas.base import BaseSchema
 from softpack_core.spack import Spack
 

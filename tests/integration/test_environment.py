@@ -6,8 +6,8 @@ LICENSE file in the root directory of this source tree.
 
 from pathlib import Path
 
-import pytest
 import pygit2
+import pytest
 
 from softpack_core.artifacts import Artifacts
 from softpack_core.schemas.environment import (

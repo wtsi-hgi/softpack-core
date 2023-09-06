@@ -5,7 +5,6 @@ LICENSE file in the root directory of this source tree.
 """
 
 from pathlib import Path
-import pygit2
 
 from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 
