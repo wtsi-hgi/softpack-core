@@ -106,3 +106,28 @@ def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
     return (
         f"description: |\n{description}packages:\n  - {package_str}\n".encode()
     )
+
+
+def GenerateEnvReadme(module_path: str) -> bytes:
+    return (
+        """# Usage
+
+To use this environment, run:
+
+``` 
+module load """
+        + module_path
+        + """
+```
+
+This will usually add your desired software to your PATH. Check the description
+of the environement for more information, which might also be available by
+running:
+
+```
+module help """
+        + module_path
+        + """
+```
+"""
+    ).encode()

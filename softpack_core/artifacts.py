@@ -23,6 +23,7 @@ class Artifacts:
     environments_root = "environments"
     environments_file = "softpack.yml"
     module_file = "module"
+    readme_file = "README.md"
     users_folder_name = "users"
     groups_folder_name = "groups"
     credentials_callback = None

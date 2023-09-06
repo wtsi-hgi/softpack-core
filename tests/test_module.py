@@ -5,8 +5,9 @@ LICENSE file in the root directory of this source tree.
 """
 
 from pathlib import Path
+import pygit2
 
-from softpack_core.moduleparse import ToSoftpackYML
+from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 
 
 def pytest_generate_tests(metafunc):
@@ -30,3 +31,14 @@ def test_tosoftpack(module_input: Path) -> None:
     with open(output, "rb") as fh:
         expected_yml = fh.read()
         assert yml == expected_yml
+
+
+def test_generate_env_readme() -> None:
+    test_files_dir = Path(__file__).parent / "files" / "modules"
+
+    readme_data = GenerateEnvReadme("HGI/common/some_environment")
+
+    with open(test_files_dir / "shpc.readme", "rb") as fh:
+        expected_readme_data = fh.read()
+
+    assert readme_data == expected_readme_data

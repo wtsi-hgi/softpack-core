@@ -15,7 +15,7 @@ from starlette.datastructures import UploadFile
 from strawberry.file_uploads import Upload
 
 from softpack_core.artifacts import Artifacts
-from softpack_core.moduleparse import ToSoftpackYML
+from softpack_core.module import ToSoftpackYML, GenerateEnvReadme
 from softpack_core.schemas.base import BaseSchema
 from softpack_core.spack import Spack
 
@@ -394,6 +394,7 @@ class Environment:
 
         contents = await file.read()
         yml = ToSoftpackYML(environment_name, contents)
+        readme = GenerateEnvReadme(module_path)
 
         env = EnvironmentInput(
             name=environment_name,
@@ -408,10 +409,12 @@ class Environment:
 
         module_file = UploadFile(file=io.BytesIO(contents))
         softpack_file = UploadFile(file=io.BytesIO(yml))
+        readme_file = UploadFile(file=io.BytesIO(readme))
 
         result = await cls.write_module_artifacts(
             module_file=module_file,
             softpack_file=softpack_file,
+            readme_file=readme_file,
             environment_path=environment_path,
         )
 
@@ -427,7 +430,11 @@ class Environment:
 
     @classmethod
     async def write_module_artifacts(
-        cls, module_file: Upload, softpack_file: Upload, environment_path: str
+        cls,
+        module_file: Upload,
+        softpack_file: Upload,
+        readme_file: Upload,
+        environment_path: str,
     ) -> WriteArtifactResponse:  # type: ignore
         """Writes the given module and softpack files to the artifacts repo.
 
@@ -435,6 +442,8 @@ class Environment:
             module_file (Upload): An shpc-style module file.
             softpack_file (Upload): A "fake" softpack.yml file describing what
             the module file offers.
+            readme_file (Upload): An README.md file containing usage
+            instructions.
             environment_path (str): Path to the environment, eg.
             users/user/env.
 
@@ -446,6 +455,15 @@ class Environment:
             file=module_file,
             folder_path=environment_path,
             file_name=cls.artifacts.module_file,
+        )
+
+        if not isinstance(result, WriteArtifactSuccess):
+            return result
+
+        result = await cls.write_artifact(
+            file=readme_file,
+            folder_path=environment_path,
+            file_name=cls.artifacts.readme_file,
         )
 
         if not isinstance(result, WriteArtifactSuccess):
