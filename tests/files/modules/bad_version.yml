@@ -1,0 +1,10 @@
+description: |
+  Help text line 1
+  
+  Help text line 2
+packages:
+  - name_of_container@1.0.1
+  - pkg1
+  - pkg2
+  - pkg3
+  - pkg4

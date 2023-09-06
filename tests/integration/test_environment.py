@@ -6,6 +6,7 @@ LICENSE file in the root directory of this source tree.
 
 from pathlib import Path
 
+import pygit2
 import pytest
 
 from softpack_core.artifacts import Artifacts
@@ -240,3 +241,59 @@ async def test_iter(httpx_post, testable_env_input, upload):
         count += 1
 
     assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_create_from_module(httpx_post, testable_env_input, upload):
+    test_files_dir = Path(__file__).parent.parent / "files" / "modules"
+    test_file_path = test_files_dir / "shpc.mod"
+
+    with open(test_file_path, "rb") as fh:
+        upload.filename = "shpc.mod"
+        upload.content_type = "text/plain"
+        upload.read.return_value = fh.read()
+
+    env_name = "some-environment"
+    name = "groups/hgi/" + env_name
+    module_path = "HGI/common/some_environment"
+
+    result = await Environment.create_from_module(
+        file=upload,
+        module_path=module_path,
+        environment_path=name,
+    )
+
+    assert isinstance(result, CreateEnvironmentSuccess)
+
+    parent_path = Path(
+        Environment.artifacts.group_folder(),
+        "hgi",
+        env_name,
+    )
+
+    readme_path = Path(parent_path, Environment.artifacts.readme_file)
+    assert file_in_remote(
+        Path(parent_path, Environment.artifacts.environments_file),
+        Path(parent_path, Environment.artifacts.module_file),
+        readme_path,
+    )
+
+    with open(test_files_dir / "shpc.readme", "rb") as fh:
+        expected_readme_data = fh.read()
+
+    tree = Environment.artifacts.repo.head.peel(pygit2.Tree)
+    obj = tree[str(readme_path)]
+    assert obj is not None
+    assert obj.data == expected_readme_data
+
+    envs = list(Environment.iter())
+
+    assert len(envs) == 1
+
+    env = envs[0]
+
+    package_name = "quay.io/biocontainers/ldsc@1.0.1--pyhdfd78af_2"
+
+    assert env.name == env_name
+    assert len(env.packages) == 1 and env.packages[0].name == package_name
+    assert "module load " + module_path in env.readme

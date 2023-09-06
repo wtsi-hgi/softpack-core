@@ -4,15 +4,18 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import io
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
 
 import httpx
 import strawberry
+from starlette.datastructures import UploadFile
 from strawberry.file_uploads import Upload
 
 from softpack_core.artifacts import Artifacts
+from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 from softpack_core.schemas.base import BaseSchema
 from softpack_core.spack import Spack
 
@@ -151,6 +154,7 @@ class Environment:
     name: str
     path: str
     description: str
+    readme: str
     packages: list[Package]
     state: Optional[str]
     artifacts = Artifacts()
@@ -190,6 +194,7 @@ class Environment:
                     )
                 ),  # type: ignore [call-arg]
                 state=None,
+                readme=spec.get("readme", ""),
             )
         except KeyError:
             return None
@@ -359,6 +364,120 @@ class Environment:
         )
 
     @classmethod
+    async def create_from_module(
+        cls, file: Upload, module_path: str, environment_path: str
+    ) -> CreateResponse:  # type: ignore
+        """Create an Environment based on an existing module.
+
+        The environment will not be built; a "fake" softpack.yml and the
+        supplied module file will be written as artifacts in a newly created
+        environment instead, so that they can be discovered.
+
+        Args:
+            file: the module file to add to the repo, and to parse to fake a
+                  corresponding softpack.yml. It should have a format similar
+                  to that produced by shpc, with `module whatis` outputting
+                  a "Name: " line, a "Version: " line, and optionally a
+                  "Packages: " line to say what packages are available.
+                  `module help` output will be translated into the description
+                  in the softpack.yml.
+            module_path: the local path that users can `module load` - this is
+                         used to auto-generate usage help text for this
+                         environment.
+            environment_path: the subdirectories of environments folder that
+                              artifacts will be stored in, eg.
+                              users/username/software_name
+
+        Returns:
+            A message confirming the success or failure of the operation.
+        """
+        environment_dirs = environment_path.split("/")
+        environment_name = environment_dirs.pop()
+
+        contents = await file.read()
+        yml = ToSoftpackYML(environment_name, contents)
+        readme = GenerateEnvReadme(module_path)
+
+        env = EnvironmentInput(
+            name=environment_name,
+            path="/".join(environment_dirs),
+            description="",
+            packages=list(),
+        )
+
+        response = cls.create_new_env(env)
+        if not isinstance(response, CreateEnvironmentSuccess):
+            return response
+
+        module_file = UploadFile(file=io.BytesIO(contents))
+        softpack_file = UploadFile(file=io.BytesIO(yml))
+        readme_file = UploadFile(file=io.BytesIO(readme))
+
+        result = await cls.write_module_artifacts(
+            module_file=module_file,
+            softpack_file=softpack_file,
+            readme_file=readme_file,
+            environment_path=environment_path,
+        )
+
+        if not isinstance(result, WriteArtifactSuccess):
+            cls.delete(name=environment_name, path=environment_path)
+            return InvalidInputError(
+                message="Write of module file failed: " + result.message
+            )
+
+        return CreateEnvironmentSuccess(
+            message="Successfully created environment in artifacts repo"
+        )
+
+    @classmethod
+    async def write_module_artifacts(
+        cls,
+        module_file: Upload,
+        softpack_file: Upload,
+        readme_file: Upload,
+        environment_path: str,
+    ) -> WriteArtifactResponse:  # type: ignore
+        """Writes the given module and softpack files to the artifacts repo.
+
+        Args:
+            module_file (Upload): An shpc-style module file.
+            softpack_file (Upload): A "fake" softpack.yml file describing what
+            the module file offers.
+            readme_file (Upload): An README.md file containing usage
+            instructions.
+            environment_path (str): Path to the environment, eg.
+            users/user/env.
+
+        Returns:
+            WriteArtifactResponse: contains message and commit hash of
+            softpack.yml upload.
+        """
+        result = await cls.write_artifact(
+            file=module_file,
+            folder_path=environment_path,
+            file_name=cls.artifacts.module_file,
+        )
+
+        if not isinstance(result, WriteArtifactSuccess):
+            return result
+
+        result = await cls.write_artifact(
+            file=readme_file,
+            folder_path=environment_path,
+            file_name=cls.artifacts.readme_file,
+        )
+
+        if not isinstance(result, WriteArtifactSuccess):
+            return result
+
+        return await cls.write_artifact(
+            file=softpack_file,
+            folder_path=environment_path,
+            file_name=cls.artifacts.environments_file,
+        )
+
+    @classmethod
     async def write_artifact(
         cls, file: Upload, folder_path: str, file_name: str
     ) -> WriteArtifactResponse:  # type: ignore
@@ -404,4 +523,7 @@ class EnvironmentSchema(BaseSchema):
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
         writeArtifact: WriteArtifactResponse = (  # type: ignore
             Environment.write_artifact
+        )
+        createFromModule: CreateResponse = (  # type: ignore
+            Environment.create_from_module
         )
