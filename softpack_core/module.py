@@ -109,12 +109,20 @@ def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
 
 
 def GenerateEnvReadme(module_path: str) -> bytes:
+    """Generates a simple README file for the environment.
+
+    Args:
+        module_path (str): The module path as used by the module command.
+
+    Returns:
+        bytes: The byte content of the README.md file.
+    """
     return (
         """# Usage
 
 To use this environment, run:
 
-``` 
+```
 module load """
         + module_path
         + """
