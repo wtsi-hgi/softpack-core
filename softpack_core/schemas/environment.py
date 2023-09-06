@@ -393,7 +393,7 @@ class Environment:
         environment_name = environment_dirs.pop()
 
         contents = await file.read()
-        yml = ToSoftpackYML(contents)
+        yml = ToSoftpackYML(environment_name, contents)
 
         env = EnvironmentInput(
             name=environment_name,

@@ -6,14 +6,19 @@ LICENSE file in the root directory of this source tree.
 
 from typing import Union, cast
 
+import re
 
-def ToSoftpackYML(contents: Union[bytes, str]) -> bytes:
+
+def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
     """Converts an shpc-style module file to a softpack.yml file.
 
     It should have a format similar to that produced by shpc, with `module
     whatis` outputting a "Name: " line, a "Version: " line, and optionally a
-    "Packages: " line to say what packages are available. `module help` output
-    will be translated into the description in the softpack.yml.
+    "Packages: " line to say what packages are available. Each package should be
+    separated by a comma.
+
+    `module help` output will be translated into the description in the
+    softpack.yml.
 
     Args:
         contents (bytes): The byte content of the module file.
@@ -23,7 +28,6 @@ def ToSoftpackYML(contents: Union[bytes, str]) -> bytes:
     """
     in_help = False
 
-    name = ""
     version = ""
     packages: list[str] = []
     description = ""
@@ -61,15 +65,37 @@ def ToSoftpackYML(contents: Union[bytes, str]) -> bytes:
                     .lstrip()
                 )
 
-                if line_str.startswith("Name: "):
-                    nv = line_str.removeprefix("Name: ").split(":")
-                    name = nv[0]
-                    if len(nv) > 1:
-                        version = nv[1]
-                elif line_str.startswith("Version: "):
-                    version = line_str.removeprefix("Version: ")
-                elif line_str.startswith("Packages: "):
-                    packages = line_str.removeprefix("Packages: ").split(", ")
+                if line_str.startswith("Name:"):
+                    nv = line_str.removeprefix("Name:")
+                    if nv != "":
+                        name_value = list(
+                            map(lambda x: x.strip().split()[0], nv.split(":"))
+                        )
+
+                        if name_value[0] is not None:
+                            name = name_value[0]
+
+                        if len(name_value) > 1 and name_value[1] != "":
+                            version = name_value[1].strip()
+                elif line_str.startswith("Version:"):
+                    ver = line_str.removeprefix("Version:")
+                    if ver != "":
+                        vers = ver.split()[0]
+                        if vers is not None and vers != "":
+                            version = vers
+                elif line_str.startswith("Packages:"):
+                    packages = list(
+                        filter(
+                            None,
+                            map(
+                                lambda x: x.strip(),
+                                re.split(
+                                    r'[,\s]+',
+                                    line_str.removeprefix("Packages:"),
+                                ),
+                            ),
+                        )
+                    )
 
     if version != "":
         name += f"@{version}"
