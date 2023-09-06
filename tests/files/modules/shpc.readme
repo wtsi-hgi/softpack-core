@@ -2,7 +2,7 @@
 
 To use this environment, run:
 
-``` 
+```
 module load HGI/common/some_environment
 ```
 
