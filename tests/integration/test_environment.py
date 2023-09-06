@@ -244,10 +244,12 @@ async def test_iter(httpx_post, testable_env_input, upload):
 
 @pytest.mark.asyncio
 async def test_create_from_module(httpx_post, testable_env_input, upload):
-    test_file_path = Path(Path(__file__).parent.parent, "files", "ldsc.module")
+    test_file_path = Path(
+        Path(__file__).parent.parent, "files", "modules", "shpc.mod"
+    )
 
     with open(test_file_path, "rb") as fh:
-        upload.filename = "ldsc.module"
+        upload.filename = "shpc.mod"
         upload.content_type = "text/plain"
         upload.read.return_value = fh.read()
 
