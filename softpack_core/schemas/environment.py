@@ -155,6 +155,7 @@ class Environment:
     path: str
     description: str
     readme: str
+    type: str
     packages: list[Package]
     state: Optional[str]
     artifacts = Artifacts()
@@ -195,6 +196,7 @@ class Environment:
                 ),  # type: ignore [call-arg]
                 state=None,
                 readme=spec.get("readme", ""),
+                type=spec.get("type", ""),
             )
         except KeyError:
             return None
@@ -213,7 +215,7 @@ class Environment:
         if any(len(value) == 0 for value in vars(env).values()):
             return InvalidInputError(message="all fields must be filled in")
 
-        response = cls.create_new_env(env)
+        response = cls.create_new_env(env, Artifacts.built_by_softpack_file)
         if not isinstance(response, CreateEnvironmentSuccess):
             return response
 
@@ -236,7 +238,7 @@ class Environment:
 
     @classmethod
     def create_new_env(
-        cls, env: EnvironmentInput
+        cls, env: EnvironmentInput, env_type: str
     ) -> CreateResponse:  # type: ignore
         """Create a new environment in the repository.
 
@@ -244,7 +246,10 @@ class Environment:
         already exists.
 
         Args:
-            env (EnvironmentInput): Details of the new environment.
+            env (EnvironmentInput): Details of the new environment. env_type
+            (str): One of Artifacts.built_by_softpack_file or
+            Artifacts.generated_from_module_file that denotes how the
+            environment was made.
 
         Returns:
             CreateResponse: a CreateEnvironmentSuccess on success, or one of
@@ -270,10 +275,9 @@ class Environment:
 
         # Create folder with place-holder file
         new_folder_path = Path(env.path, env.name)
-        file_name = ".created"
         try:
             tree_oid = cls.artifacts.create_file(
-                new_folder_path, file_name, "", True
+                new_folder_path, env_type, "", True
             )
             cls.artifacts.commit_and_push(
                 tree_oid, "create environment folder"
@@ -405,7 +409,9 @@ class Environment:
             packages=list(),
         )
 
-        response = cls.create_new_env(env)
+        response = cls.create_new_env(
+            env, Artifacts.generated_from_module_file
+        )
         if not isinstance(response, CreateEnvironmentSuccess):
             return response
 
