@@ -14,6 +14,7 @@ import pytest
 from softpack_core.artifacts import Artifacts, app
 from tests.integration.utils import (
     commit_and_push_test_repo_changes,
+    delete_environments_folder_from_test_repo,
     file_in_remote,
     file_in_repo,
     get_user_path_without_environments,
@@ -46,6 +47,14 @@ def test_clone() -> None:
     artifacts = Artifacts()
 
     assert file_in_repo(artifacts, file_path)
+
+    delete_environments_folder_from_test_repo(artifacts)
+
+    try:
+        artifacts.iter()
+    except BaseException as e:
+        print(e)
+        assert False
 
 
 def test_commit_and_push() -> None:

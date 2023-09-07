@@ -36,8 +36,7 @@ $ source spack/share/spack/setup-env.sh
 ```
 
 To start the service, you will also need to configure a git repository to store
-artifacts. That respository must have at least 1 file in
-environments/users/<subdir> and another file in environments/groups/<subdir>.
+artifacts.
 
 ### Stable release
 

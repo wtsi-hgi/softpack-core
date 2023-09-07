@@ -220,7 +220,10 @@ class Artifacts:
         Returns:
             list[pygit2.Tree]: List of environments
         """
-        return [path / folder.name for folder in self.tree(str(path))]
+        try:
+            return [path / folder.name for folder in self.tree(str(path))]
+        except KeyError:
+            return list(())
 
     def tree(self, path: str) -> pygit2.Tree:
         """Return a Tree object.
