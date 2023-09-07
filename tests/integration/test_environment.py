@@ -70,7 +70,7 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
         Environment.artifacts.environments_root,
         testable_env_input.path,
         testable_env_input.name,
-        ".created",
+        Environment.artifacts.built_by_softpack_file,
     )
     assert file_in_remote(path)
 
@@ -157,7 +157,7 @@ def test_delete(httpx_post, testable_env_input) -> None:
         Environment.artifacts.environments_root,
         testable_env_input.path,
         testable_env_input.name,
-        ".created",
+        Artifacts.built_by_softpack_file,
     )
     assert file_in_remote(path)
 
@@ -238,6 +238,7 @@ async def test_iter(httpx_post, testable_env_input, upload):
     for env in envs_filter:
         assert env.name == testable_env_input.name
         assert any(p.name == "zlib" for p in env.packages)
+        assert env.type == Artifacts.built_by_softpack
         count += 1
 
     assert count == 1
@@ -276,6 +277,7 @@ async def test_create_from_module(httpx_post, testable_env_input, upload):
         Path(parent_path, Environment.artifacts.environments_file),
         Path(parent_path, Environment.artifacts.module_file),
         readme_path,
+        Path(parent_path, Environment.artifacts.generated_from_module_file),
     )
 
     with open(test_files_dir / "shpc.readme", "rb") as fh:
@@ -297,3 +299,4 @@ async def test_create_from_module(httpx_post, testable_env_input, upload):
     assert env.name == env_name
     assert len(env.packages) == 1 and env.packages[0].name == package_name
     assert "module load " + module_path in env.readme
+    assert env.type == Artifacts.generated_from_module

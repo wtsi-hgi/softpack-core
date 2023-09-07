@@ -24,6 +24,10 @@ class Artifacts:
     environments_file = "softpack.yml"
     module_file = "module"
     readme_file = "README.md"
+    built_by_softpack_file = ".built_by_softpack"
+    built_by_softpack = "softpack"
+    generated_from_module_file = ".generated_from_module"
+    generated_from_module = "module"
     users_folder_name = "users"
     groups_folder_name = "groups"
     credentials_callback = None
@@ -86,6 +90,11 @@ class Artifacts:
 
             if Artifacts.readme_file in self.obj:
                 info["readme"] = self.obj[Artifacts.readme_file].data.decode()
+
+            if Artifacts.generated_from_module_file in self.obj:
+                info["type"] = Artifacts.generated_from_module
+            else:
+                info["type"] = Artifacts.built_by_softpack
 
             return info
 
