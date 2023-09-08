@@ -10,7 +10,7 @@ proc ModulesHelp { } {
 }
 
 module-whatis "Name:   name_of_container  "
-module-whatis "Version:1.0.1"
+module-whatis   "Version:1.0.1"
 
 module-whatis "Foo: bar"
 

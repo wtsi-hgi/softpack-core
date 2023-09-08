@@ -47,7 +47,8 @@ def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
                 in_help = False
             elif line.startswith(b"puts stderr "):
                 line_str = (
-                    line.removeprefix(b"puts stderr ")
+                    line.removeprefix(b"puts stderr")
+                    .lstrip()
                     .decode('unicode_escape')
                     .replace("\\$", "$")
                     .removeprefix("\"")
@@ -59,7 +60,8 @@ def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
                 in_help = True
             elif line.startswith(b"module-whatis "):
                 line_str = (
-                    line.removeprefix(b"module-whatis ")
+                    line.removeprefix(b"module-whatis")
+                    .lstrip()
                     .decode('unicode_escape')
                     .removeprefix("\"")
                     .removesuffix("\"")
