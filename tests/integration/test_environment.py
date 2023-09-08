@@ -211,12 +211,12 @@ async def test_write_artifact(httpx_post, testable_env_input, upload):
 
 @pytest.mark.asyncio
 async def test_iter(httpx_post, testable_env_input, upload):
-    envs_filter = Environment.iter()
+    envs = Environment.iter()
     count = 0
-    for env in envs_filter:
+    for env in envs:
         count += 1
 
-    assert count == 0
+    assert count == 2
 
     result = Environment.create(testable_env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
@@ -224,7 +224,9 @@ async def test_iter(httpx_post, testable_env_input, upload):
 
     upload.filename = Artifacts.environments_file
     upload.content_type = "text/plain"
-    upload.read.return_value = b"description: test env\npackages:\n  - zlib\n"
+    upload.read.return_value = (
+        b"description: test env\n" b"packages:\n  - zlib@v1.1\n"
+    )
 
     result = await Environment.write_artifact(
         file=upload,
@@ -233,13 +235,14 @@ async def test_iter(httpx_post, testable_env_input, upload):
     )
     assert isinstance(result, WriteArtifactSuccess)
 
-    envs_filter = Environment.iter()
+    envs = Environment.iter()
     count = 0
-    for env in envs_filter:
-        assert env.name == testable_env_input.name
-        assert any(p.name == "zlib" for p in env.packages)
-        assert env.type == Artifacts.built_by_softpack
-        count += 1
+    for env in envs:
+        if env.name == testable_env_input.name:
+            assert any(p.name == "zlib" for p in env.packages)
+            assert any(p.version == "v1.1" for p in env.packages)
+            assert env.type == Artifacts.built_by_softpack
+            count += 1
 
     assert count == 1
 
@@ -290,13 +293,16 @@ async def test_create_from_module(httpx_post, testable_env_input, upload):
 
     envs = list(Environment.iter())
 
-    assert len(envs) == 1
+    assert len(envs) == 3
 
-    env = envs[0]
+    env = next((env for env in envs if env.name == env_name), None)
+    assert env is not None
 
-    package_name = "quay.io/biocontainers/ldsc@1.0.1--pyhdfd78af_2"
+    package_name = "quay.io/biocontainers/ldsc"
+    package_version = "1.0.1--pyhdfd78af_2"
 
-    assert env.name == env_name
-    assert len(env.packages) == 1 and env.packages[0].name == package_name
+    assert len(env.packages) == 1
+    assert env.packages[0].name == package_name
+    assert env.packages[0].version == package_version
     assert "module load " + module_path in env.readme
     assert env.type == Artifacts.generated_from_module

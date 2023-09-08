@@ -98,9 +98,14 @@ def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
         test_group,
         test_env,
     )
-    file_basename = "file.txt"
+    file_basename = Artifacts.environments_file
 
-    oid = artifacts.repo.create_blob(b"")
+    softpack_yml_data = (
+        b"description: \"desc\"\npackages:\n"
+        b"  - pck1@1\n  - pck2@v2.0.1\n  - pck3"
+    )
+
+    oid = artifacts.repo.create_blob(softpack_yml_data)
 
     userTestEnv = artifacts.repo.TreeBuilder()
     userTestEnv.insert(file_basename, oid, pygit2.GIT_FILEMODE_BLOB)
@@ -111,7 +116,7 @@ def create_initial_test_repo_state(artifacts: Artifacts) -> artifacts_dict:
     usersFolder = artifacts.repo.TreeBuilder()
     usersFolder.insert(test_user, testUser.write(), pygit2.GIT_FILEMODE_TREE)
 
-    oid = artifacts.repo.create_blob(b"")
+    oid = artifacts.repo.create_blob(softpack_yml_data)
 
     userGroupEnv = artifacts.repo.TreeBuilder()
     userGroupEnv.insert(file_basename, oid, pygit2.GIT_FILEMODE_BLOB)
