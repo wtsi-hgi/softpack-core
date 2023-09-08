@@ -215,3 +215,13 @@ def test_iter() -> None:
     assert user_found is True
     assert num_user_envs == 1
     assert num_group_envs == 1
+
+    envs = artifacts.iter()
+    pkgs = list(envs)[0].spec().packages
+    assert len(pkgs) == 3
+    assert pkgs[0].name == "pck1"
+    assert pkgs[0].version == "1"
+    assert pkgs[1].name == "pck2"
+    assert pkgs[1].version == "v2.0.1"
+    assert pkgs[2].name == "pck3"
+    assert pkgs[2].version is None

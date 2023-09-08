@@ -11,10 +11,38 @@ from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
 import pygit2
+import strawberry
 from box import Box
+
+from softpack_core.spack import Spack
 
 from .app import app
 from .ldapapi import LDAP
+
+
+@strawberry.type
+class Package(Spack.PackageBase):
+    """A Strawberry model representing a package."""
+
+    version: Optional[str] = None
+
+    @classmethod
+    def from_name(cls, name: str) -> 'Package':
+        """Makes a new Package based on the name.
+
+        Args:
+            name (str): Combined name and version string, deliniated by an '@'.
+
+        Returns:
+            Package: A Package with name set, and version set if given name had
+                     a version.
+        """
+        parts = name.split("@", 2)
+
+        if len(parts) == 2:
+            return Package(name=parts[0], version=parts[1])
+
+        return Package(name=name)
 
 
 class Artifacts:
@@ -95,6 +123,10 @@ class Artifacts:
                 info["type"] = Artifacts.generated_from_module
             else:
                 info["type"] = Artifacts.built_by_softpack
+
+            info.packages = list(
+                map(lambda p: Package.from_name(p), info.packages)
+            )
 
             return info
 

@@ -14,10 +14,9 @@ import strawberry
 from starlette.datastructures import UploadFile
 from strawberry.file_uploads import Upload
 
-from softpack_core.artifacts import Artifacts
+from softpack_core.artifacts import Artifacts, Package
 from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 from softpack_core.schemas.base import BaseSchema
-from softpack_core.spack import Spack
 
 
 # Interfaces
@@ -117,13 +116,6 @@ WriteArtifactResponse = strawberry.union(
 )
 
 
-@strawberry.type
-class Package(Spack.PackageBase):
-    """A Strawberry model representing a package."""
-
-    version: Optional[str] = None
-
-
 @strawberry.input
 class PackageInput(Package):
     """A Strawberry input model representing a package."""
@@ -188,12 +180,7 @@ class Environment:
                 name=obj.name,
                 path=str(obj.path.parent),
                 description=spec.description,
-                packages=list(
-                    map(
-                        lambda package: Package(name=package),
-                        spec.packages,
-                    )
-                ),  # type: ignore [call-arg]
+                packages=spec.packages,
                 state=None,
                 readme=spec.get("readme", ""),
                 type=spec.get("type", ""),
