@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 import itertools
 import shutil
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
@@ -43,6 +44,14 @@ class Package(Spack.PackageBase):
             return Package(name=parts[0], version=parts[1])
 
         return Package(name=name)
+
+
+@strawberry.enum
+class State(Enum):
+    """Environment states."""
+
+    ready = 'ready'
+    queued = 'queued'
 
 
 class Artifacts:
@@ -118,6 +127,11 @@ class Artifacts:
 
             if Artifacts.readme_file in self.obj:
                 info["readme"] = self.obj[Artifacts.readme_file].data.decode()
+
+            if Artifacts.module_file in self.obj:
+                info["state"] = State.ready
+            else:
+                info["state"] = State.queued
 
             if Artifacts.generated_from_module_file in self.obj:
                 info["type"] = Artifacts.generated_from_module

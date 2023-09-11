@@ -5,6 +5,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 from pathlib import Path
+from typing import Optional
 
 import pygit2
 import pytest
@@ -19,6 +20,7 @@ from softpack_core.schemas.environment import (
     EnvironmentNotFoundError,
     InvalidInputError,
     Package,
+    State,
     UpdateEnvironmentSuccess,
     WriteArtifactSuccess,
 )
@@ -209,15 +211,13 @@ async def test_write_artifact(httpx_post, testable_env_input, upload):
     assert isinstance(result, InvalidInputError)
 
 
-@pytest.mark.asyncio
-async def test_iter(httpx_post, testable_env_input, upload):
+def test_iter(testable_env_input):
     envs = Environment.iter()
-    count = 0
-    for env in envs:
-        count += 1
+    assert len(list(envs)) == 2
 
-    assert count == 2
 
+@pytest.mark.asyncio
+async def test_states(httpx_post, testable_env_input, upload):
     result = Environment.create(testable_env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_called_once()
@@ -235,16 +235,33 @@ async def test_iter(httpx_post, testable_env_input, upload):
     )
     assert isinstance(result, WriteArtifactSuccess)
 
-    envs = Environment.iter()
-    count = 0
-    for env in envs:
-        if env.name == testable_env_input.name:
-            assert any(p.name == "zlib" for p in env.packages)
-            assert any(p.version == "v1.1" for p in env.packages)
-            assert env.type == Artifacts.built_by_softpack
-            count += 1
+    env = get_env_from_iter(testable_env_input.name)
+    assert env is not None
+    assert any(p.name == "zlib" for p in env.packages)
+    assert any(p.version == "v1.1" for p in env.packages)
+    assert env.type == Artifacts.built_by_softpack
+    assert env.state == State.queued
 
-    assert count == 1
+    upload.filename = Artifacts.module_file
+    upload.content_type = "text/plain"
+    upload.read.return_value = b"#%Module"
+
+    result = await Environment.write_artifact(
+        file=upload,
+        folder_path=f"{testable_env_input.path}/{testable_env_input.name}",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, WriteArtifactSuccess)
+
+    env = get_env_from_iter(testable_env_input.name)
+    assert env is not None
+    assert env.type == Artifacts.built_by_softpack
+    assert env.state == State.ready
+
+
+def get_env_from_iter(name: str) -> Optional[Environment]:
+    envs = Environment.iter()
+    return next((env for env in envs if env.name == name), None)
 
 
 @pytest.mark.asyncio
@@ -292,10 +309,9 @@ async def test_create_from_module(httpx_post, testable_env_input, upload):
     assert obj.data == expected_readme_data
 
     envs = list(Environment.iter())
-
     assert len(envs) == 3
 
-    env = next((env for env in envs if env.name == env_name), None)
+    env = get_env_from_iter(env_name)
     assert env is not None
 
     package_name = "quay.io/biocontainers/ldsc"
@@ -306,3 +322,4 @@ async def test_create_from_module(httpx_post, testable_env_input, upload):
     assert env.packages[0].version == package_version
     assert "module load " + module_path in env.readme
     assert env.type == Artifacts.generated_from_module
+    assert env.state == State.ready

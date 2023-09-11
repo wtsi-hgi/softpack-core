@@ -14,7 +14,7 @@ import strawberry
 from starlette.datastructures import UploadFile
 from strawberry.file_uploads import Upload
 
-from softpack_core.artifacts import Artifacts, Package
+from softpack_core.artifacts import Artifacts, Package, State
 from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 from softpack_core.schemas.base import BaseSchema
 
@@ -149,7 +149,7 @@ class Environment:
     readme: str
     type: str
     packages: list[Package]
-    state: Optional[str]
+    state: Optional[State]
     artifacts = Artifacts()
 
     @classmethod
@@ -181,7 +181,7 @@ class Environment:
                 path=str(obj.path.parent),
                 description=spec.description,
                 packages=spec.packages,
-                state=None,
+                state=spec.state,
                 readme=spec.get("readme", ""),
                 type=spec.get("type", ""),
             )
