@@ -7,7 +7,7 @@ LICENSE file in the root directory of this source tree.
 import io
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import Iterable, List, Optional, Tuple, Union, cast
 
 import httpx
 import strawberry
@@ -505,28 +505,13 @@ class Environment:
             WriteArtifactResponse: contains message and commit hash of
             softpack.yml upload.
         """
-        result = await cls.write_artifact(
-            file=module_file,
+        module_file.name = cls.artifacts.module_file
+        readme_file.name = cls.artifacts.readme_file
+        softpack_file.name = cls.artifacts.environments_file
+
+        return await cls.write_artifacts(
             folder_path=environment_path,
-            file_name=cls.artifacts.module_file,
-        )
-
-        if not isinstance(result, WriteArtifactSuccess):
-            return result
-
-        result = await cls.write_artifact(
-            file=readme_file,
-            folder_path=environment_path,
-            file_name=cls.artifacts.readme_file,
-        )
-
-        if not isinstance(result, WriteArtifactSuccess):
-            return result
-
-        return await cls.write_artifact(
-            file=softpack_file,
-            folder_path=environment_path,
-            file_name=cls.artifacts.environments_file,
+            files=[module_file, readme_file, softpack_file],
         )
 
     @classmethod
@@ -536,20 +521,38 @@ class Environment:
         """Add a file to the Artifacts repo.
 
         Args:
-            file: the file to add to the repo
-            folder_path: the path to the folder that the file will be added to
-            file_name: the name of the file
+            file: the file to be added to the repo.
+            folder_path: the path to the folder that the file will be added to.
+            file_name: the name of the file to be added.
+        """
+        file.name = file_name
+
+        return await cls.write_artifacts(folder_path, [file])
+
+    @classmethod
+    async def write_artifacts(
+        cls, folder_path: str, files: list[Upload]
+    ) -> WriteArtifactResponse:  # type: ignore
+        """Add one or more files to the Artifacts repo.
+
+        Args:
+            folder_path: the path to the folder that the file will be added to.
+            files: the files to add to the repo.
         """
         try:
-            contents = (await file.read()).decode()
-            tree_oid = cls.artifacts.create_file(
-                Path(folder_path), file_name, contents, overwrite=True
+            new_files: List[Tuple[str, str]] = []
+            for file in files:
+                contents = cast(str, (await file.read()).decode())
+                new_files.append((file.name, contents))
+
+            tree_oid = cls.artifacts.create_files(
+                Path(folder_path), new_files, overwrite=True
             )
             commit_oid = cls.artifacts.commit_and_push(
                 tree_oid, "write artifact"
             )
             return WriteArtifactSuccess(
-                message="Successfully written artifact",
+                message="Successfully written artifact(s)",
                 commit_oid=str(commit_oid),
             )
 

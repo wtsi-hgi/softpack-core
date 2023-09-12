@@ -9,7 +9,7 @@ import shutil
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, Iterator, Optional
+from typing import Iterable, Iterator, Optional, Tuple
 
 import pygit2
 import strawberry
@@ -381,7 +381,7 @@ class Artifacts:
         new_folder: bool = False,
         overwrite: bool = False,
     ) -> pygit2.Oid:
-        """Create a file in the artifacts repo.
+        """Create one or more file in the artifacts repo.
 
         Args:
             folder_path: the path to the folder the file will be placed in
@@ -393,22 +393,49 @@ class Artifacts:
         Returns:
             the OID of the new tree structure of the repository
         """
-        if not overwrite and self.get(Path(folder_path), file_name):
-            raise FileExistsError("File already exists")
+        return self.create_files(
+            folder_path, [(file_name, contents)], new_folder, overwrite
+        )
+
+    def create_files(
+        self,
+        folder_path: Path,
+        files: list[Tuple[str, str]],
+        new_folder: bool = False,
+        overwrite: bool = False,
+    ) -> pygit2.Oid:
+        """Create one or more files in the artifacts repo.
+
+        Args:
+            folder_path: the path to the folder the files will be placed
+            files: Array of tuples, containing file name and contents.
+            file_name: the name of the file
+            contents: the contents of the file
+            new_folder: if True, create the file's parent folder as well
+            overwrite: if True, overwrite the file at the specified path
+
+        Returns:
+            the OID of the new tree structure of the repository
+        """
+        for file_name, _ in files:
+            if not overwrite and self.get(Path(folder_path), file_name):
+                raise FileExistsError("File already exists")
 
         root_tree = self.repo.head.peel(pygit2.Tree)
         full_path = Path(self.environments_root, folder_path)
 
-        # Create file
-        file_oid = self.repo.create_blob(contents.encode())
-
-        # Put file in folder
         if new_folder:
             new_treebuilder = self.repo.TreeBuilder()
         else:
             folder = root_tree[full_path]
             new_treebuilder = self.repo.TreeBuilder(folder)
-        new_treebuilder.insert(file_name, file_oid, pygit2.GIT_FILEMODE_BLOB)
+
+        for file_name, contents in files:
+            file_oid = self.repo.create_blob(contents.encode())
+            new_treebuilder.insert(
+                file_name, file_oid, pygit2.GIT_FILEMODE_BLOB
+            )
+
         new_tree = new_treebuilder.write()
 
         # Expand to include the whole repo
@@ -416,19 +443,12 @@ class Artifacts:
 
         # Check for errors in the new tree
         new_tree = self.repo.get(full_tree)
-        path = Path(self.environments_root, folder_path, file_name)
+        Path(self.environments_root, folder_path, file_name)
         diff = self.repo.diff(new_tree, root_tree)
-        if len(diff) > 1:
+        if len(diff) > len(files):
             raise RuntimeError("Too many changes to the repo")
         elif len(diff) < 1:
             raise RuntimeError("No changes made to the environment")
-        elif len(diff) == 1:
-            new_file = diff[0].delta.new_file
-            if new_file.path != str(path):
-                raise RuntimeError(
-                    f"New file added to incorrect path: \
-                        {new_file.path} instead of {str(path)}"
-                )
 
         return full_tree
 
