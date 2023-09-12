@@ -443,7 +443,6 @@ class Artifacts:
 
         # Check for errors in the new tree
         new_tree = self.repo.get(full_tree)
-        Path(self.environments_root, folder_path, file_name)
         diff = self.repo.diff(new_tree, root_tree)
         if len(diff) > len(files):
             raise RuntimeError("Too many changes to the repo")
