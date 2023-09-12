@@ -7,7 +7,7 @@ LICENSE file in the root directory of this source tree.
 import io
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Union
 
 import httpx
 import strawberry
@@ -95,7 +95,6 @@ UpdateResponse = strawberry.union(
         UpdateEnvironmentSuccess,
         InvalidInputError,
         EnvironmentNotFoundError,
-        EnvironmentAlreadyExistsError,
     ],
 )
 
@@ -136,6 +135,38 @@ class EnvironmentInput:
     path: str
     description: str
     packages: list[PackageInput]
+
+    def validate(cls) -> Union[None, InvalidInputError]:
+        """Validate that all values have been supplied.
+
+        Returns:
+            None if good, or InvalidInputError if not all values supplied.
+        """
+        if any(len(value) == 0 for value in vars(cls).values()):
+            return InvalidInputError(message="all fields must be filled in")
+
+        return None
+
+    @classmethod
+    def from_path(cls, environment_path: str) -> 'EnvironmentInput':
+        """from_path creates a new EnvironmentInput based on an env path.
+
+        Args:
+            environment_path (str): path of the environment.
+
+        Returns:
+            EnvironmentInput: a package-less, description-less
+                              EnvironmentInput.
+        """
+        environment_dirs = environment_path.split("/")
+        environment_name = environment_dirs.pop()
+
+        return EnvironmentInput(
+            name=environment_name,
+            path="/".join(environment_dirs),
+            description="",
+            packages=list(),
+        )
 
 
 @strawberry.type
@@ -198,9 +229,9 @@ class Environment:
         Returns:
             A message confirming the success or failure of the operation.
         """
-        # Check if any field has been left empty
-        if any(len(value) == 0 for value in vars(env).values()):
-            return InvalidInputError(message="all fields must be filled in")
+        result = env.validate()
+        if result is not None:
+            return result
 
         response = cls.create_new_env(env, Artifacts.built_by_softpack_file)
         if not isinstance(response, CreateEnvironmentSuccess):
@@ -293,41 +324,58 @@ class Environment:
         Returns:
             A message confirming the success or failure of the operation.
         """
-        # Check if any field has been left empty
-        if (
-            any(len(value) == 0 for value in vars(env).values())
-            or current_name == ""
-            or current_path == ""
-        ):
-            return InvalidInputError(message="all fields must be filled in")
+        result = env.validate()
+        if result is not None:
+            return result
 
-        # Check name and path have not been changed.
+        if current_name == "" or current_path == "":
+            return InvalidInputError(message="current values must be supplied")
+
         if env.path != current_path or env.name != current_name:
             return InvalidInputError(
-                message=("change of name or path not " "currently supported")
+                message=("change of name or path not currently supported")
             )
 
-        # Check if an environment exists at the specified path and name
-        if cls.artifacts.get(Path(current_path), current_name):
-            httpx.post(
-                "http://0.0.0.0:7080/environments/build",
-                json={
-                    "name": f"{env.path}/{env.name}",
-                    "model": {
-                        "description": env.description,
-                        "packages": [pkg.name for pkg in env.packages or []],
-                    },
+        result2 = cls.check_env_exists(Path(current_path, current_name))
+        if result2 is not None:
+            return result2
+
+        httpx.post(
+            "http://0.0.0.0:7080/environments/build",
+            json={
+                "name": f"{env.path}/{env.name}",
+                "model": {
+                    "description": env.description,
+                    "packages": [pkg.name for pkg in env.packages or []],
                 },
-            )
+            },
+        )
 
-            return UpdateEnvironmentSuccess(
-                message="Successfully updated environment"
-            )
+        # TODO: validate the post worked
+
+        return UpdateEnvironmentSuccess(
+            message="Successfully updated environment"
+        )
+
+    @classmethod
+    def check_env_exists(
+        cls, path: Path
+    ) -> Union[None, EnvironmentNotFoundError]:
+        """check_env_exists checks if an env with the given path exists.
+
+        Args:
+            path (Path): path of the environment
+
+        Returns:
+            Union[None, EnvironmentNotFoundError]: an error if env not found.
+        """
+        if cls.artifacts.get(path.parent, path.name):
+            return None
 
         return EnvironmentNotFoundError(
-            message="No environment with this name found in this location.",
-            path=current_path,
-            name=current_name,
+            message="No environment with this path and name found.",
+            path=str(path.parent),
+            name=path.name,
         )
 
     @classmethod
@@ -382,19 +430,7 @@ class Environment:
         Returns:
             A message confirming the success or failure of the operation.
         """
-        environment_dirs = environment_path.split("/")
-        environment_name = environment_dirs.pop()
-
-        contents = await file.read()
-        yml = ToSoftpackYML(environment_name, contents)
-        readme = GenerateEnvReadme(module_path)
-
-        env = EnvironmentInput(
-            name=environment_name,
-            path="/".join(environment_dirs),
-            description="",
-            packages=list(),
-        )
+        env = EnvironmentInput.from_path(environment_path)
 
         response = cls.create_new_env(
             env, Artifacts.generated_from_module_file
@@ -402,25 +438,48 @@ class Environment:
         if not isinstance(response, CreateEnvironmentSuccess):
             return response
 
-        module_file = UploadFile(file=io.BytesIO(contents))
-        softpack_file = UploadFile(file=io.BytesIO(yml))
-        readme_file = UploadFile(file=io.BytesIO(readme))
-
-        result = await cls.write_module_artifacts(
-            module_file=module_file,
-            softpack_file=softpack_file,
-            readme_file=readme_file,
-            environment_path=environment_path,
+        result = await cls.convert_module_file_to_artifacts(
+            file, env.name, environment_path, module_path
         )
 
         if not isinstance(result, WriteArtifactSuccess):
-            cls.delete(name=environment_name, path=environment_path)
+            cls.delete(name=env.name, path=environment_path)
             return InvalidInputError(
                 message="Write of module file failed: " + result.message
             )
 
         return CreateEnvironmentSuccess(
             message="Successfully created environment in artifacts repo"
+        )
+
+    @classmethod
+    async def convert_module_file_to_artifacts(
+        cls, file: Upload, env_name: str, env_path: str, module_path: str
+    ) -> WriteArtifactResponse:  # type: ignore
+        """convert_module_file_to_artifacts parses a module and writes to repo.
+
+        Args:
+            file (Upload): shpc-style module file contents.
+            env_name (str): name of the environment.
+            env_path (str): path of the environment.
+            module_path (str): the `module load` path users will use.
+
+        Returns:
+            WriteArtifactResponse: success or failure indicator.
+        """
+        contents = await file.read()
+        yml = ToSoftpackYML(env_name, contents)
+        readme = GenerateEnvReadme(module_path)
+
+        module_file = UploadFile(file=io.BytesIO(contents))
+        softpack_file = UploadFile(file=io.BytesIO(yml))
+        readme_file = UploadFile(file=io.BytesIO(readme))
+
+        return await cls.write_module_artifacts(
+            module_file=module_file,
+            softpack_file=softpack_file,
+            readme_file=readme_file,
+            environment_path=env_path,
         )
 
     @classmethod
@@ -497,6 +556,51 @@ class Environment:
         except Exception as e:
             return InvalidInputError(message=str(e))
 
+    @classmethod
+    async def update_from_module(
+        cls, file: Upload, module_path: str, environment_path: str
+    ) -> UpdateResponse:  # type: ignore
+        """Update an Environment based on an existing module.
+
+        Same as create_from_module, but only works for an existing environment.
+
+        Args:
+            file: the module file to add to the repo, and to parse to fake a
+                  corresponding softpack.yml. It should have a format similar
+                  to that produced by shpc, with `module whatis` outputting
+                  a "Name: " line, a "Version: " line, and optionally a
+                  "Packages: " line to say what packages are available.
+                  `module help` output will be translated into the description
+                  in the softpack.yml.
+            module_path: the local path that users can `module load` - this is
+                         used to auto-generate usage help text for this
+                         environment.
+            environment_path: the subdirectories of environments folder that
+                              artifacts will be stored in, eg.
+                              users/username/software_name
+
+        Returns:
+            A message confirming the success or failure of the operation.
+        """
+        env = EnvironmentInput.from_path(environment_path)
+
+        result = cls.check_env_exists(Path(environment_path))
+        if result is not None:
+            return result
+
+        result = await cls.convert_module_file_to_artifacts(
+            file, env.name, environment_path, module_path
+        )
+
+        if not isinstance(result, WriteArtifactSuccess):
+            return InvalidInputError(
+                message="Write of module file failed: " + result.message
+            )
+
+        return UpdateEnvironmentSuccess(
+            message="Successfully updated environment in artifacts repo"
+        )
+
 
 class EnvironmentSchema(BaseSchema):
     """Environment schema."""
@@ -519,4 +623,7 @@ class EnvironmentSchema(BaseSchema):
         )
         createFromModule: CreateResponse = (  # type: ignore
             Environment.create_from_module
+        )
+        updateFromModule: UpdateResponse = (  # type: ignore
+            Environment.update_from_module
         )
