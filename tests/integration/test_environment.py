@@ -286,6 +286,14 @@ async def test_create_from_module(httpx_post, testable_env_input, upload):
 
     assert isinstance(result, CreateEnvironmentSuccess)
 
+    result = await Environment.create_from_module(
+        file=upload,
+        module_path=module_path,
+        environment_path=name,
+    )
+
+    assert isinstance(result, EnvironmentAlreadyExistsError)
+
     parent_path = Path(
         Environment.artifacts.group_folder(),
         "hgi",
@@ -323,3 +331,39 @@ async def test_create_from_module(httpx_post, testable_env_input, upload):
     assert "module load " + module_path in env.readme
     assert env.type == Artifacts.generated_from_module
     assert env.state == State.ready
+
+    test_modifiy_file_path = test_files_dir / "all_fields.mod"
+
+    with open(test_modifiy_file_path, "rb") as fh:
+        upload.filename = "all_fields.mod"
+        upload.content_type = "text/plain"
+        upload.read.return_value = fh.read()
+
+    module_path = "HGI/common/all_fields"
+
+    result = await Environment.update_from_module(
+        file=upload,
+        module_path=module_path,
+        environment_path=name,
+    )
+
+    assert isinstance(result, UpdateEnvironmentSuccess)
+    env = get_env_from_iter(env_name)
+    assert env is not None
+
+    package_name = "name_of_container"
+    package_version = "1.0.1"
+
+    assert len(env.packages) == 5
+    assert env.packages[0].name == package_name
+    assert env.packages[0].version == package_version
+    assert "module load " + module_path in env.readme
+    assert env.type == Artifacts.generated_from_module
+    assert env.state == State.ready
+
+    result = await Environment.update_from_module(
+        file=upload,
+        module_path=module_path,
+        environment_path="users/non/existant",
+    )
+    assert isinstance(result, EnvironmentNotFoundError)
