@@ -624,6 +624,9 @@ class EnvironmentSchema(BaseSchema):
         writeArtifact: WriteArtifactResponse = (  # type: ignore
             Environment.write_artifact
         )
+        writeArtifacts: WriteArtifactResponse = (  # type: ignore
+            Environment.write_artifacts
+        )
         createFromModule: CreateResponse = (  # type: ignore
             Environment.create_from_module
         )
