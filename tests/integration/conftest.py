@@ -9,7 +9,12 @@ import os
 import pytest
 from starlette.datastructures import UploadFile
 
-from softpack_core.artifacts import app
+from softpack_core.artifacts import Artifacts, Package, app
+from softpack_core.schemas.environment import Environment, EnvironmentInput
+from tests.integration.utils import (
+    get_user_path_without_environments,
+    new_test_artifacts,
+)
 
 
 @pytest.fixture(scope="package", autouse=True)
@@ -41,3 +46,21 @@ def httpx_post(mocker):
 @pytest.fixture()
 def upload(mocker):
     return mocker.Mock(spec=UploadFile)
+
+
+@pytest.fixture
+def testable_env_input(mocker) -> EnvironmentInput:
+    ad = new_test_artifacts()
+    artifacts: Artifacts = ad["artifacts"]
+    user = ad["test_user"]
+
+    mocker.patch.object(Environment, 'artifacts', new=artifacts)
+
+    testable_env_input = EnvironmentInput(
+        name="test_env_create",
+        path=str(get_user_path_without_environments(artifacts, user)),
+        description="description",
+        packages=[Package(name="pkg_test")],
+    )
+
+    yield testable_env_input

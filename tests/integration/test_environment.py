@@ -24,31 +24,9 @@ from softpack_core.schemas.environment import (
     UpdateEnvironmentSuccess,
     WriteArtifactSuccess,
 )
-from tests.integration.utils import (
-    file_in_remote,
-    get_user_path_without_environments,
-    new_test_artifacts,
-)
+from tests.integration.utils import file_in_remote
 
 pytestmark = pytest.mark.repo
-
-
-@pytest.fixture
-def testable_env_input(mocker) -> EnvironmentInput:
-    ad = new_test_artifacts()
-    artifacts: Artifacts = ad["artifacts"]
-    user = ad["test_user"]
-
-    mocker.patch.object(Environment, 'artifacts', new=artifacts)
-
-    testable_env_input = EnvironmentInput(
-        name="test_env_create",
-        path=str(get_user_path_without_environments(artifacts, user)),
-        description="description",
-        packages=[Package(name="pkg_test")],
-    )
-
-    yield testable_env_input
 
 
 def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:

@@ -264,8 +264,8 @@ class Environment:
         already exists.
 
         Args:
-            env (EnvironmentInput): Details of the new environment. env_type
-            (str): One of Artifacts.built_by_softpack_file or
+            env (EnvironmentInput): Details of the new environment.
+            env_type (str): One of Artifacts.built_by_softpack_file or
             Artifacts.generated_from_module_file that denotes how the
             environment was made.
 
@@ -543,7 +543,11 @@ class Environment:
             new_files: List[Tuple[str, str]] = []
             for file in files:
                 contents = cast(str, (await file.read()).decode())
-                new_files.append((file.name, contents))
+                try:
+                    name = file.name
+                except BaseException:
+                    name = file.filename
+                new_files.append((name, contents))
 
             tree_oid = cls.artifacts.create_files(
                 Path(folder_path), new_files, overwrite=True
