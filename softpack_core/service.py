@@ -81,7 +81,7 @@ class ServiceAPI(API):
         if Environment.check_env_exists(Path(env_path)) is not None:
             create_response = Environment.create_new_env(
                 EnvironmentInput.from_path(env_path),
-                Environment.artifacts.built_by_softpack,
+                Environment.artifacts.built_by_softpack_file,
             )
 
             if not isinstance(create_response, CreateEnvironmentSuccess):
