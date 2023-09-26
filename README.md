@@ -28,7 +28,9 @@ SoftPack Core - GraphQL backend service
 
 ### External dependencies
 
-SoftPack Core relies on Spack. Install that first:
+SoftPack Core requires Python version 3.11 or greater.
+
+This project also relies on Spack. Install that first:
 
 ``` console
 $ git clone -c feature.manyFiles=true --depth 1 https://github.com/spack/spack.git

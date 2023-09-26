@@ -9,11 +9,12 @@ import shutil
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, Iterator, Optional, Tuple
+from typing import Iterable, Iterator, List, Optional, Tuple, Union
 
 import pygit2
 import strawberry
 from box import Box
+from fastapi import UploadFile
 
 from softpack_core.spack import Spack
 
@@ -400,7 +401,7 @@ class Artifacts:
     def create_files(
         self,
         folder_path: Path,
-        files: list[Tuple[str, str]],
+        files: List[Tuple[str, Union[str, UploadFile]]],
         new_folder: bool = False,
         overwrite: bool = False,
     ) -> pygit2.Oid:
@@ -431,7 +432,10 @@ class Artifacts:
             new_treebuilder = self.repo.TreeBuilder(folder)
 
         for file_name, contents in files:
-            file_oid = self.repo.create_blob(contents.encode())
+            if isinstance(contents, str):
+                file_oid = self.repo.create_blob(contents)
+            else:
+                file_oid = self.repo.create_blob_fromiobase(contents.file)
             new_treebuilder.insert(
                 file_name, file_oid, pygit2.GIT_FILEMODE_BLOB
             )

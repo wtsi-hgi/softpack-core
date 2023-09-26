@@ -4,11 +4,13 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import io
 from pathlib import Path
 from typing import Optional
 
 import pygit2
 import pytest
+from fastapi import UploadFile
 
 from softpack_core.artifacts import Artifacts
 from softpack_core.schemas.environment import (
@@ -24,31 +26,9 @@ from softpack_core.schemas.environment import (
     UpdateEnvironmentSuccess,
     WriteArtifactSuccess,
 )
-from tests.integration.utils import (
-    file_in_remote,
-    get_user_path_without_environments,
-    new_test_artifacts,
-)
+from tests.integration.utils import file_in_remote
 
 pytestmark = pytest.mark.repo
-
-
-@pytest.fixture
-def testable_env_input(mocker) -> EnvironmentInput:
-    ad = new_test_artifacts()
-    artifacts: Artifacts = ad["artifacts"]
-    user = ad["test_user"]
-
-    mocker.patch.object(Environment, 'artifacts', new=artifacts)
-
-    testable_env_input = EnvironmentInput(
-        name="test_env_create",
-        path=str(get_user_path_without_environments(artifacts, user)),
-        description="description",
-        packages=[Package(name="pkg_test")],
-    )
-
-    yield testable_env_input
 
 
 def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
@@ -172,10 +152,8 @@ def test_delete(httpx_post, testable_env_input) -> None:
 
 
 @pytest.mark.asyncio
-async def test_write_artifact(httpx_post, testable_env_input, upload):
-    upload.filename = "example.txt"
-    upload.content_type = "text/plain"
-    upload.read.return_value = b"mock data"
+async def test_write_artifact(httpx_post, testable_env_input):
+    upload = UploadFile(filename="example.txt", file=io.BytesIO(b"mock data"))
 
     result = await Environment.write_artifact(
         file=upload,
@@ -217,15 +195,16 @@ def test_iter(testable_env_input):
 
 
 @pytest.mark.asyncio
-async def test_states(httpx_post, testable_env_input, upload):
+async def test_states(httpx_post, testable_env_input):
     result = Environment.create(testable_env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_called_once()
 
-    upload.filename = Artifacts.environments_file
-    upload.content_type = "text/plain"
-    upload.read.return_value = (
-        b"description: test env\n" b"packages:\n  - zlib@v1.1\n"
+    upload = UploadFile(
+        filename=Artifacts.environments_file,
+        file=io.BytesIO(
+            b"description: test env\n" b"packages:\n  - zlib@v1.1\n"
+        ),
     )
 
     result = await Environment.write_artifact(
@@ -242,9 +221,9 @@ async def test_states(httpx_post, testable_env_input, upload):
     assert env.type == Artifacts.built_by_softpack
     assert env.state == State.queued
 
-    upload.filename = Artifacts.module_file
-    upload.content_type = "text/plain"
-    upload.read.return_value = b"#%Module"
+    upload = UploadFile(
+        filename=Artifacts.module_file, file=io.BytesIO(b"#%Module")
+    )
 
     result = await Environment.write_artifact(
         file=upload,
@@ -265,14 +244,14 @@ def get_env_from_iter(name: str) -> Optional[Environment]:
 
 
 @pytest.mark.asyncio
-async def test_create_from_module(httpx_post, testable_env_input, upload):
+async def test_create_from_module(httpx_post, testable_env_input):
     test_files_dir = Path(__file__).parent.parent / "files" / "modules"
     test_file_path = test_files_dir / "shpc.mod"
 
     with open(test_file_path, "rb") as fh:
-        upload.filename = "shpc.mod"
-        upload.content_type = "text/plain"
-        upload.read.return_value = fh.read()
+        data = fh.read()
+
+    upload = UploadFile(filename="shpc.mod", file=io.BytesIO(data))
 
     env_name = "some-environment"
     name = "groups/hgi/" + env_name
@@ -285,6 +264,8 @@ async def test_create_from_module(httpx_post, testable_env_input, upload):
     )
 
     assert isinstance(result, CreateEnvironmentSuccess)
+
+    upload = UploadFile(filename="shpc.mod", file=io.BytesIO(data))
 
     result = await Environment.create_from_module(
         file=upload,
@@ -335,9 +316,9 @@ async def test_create_from_module(httpx_post, testable_env_input, upload):
     test_modifiy_file_path = test_files_dir / "all_fields.mod"
 
     with open(test_modifiy_file_path, "rb") as fh:
-        upload.filename = "all_fields.mod"
-        upload.content_type = "text/plain"
-        upload.read.return_value = fh.read()
+        data = fh.read()
+
+    upload = UploadFile(filename="all_fields.mod", file=io.BytesIO(data))
 
     module_path = "HGI/common/all_fields"
 
@@ -360,6 +341,8 @@ async def test_create_from_module(httpx_post, testable_env_input, upload):
     assert "module load " + module_path in env.readme
     assert env.type == Artifacts.generated_from_module
     assert env.state == State.ready
+
+    upload = UploadFile(filename="all_fields.mod", file=io.BytesIO(data))
 
     result = await Environment.update_from_module(
         file=upload,

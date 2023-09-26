@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import Iterable, List, Optional, Tuple, Union, cast
 
 import httpx
+import starlette.datastructures
 import strawberry
-from starlette.datastructures import UploadFile
+from fastapi import UploadFile
 from strawberry.file_uploads import Upload
 
 from softpack_core.artifacts import Artifacts, Package, State
@@ -264,8 +265,8 @@ class Environment:
         already exists.
 
         Args:
-            env (EnvironmentInput): Details of the new environment. env_type
-            (str): One of Artifacts.built_by_softpack_file or
+            env (EnvironmentInput): Details of the new environment.
+            env_type (str): One of Artifacts.built_by_softpack_file or
             Artifacts.generated_from_module_file that denotes how the
             environment was made.
 
@@ -471,9 +472,15 @@ class Environment:
         yml = ToSoftpackYML(env_name, contents)
         readme = GenerateEnvReadme(module_path)
 
-        module_file = UploadFile(file=io.BytesIO(contents))
-        softpack_file = UploadFile(file=io.BytesIO(yml))
-        readme_file = UploadFile(file=io.BytesIO(readme))
+        module_file = UploadFile(
+            filename=cls.artifacts.module_file, file=io.BytesIO(contents)
+        )
+        softpack_file = UploadFile(
+            filename=cls.artifacts.environments_file, file=io.BytesIO(yml)
+        )
+        readme_file = UploadFile(
+            filename=cls.artifacts.readme_file, file=io.BytesIO(readme)
+        )
 
         return await cls.write_module_artifacts(
             module_file=module_file,
@@ -531,7 +538,7 @@ class Environment:
 
     @classmethod
     async def write_artifacts(
-        cls, folder_path: str, files: list[Upload]
+        cls, folder_path: str, files: list[Union[Upload, UploadFile]]
     ) -> WriteArtifactResponse:  # type: ignore
         """Add one or more files to the Artifacts repo.
 
@@ -540,10 +547,16 @@ class Environment:
             files: the files to add to the repo.
         """
         try:
-            new_files: List[Tuple[str, str]] = []
+            new_files: List[Tuple[str, Union[str, UploadFile]]] = []
             for file in files:
-                contents = cast(str, (await file.read()).decode())
-                new_files.append((file.name, contents))
+                if isinstance(file, starlette.datastructures.UploadFile):
+                    new_files.append(
+                        (file.filename or "", cast(UploadFile, file))
+                    )
+                else:
+                    new_files.append(
+                        (file.name, cast(str, (await file.read()).decode()))
+                    )
 
             tree_oid = cls.artifacts.create_files(
                 Path(folder_path), new_files, overwrite=True
@@ -621,12 +634,12 @@ class EnvironmentSchema(BaseSchema):
         createEnvironment: CreateResponse = Environment.create  # type: ignore
         updateEnvironment: UpdateResponse = Environment.update  # type: ignore
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
-        writeArtifact: WriteArtifactResponse = (  # type: ignore
-            Environment.write_artifact
-        )
-        writeArtifacts: WriteArtifactResponse = (  # type: ignore
-            Environment.write_artifacts
-        )
+        # writeArtifact: WriteArtifactResponse = (  # type: ignore
+        #     Environment.write_artifact
+        # )
+        # writeArtifacts: WriteArtifactResponse = (  # type: ignore
+        #     Environment.write_artifacts
+        # )
         createFromModule: CreateResponse = (  # type: ignore
             Environment.create_from_module
         )
