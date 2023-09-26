@@ -63,7 +63,6 @@ class Spack:
     class PackageBase:
         """Wrapper for a spack package."""
 
-        id: str
         name: str
 
     @dataclass
@@ -77,7 +76,6 @@ class Spack:
         return list(
             map(
                 lambda package: self.Package(
-                    id=uuid.uuid4().hex,
                     name=package.name,
                     versions=[
                         str(ver) for ver in list(package.versions.keys())

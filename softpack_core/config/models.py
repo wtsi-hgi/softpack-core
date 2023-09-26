@@ -31,13 +31,6 @@ class VaultConfig(BaseModel):
     token: str
 
 
-class Credentials(BaseModel):
-    """Credentials model."""
-
-    username: str
-    password: str
-
-
 class ArtifactsConfig(BaseModel):
     """Artifacts config model."""
 
@@ -45,8 +38,12 @@ class ArtifactsConfig(BaseModel):
         """Repo model."""
 
         url: AnyUrl
-        reader: Optional[Credentials]
-        writer: Optional[Credentials]
+        username: Optional[str]
+        author: str
+        email: str
+        reader: Optional[str]
+        writer: Optional[str]
+        branch: Optional[str]
 
     path: Path
     repo: Repo

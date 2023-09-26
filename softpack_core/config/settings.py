@@ -4,7 +4,6 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-import itertools
 import sys
 from pathlib import Path
 from typing import Any, Optional, Tuple
@@ -111,15 +110,13 @@ class Settings(BaseSettings):
                 secrets = client.secrets.kv.v1.list_secrets(
                     path=str(vault.path), mount_point="/"
                 )
-                merged_secrets = dict(
-                    itertools.chain.from_iterable(
-                        [
-                            get_secret(vault.path, key).items()
-                            for key in secrets["data"]["keys"]
-                        ]
-                    )
-                )
-                return {vault.path.name: merged_secrets}
+
+                return {
+                    vault.path.name: {
+                        key: get_secret(vault.path, key)
+                        for key in secrets["data"]["keys"]
+                    }
+                }
 
             except Exception as e:
                 print(e, file=sys.stderr)

@@ -7,13 +7,17 @@ server:
       - http://localhost
       - http://localhost:8080
       - http://localhost:3000
+      - http://localhost:5173
 
 artifacts:
   repo:
     url: https://github.com/softpack-io/softpack-artifacts.git
+    username: softpack-core
+    author: softpack
+    email: softpack@sanger.ac.uk
   path: ./softpack-artifacts
 
-# LVault Config
+# Vault Config
 #  vault:
 #      url:
 #      path:
