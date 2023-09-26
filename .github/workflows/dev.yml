@@ -60,7 +60,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: spack/spack
-          ref: 0707ffd4e466402bf19dff1add59eaf2b6d9154e
+          ref: e8658d6493887ef702dd38f0e9ee5870a1651c1e
           path: spack
 
       - name: Update PATH
