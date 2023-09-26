@@ -7,7 +7,6 @@ LICENSE file in the root directory of this source tree.
 import os
 
 import pytest
-from starlette.datastructures import UploadFile
 
 from softpack_core.artifacts import Artifacts, Package, app
 from softpack_core.schemas.environment import Environment, EnvironmentInput
@@ -41,11 +40,6 @@ def testable_artifacts_setup():
 def httpx_post(mocker):
     post_mock = mocker.patch('httpx.post')
     return post_mock
-
-
-@pytest.fixture()
-def upload(mocker):
-    return mocker.Mock(spec=UploadFile)
 
 
 @pytest.fixture
