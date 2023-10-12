@@ -35,25 +35,7 @@ class PackageCollection:
             Iterable[PackageCollection]: An iterator of PackageCollection
             objects.
         """
-        return map(cls.from_collection, app.spack.collections)
-
-    @classmethod
-    def from_collection(
-        cls, collection: Spack.Collection
-    ) -> "PackageCollection":
-        """Create a PackageCollection object from Spack.Collection.
-
-        Args:
-            collection: A Spack.Collection
-
-        Returns:
-            PackageCollection: A Spack package collection.
-        """
-        return PackageCollection(
-            id=collection.id,
-            name=collection.name,
-            packages=list(map(cls.from_package, collection.packages)),
-        )  # type: ignore [call-arg]
+        return list(map(cls.from_package, app.spack.packages()))
 
     @classmethod
     def from_package(cls, package: Spack.Package) -> PackageMultiVersion:

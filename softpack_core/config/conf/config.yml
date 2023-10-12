@@ -17,6 +17,10 @@ artifacts:
     email: softpack@sanger.ac.uk
   path: ./softpack-artifacts
 
+spack:
+  repo: https://github.com/custom-spack/repo
+  bin: /path/to/spack
+
 # Vault Config
 #  vault:
 #      url:
