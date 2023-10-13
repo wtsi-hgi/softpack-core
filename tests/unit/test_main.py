@@ -14,7 +14,7 @@ from softpack_core.main import main
 
 def test_main(capsys) -> None:
     with pytest.raises(SystemExit):
-        main()
+        main(0)
     captured = capsys.readouterr()
     command = Path(sys.argv[0])
     assert f"{command.name} [OPTIONS] COMMAND [ARGS]" in captured.err

@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 import json
 import subprocess
 import tempfile
+import threading
 from dataclasses import dataclass
 
 
@@ -116,3 +117,17 @@ class Spack:
             self.load_package_list(self.spack_exe, self.custom_repo)
 
         return self.stored_packages
+
+    def keep_packages_updated(self, interval: float) -> None:
+        """Runs package list retireval on a timer."""
+        self.load_package_list(self.spack_exe, self.custom_repo)
+
+        self.timer = threading.Timer(
+            interval, self.keep_packages_updated, [interval]
+        )
+        self.timer.start()
+
+    def stop_package_timer(self) -> None:
+        """Stops any running timer threads."""
+        if self.timer is not None:
+            self.timer.cancel()
