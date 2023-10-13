@@ -4,9 +4,14 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import pytest
+
 from softpack_core.app import app
-from softpack_core.schemas.package_collection import PackageCollection, PackageMultiVersion
-from softpack_core.spack import Spack
+from softpack_core.schemas.package_collection import (
+    PackageCollection,
+    PackageMultiVersion,
+)
+from softpack_core.spack import Package, Spack
 
 
 def test_spack_packages():
@@ -17,7 +22,7 @@ def test_spack_packages():
 
     assert len(pkgs) > 1
 
-    assert isinstance(pkgs[0], Spack.Package)
+    assert isinstance(pkgs[0], Package)
 
     assert pkgs[0].name != ""
 
@@ -35,7 +40,10 @@ def test_spack_packages():
 
     assert len(packages[0].versions) != 0
 
-    pkgs_new = Spack("spack", app.settings.spack.repo)
-    pkgs_new.packages()
+    if app.settings.spack.repo == "https://github.com/custom-spack/repo":
+        pytest.skip("skipped due to missing custom repo")
 
-    assert len(pkgs_new.stored_packages) > len(pkgs)
+    spack = Spack("spack", app.settings.spack.repo)
+    spack.packages()
+
+    assert len(spack.stored_packages) > len(pkgs)

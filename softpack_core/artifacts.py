@@ -16,14 +16,14 @@ import strawberry
 from box import Box
 from fastapi import UploadFile
 
-from softpack_core.spack import Spack
+from softpack_core.spack import PackageBase
 
 from .app import app
 from .ldapapi import LDAP
 
 
 @strawberry.type
-class Package(Spack.PackageBase):
+class Package(PackageBase):
     """A Strawberry model representing a package."""
 
     version: Optional[str] = None

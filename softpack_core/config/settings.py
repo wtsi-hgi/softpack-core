@@ -14,7 +14,13 @@ import yaml
 from pydantic import BaseSettings
 from pydantic.env_settings import SettingsSourceCallable
 
-from .models import ArtifactsConfig, LDAPConfig, ServerConfig, SpackConfig, VaultConfig
+from .models import (
+    ArtifactsConfig,
+    LDAPConfig,
+    ServerConfig,
+    SpackConfig,
+    VaultConfig,
+)
 
 
 class Settings(BaseSettings):
