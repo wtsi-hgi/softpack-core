@@ -35,7 +35,7 @@ class PackageCollection:
             Iterable[PackageCollection]: An iterator of PackageCollection
             objects.
         """
-        return list(map(cls.from_package, app.spack.packages()))
+        return map(cls.from_package, app.spack.packages())
 
     @classmethod
     def from_package(cls, package: Package) -> PackageMultiVersion:

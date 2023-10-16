@@ -32,7 +32,7 @@ def test_spack_packages():
 
     assert pkgs[0].versions[0] != ""
 
-    packages = PackageCollection.iter()
+    packages = list(PackageCollection.iter())
 
     assert len(packages) == len(pkgs)
 
