@@ -14,9 +14,9 @@ GraphQL.register()
 ServiceAPI.register()
 
 
-def main() -> Any:
+def main(package_update_interval: float = 600) -> Any:
     """Main entrypoint."""
-    return app.main()
+    return app.main(package_update_interval)
 
 
 if __name__ == "__main__":

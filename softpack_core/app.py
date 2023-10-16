@@ -107,13 +107,25 @@ class Application:
         )
         return str(url)
 
-    def main(self) -> Any:
+    def main(self, package_update_interval: float) -> Any:
         """Main command line entrypoint.
+
+        Args:
+            package_update_interval: interval between updates of the spack
+        package list. Setting 0 disables the automatic updating.
 
         Returns:
             Any: The return value from running Typer commands.
         """
-        return self.commands()
+        if package_update_interval > 0:
+            self.spack.keep_packages_updated(package_update_interval)
+
+        ret = self.commands()
+
+        if package_update_interval > 0:
+            self.spack.stop_package_timer()
+
+        return ret
 
 
 app = Application()

@@ -11,11 +11,11 @@ from uuid import UUID
 import strawberry
 
 from softpack_core.app import app
-from softpack_core.spack import Spack
+from softpack_core.spack import Package
 
 
 @strawberry.type
-class PackageMultiVersion(Spack.Package):
+class PackageMultiVersion(Package):
     """A Strawberry model representing a package in a collection."""
 
 
@@ -28,35 +28,17 @@ class PackageCollection:
     packages: list[PackageMultiVersion]
 
     @classmethod
-    def iter(cls) -> Iterable["PackageCollection"]:
+    def iter(cls) -> Iterable["PackageMultiVersion"]:
         """Get an iterator over PackageCollection objects.
 
         Returns:
             Iterable[PackageCollection]: An iterator of PackageCollection
             objects.
         """
-        return map(cls.from_collection, app.spack.collections)
+        return map(cls.from_package, app.spack.packages())
 
     @classmethod
-    def from_collection(
-        cls, collection: Spack.Collection
-    ) -> "PackageCollection":
-        """Create a PackageCollection object from Spack.Collection.
-
-        Args:
-            collection: A Spack.Collection
-
-        Returns:
-            PackageCollection: A Spack package collection.
-        """
-        return PackageCollection(
-            id=collection.id,
-            name=collection.name,
-            packages=list(map(cls.from_package, collection.packages)),
-        )  # type: ignore [call-arg]
-
-    @classmethod
-    def from_package(cls, package: Spack.Package) -> PackageMultiVersion:
+    def from_package(cls, package: Package) -> PackageMultiVersion:
         """Create a PackageMultiVersion object.
 
         Args:

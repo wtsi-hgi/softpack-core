@@ -63,3 +63,10 @@ class LDAPConfig(BaseModel):
     base: str
     filter: str
     group: GroupConfig
+
+
+class SpackConfig(BaseModel):
+    """Spack config model."""
+
+    repo: str
+    bin: str
