@@ -111,7 +111,8 @@ class Application:
         """Main command line entrypoint.
 
         Args:
-            keep_packages_updated:
+            package_update_interval: interval between updates of the spack
+        package list. Setting 0 disables the automatic updating.
 
         Returns:
             Any: The return value from running Typer commands.
