@@ -61,5 +61,5 @@ class PackageCollectionSchema:
         """GraphQL query schema."""
 
         packageCollections: list[
-            PackageCollection
+            PackageMultiVersion
         ] = PackageCollection.iter  # type: ignore
