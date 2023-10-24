@@ -39,7 +39,7 @@ jobs:
       - name: Checkout an artifacts repository
         uses: actions/checkout@v3
         with:
-          repository: softpack-io/softpack-artifacts
+          repository: mjkw31/softpack-artifacts
           path: softpack-artifacts
 
       - name: Setup python

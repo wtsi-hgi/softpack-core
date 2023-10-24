@@ -11,7 +11,7 @@ server:
 
 artifacts:
   repo:
-    url: https://github.com/softpack-io/softpack-artifacts.git
+    url: https://github.com/mjkw31/softpack-artifacts
     username: softpack-core
     author: softpack
     email: softpack@sanger.ac.uk
