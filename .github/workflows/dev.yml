@@ -36,6 +36,12 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v3
 
+      - name: Checkout an artifacts repository
+        uses: actions/checkout@v3
+        with:
+          repository: mjkw31/softpack-artifacts
+          path: softpack-artifacts
+
       - name: Setup python
         uses: actions/setup-python@v4
         with:
