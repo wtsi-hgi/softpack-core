@@ -51,13 +51,21 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     path = Path(
         Environment.artifacts.environments_root,
         testable_env_input.path,
-        testable_env_input.name,
+        testable_env_input.name + "-1",
         Environment.artifacts.built_by_softpack_file,
     )
     assert file_in_remote(path)
 
     result = Environment.create(testable_env_input)
-    assert isinstance(result, EnvironmentAlreadyExistsError)
+    assert isinstance(result, CreateEnvironmentSuccess)
+
+    path = Path(
+        Environment.artifacts.environments_root,
+        testable_env_input.path,
+        testable_env_input.name + "-2",
+        Environment.artifacts.built_by_softpack_file,
+    )
+    assert file_in_remote(path)
 
     orig_name = testable_env_input.name
     testable_env_input.name = ""
@@ -79,6 +87,7 @@ def builder_called_correctly(
         "http://0.0.0.0:7080/environments/build",
         json={
             "name": f"{testable_env_input.path}/{testable_env_input.name}",
+            "version": "1",
             "model": {
                 "description": testable_env_input.description,
                 "packages": [
@@ -87,42 +96,6 @@ def builder_called_correctly(
             },
         },
     )
-
-
-def test_update(httpx_post, testable_env_input) -> None:
-    result = Environment.create(testable_env_input)
-    assert isinstance(result, CreateEnvironmentSuccess)
-    httpx_post.assert_called_once()
-
-    testable_env_input.description = "updated description"
-    result = Environment.update(
-        testable_env_input,
-        testable_env_input.path,
-        testable_env_input.name,
-    )
-    assert isinstance(result, UpdateEnvironmentSuccess)
-
-    builder_called_correctly(httpx_post, testable_env_input)
-
-    result = Environment.update(
-        testable_env_input, "invalid/path", "invalid_name"
-    )
-    assert isinstance(result, InvalidInputError)
-
-    testable_env_input.name = ""
-    result = Environment.update(
-        testable_env_input,
-        testable_env_input.path,
-        testable_env_input.name,
-    )
-    assert isinstance(result, InvalidInputError)
-
-    testable_env_input.name = "invalid_name"
-    testable_env_input.path = "invalid/path"
-    result = Environment.update(
-        testable_env_input, "invalid/path", "invalid_name"
-    )
-    assert isinstance(result, EnvironmentNotFoundError)
 
 
 def test_delete(httpx_post, testable_env_input) -> None:
@@ -138,13 +111,13 @@ def test_delete(httpx_post, testable_env_input) -> None:
     path = Path(
         Environment.artifacts.environments_root,
         testable_env_input.path,
-        testable_env_input.name,
+        testable_env_input.name + "-1",
         Artifacts.built_by_softpack_file,
     )
     assert file_in_remote(path)
 
     result = Environment.delete(
-        testable_env_input.name, testable_env_input.path
+        testable_env_input.name + "-1", testable_env_input.path
     )
     assert isinstance(result, DeleteEnvironmentSuccess)
 
@@ -157,7 +130,7 @@ async def test_write_artifact(httpx_post, testable_env_input):
 
     result = await Environment.write_artifact(
         file=upload,
-        folder_path=f"{testable_env_input.path}/{testable_env_input.name}",
+        folder_path=f"{testable_env_input.path}/{testable_env_input.name}-1",
         file_name=upload.filename,
     )
     assert isinstance(result, InvalidInputError)
@@ -168,7 +141,7 @@ async def test_write_artifact(httpx_post, testable_env_input):
 
     result = await Environment.write_artifact(
         file=upload,
-        folder_path=f"{testable_env_input.path}/{testable_env_input.name}",
+        folder_path=f"{testable_env_input.path}/{testable_env_input.name}-1",
         file_name=upload.filename,
     )
     assert isinstance(result, WriteArtifactSuccess)
@@ -176,7 +149,7 @@ async def test_write_artifact(httpx_post, testable_env_input):
     path = Path(
         Environment.artifacts.environments_root,
         testable_env_input.path,
-        testable_env_input.name,
+        testable_env_input.name + "-1",
         upload.filename,
     )
     assert file_in_remote(path)
@@ -209,12 +182,12 @@ async def test_states(httpx_post, testable_env_input):
 
     result = await Environment.write_artifact(
         file=upload,
-        folder_path=f"{testable_env_input.path}/{testable_env_input.name}",
+        folder_path=f"{testable_env_input.path}/{testable_env_input.name}-1",
         file_name=upload.filename,
     )
     assert isinstance(result, WriteArtifactSuccess)
 
-    env = get_env_from_iter(testable_env_input.name)
+    env = get_env_from_iter(testable_env_input.name + "-1")
     assert env is not None
     assert any(p.name == "zlib" for p in env.packages)
     assert any(p.version == "v1.1" for p in env.packages)
@@ -227,12 +200,12 @@ async def test_states(httpx_post, testable_env_input):
 
     result = await Environment.write_artifact(
         file=upload,
-        folder_path=f"{testable_env_input.path}/{testable_env_input.name}",
+        folder_path=f"{testable_env_input.path}/{testable_env_input.name}-1",
         file_name=upload.filename,
     )
     assert isinstance(result, WriteArtifactSuccess)
 
-    env = get_env_from_iter(testable_env_input.name)
+    env = get_env_from_iter(testable_env_input.name + "-1")
     assert env is not None
     assert env.type == Artifacts.built_by_softpack
     assert env.state == State.ready
