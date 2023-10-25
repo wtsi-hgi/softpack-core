@@ -234,9 +234,23 @@ class Environment:
         if result is not None:
             return result
 
-        response = cls.create_new_env(env, Artifacts.built_by_softpack_file)
-        if not isinstance(response, CreateEnvironmentSuccess):
-            return response
+        name = env.name
+        version = 1
+
+        while True:
+            env.name = name + "-" + str(version)
+            response = cls.create_new_env(
+                env, Artifacts.built_by_softpack_file
+            )
+            if isinstance(response, CreateEnvironmentSuccess):
+                break
+
+            if not isinstance(response, EnvironmentAlreadyExistsError):
+                return response
+
+            version += 1
+
+        env.name = name
 
         # TODO: remove hard-coding of URL.
         # Send build request
@@ -244,6 +258,7 @@ class Environment:
             "http://0.0.0.0:7080/environments/build",
             json={
                 "name": f"{env.path}/{env.name}",
+                "version": str(version),
                 "model": {
                     "description": env.description,
                     "packages": [f"{pkg.name}" for pkg in env.packages],
@@ -306,56 +321,6 @@ class Environment:
 
         return CreateEnvironmentSuccess(
             message="Successfully created environment in artifacts repo"
-        )
-
-    @classmethod
-    def update(
-        cls,
-        env: EnvironmentInput,
-        current_path: str,
-        current_name: str,
-    ) -> UpdateResponse:  # type: ignore
-        """Update an Environment.
-
-        Args:
-            env: Details of the updated environment
-            path: The path of the current environment
-            name: The name of the current environment
-
-        Returns:
-            A message confirming the success or failure of the operation.
-        """
-        result = env.validate()
-        if result is not None:
-            return result
-
-        if current_name == "" or current_path == "":
-            return InvalidInputError(message="current values must be supplied")
-
-        if env.path != current_path or env.name != current_name:
-            return InvalidInputError(
-                message=("change of name or path not currently supported")
-            )
-
-        result2 = cls.check_env_exists(Path(current_path, current_name))
-        if result2 is not None:
-            return result2
-
-        httpx.post(
-            "http://0.0.0.0:7080/environments/build",
-            json={
-                "name": f"{env.path}/{env.name}",
-                "model": {
-                    "description": env.description,
-                    "packages": [pkg.name for pkg in env.packages or []],
-                },
-            },
-        )
-
-        # TODO: validate the post worked
-
-        return UpdateEnvironmentSuccess(
-            message="Successfully updated environment"
         )
 
     @classmethod
@@ -632,7 +597,6 @@ class EnvironmentSchema(BaseSchema):
         """GraphQL mutation schema."""
 
         createEnvironment: CreateResponse = Environment.create  # type: ignore
-        updateEnvironment: UpdateResponse = Environment.update  # type: ignore
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
         # writeArtifact: WriteArtifactResponse = (  # type: ignore
         #     Environment.write_artifact
