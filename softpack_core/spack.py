@@ -125,6 +125,7 @@ class Spack:
         self.timer = threading.Timer(
             interval, self.keep_packages_updated, [interval]
         )
+        self.timer.daemon = True
         self.timer.start()
 
     def stop_package_timer(self) -> None:
