@@ -106,11 +106,11 @@ poetry run tox
 
 To run integration tests, you need:
 
-- a git repository
+- a git repository, hosted on e.g. GitHub or GitLab
 - an access token for the git repository
   - for GitLab, this requires the "developer" role and the "write_repository" scope
   - for GitHub, this requires read-write access to repository contents
-- a branch to run the tests on (not called "main")
+- a branch to run the tests on (must match `username` in the config below)
 - the appropriate SoftPack config, described below
 
 Make sure the artifacts/repo section of `~/.softpack/core/config.yml` is
@@ -120,10 +120,10 @@ configured correctly:
 artifacts:
   repo:
     url: https://github.com/[your-org]/development-softpack-artifacts.git # HTTPS link to the repo
-    username: testing # or whatever you called the branch
+    username: [your-username] # for whatever platform the repo is hosted on
     author: [your-name] # can be anything
     email: [your-email] # can be anything
-    writer: [your-token] # the token you created
+    writer: [your-token] # the access token for the repo (or your password for the repo host)
 ```
 
 Then enable the integration tests by suppling --repo to `poetry run pytest`, or
