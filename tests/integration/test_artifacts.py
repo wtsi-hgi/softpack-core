@@ -28,7 +28,8 @@ def test_clone() -> None:
     ad = new_test_artifacts()
     artifacts: Artifacts = ad["artifacts"]
     path = artifacts.repo.path
-    assert path.startswith(ad["temp_dir"].name)
+    tdir = str(Path(ad["temp_dir"].name).resolve())
+    assert path.startswith(tdir)
 
     shutil.rmtree(ad["temp_dir"].name)
     assert os.path.isdir(path) is False
