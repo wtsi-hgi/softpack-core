@@ -104,21 +104,26 @@ Run tests with [Tox][]
 poetry run tox
 ```
 
-To run integration tests, you need a git repository set up with token access and
-a branch named after your git repo username (stripped of any @domain if your
-username is an email address).
+To run integration tests, you need:
 
-Make sure the artifacts/repo section of ~/.softpack/core/config.yml is
+- a git repository
+- an access token for the git repository
+  - for GitLab, this requires the "developer" role and the "write_repository" scope
+  - for GitHub, this requires read-write access to repository contents
+- a branch to run the tests on (not called "main")
+- the appropriate SoftPack config, described below
+
+Make sure the artifacts/repo section of `~/.softpack/core/config.yml` is
 configured correctly:
 
-```
+```yaml
 artifacts:
   repo:
-    url: https://github.com/[your-org]/development-softpack-artifacts.git
-    username: [your-username]
-    author: [your-name]
-    email: [your-email]
-    writer: [your-token]
+    url: https://github.com/[your-org]/development-softpack-artifacts.git # HTTPS link to the repo
+    username: testing # or whatever you called the branch
+    author: [your-name] # can be anything
+    email: [your-email] # can be anything
+    writer: [your-token] # the token you created
 ```
 
 Then enable the integration tests by suppling --repo to `poetry run pytest`, or
