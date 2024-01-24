@@ -81,6 +81,11 @@ class EnvironmentAlreadyExistsError(Error):
     name: str
 
 
+@strawberry.type
+class BuilderError(Error):
+    """Unable to connect to builder."""
+
+
 # Unions
 CreateResponse = strawberry.union(
     "CreateResponse",
@@ -88,6 +93,7 @@ CreateResponse = strawberry.union(
         CreateEnvironmentSuccess,
         InvalidInputError,
         EnvironmentAlreadyExistsError,
+        BuilderError,
     ],
 )
 
@@ -255,17 +261,23 @@ class Environment:
 
         # TODO: remove hard-coding of URL.
         # Send build request
-        httpx.post(
-            "http://0.0.0.0:7080/environments/build",
-            json={
-                "name": f"{env.path}/{env.name}",
-                "version": str(version),
-                "model": {
-                    "description": env.description,
-                    "packages": [f"{pkg.name}" for pkg in env.packages],
+        try:
+            httpx.post(
+                "http://0.0.0.0:7080/environments/build",
+                json={
+                    "name": f"{env.path}/{env.name}",
+                    "version": str(version),
+                    "model": {
+                        "description": env.description,
+                        "packages": [f"{pkg.name}" for pkg in env.packages],
+                    },
                 },
-            },
-        )
+            )
+        except Exception as e:
+            return BuilderError(
+                message="Connection to builder failed: "
+                + "".join(format_exception_only(e))
+            )
 
         return CreateEnvironmentSuccess(
             message="Successfully scheduled environment creation"
