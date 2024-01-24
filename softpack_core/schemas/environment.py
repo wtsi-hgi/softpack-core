@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 import io
 from dataclasses import dataclass
 from pathlib import Path
+from traceback import format_exception_only
 from typing import Iterable, List, Optional, Tuple, Union, cast
 
 import httpx
@@ -317,7 +318,7 @@ class Environment:
                 tree_oid, "create environment folder"
             )
         except RuntimeError as e:
-            return InvalidInputError(message=str(e))
+            return InvalidInputError(message="".join(format_exception_only(e)))
 
         return CreateEnvironmentSuccess(
             message="Successfully created environment in artifacts repo"
@@ -535,7 +536,7 @@ class Environment:
             )
 
         except Exception as e:
-            return InvalidInputError(message=str(e))
+            return InvalidInputError(message="".join(format_exception_only(e)))
 
     @classmethod
     async def update_from_module(
