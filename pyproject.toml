@@ -70,6 +70,7 @@ types-setuptools = "^67.7.0.1"
 types-PyYAML = "^6.0.12.9"
 types-requests = "^2.30.0.0"
 virtualenv = "^20.20.0"
+watchfiles = "^0.21.0"
 
 [tool.poetry.group.doc]
 optional = true
