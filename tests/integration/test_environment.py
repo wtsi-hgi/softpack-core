@@ -82,7 +82,6 @@ def builder_called_correctly(
     post_mock, testable_env_input: EnvironmentInput
 ) -> None:
     # TODO: don't mock this; actually have a real builder service to test with?
-    # Also need to not hard-code the url here.
     post_mock.assert_called_with(
         f"http://{app.settings.builder.host}:{app.settings.builder.port}/environments/build",
         json={
@@ -91,7 +90,10 @@ def builder_called_correctly(
             "model": {
                 "description": testable_env_input.description,
                 "packages": [
-                    f"{pkg.name}" for pkg in testable_env_input.packages
+                    {
+                        "name": pkg.name,
+                        "version": pkg.version,
+                    } for pkg in testable_env_input.packages
                 ],
             },
         },

@@ -260,20 +260,23 @@ class Environment:
 
         env.name = name
 
-        # TODO: remove hard-coding of URL.
         # Send build request
         try:
-            httpx.post(
+            r = httpx.post(
                 f"http://{app.settings.builder.host}:{app.settings.builder.port}/environments/build",
                 json={
                     "name": f"{env.path}/{env.name}",
                     "version": str(version),
                     "model": {
                         "description": env.description,
-                        "packages": [f"{pkg.name}" for pkg in env.packages],
+                        "packages": [{
+                            "name": pkg.name,
+                            "version": pkg.version,
+                        } for pkg in env.packages],
                     },
                 },
             )
+            r.raise_for_status()
         except Exception as e:
             return BuilderError(
                 message="Connection to builder failed: "
