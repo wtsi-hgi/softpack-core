@@ -16,6 +16,7 @@ import strawberry
 from fastapi import UploadFile
 from strawberry.file_uploads import Upload
 
+from softpack_core.app import app
 from softpack_core.artifacts import Artifacts, Package, State
 from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 from softpack_core.schemas.base import BaseSchema
@@ -263,7 +264,7 @@ class Environment:
         # Send build request
         try:
             httpx.post(
-                "http://0.0.0.0:7080/environments/build",
+                f"http://{app.settings.builder.host}:{app.settings.builder.port}/environments/build",
                 json={
                     "name": f"{env.path}/{env.name}",
                     "version": str(version),

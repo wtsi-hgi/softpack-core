@@ -12,7 +12,7 @@ import pygit2
 import pytest
 from fastapi import UploadFile
 
-from softpack_core.artifacts import Artifacts
+from softpack_core.artifacts import Artifacts, app
 from softpack_core.schemas.environment import (
     CreateEnvironmentSuccess,
     DeleteEnvironmentSuccess,
@@ -84,7 +84,7 @@ def builder_called_correctly(
     # TODO: don't mock this; actually have a real builder service to test with?
     # Also need to not hard-code the url here.
     post_mock.assert_called_with(
-        "http://0.0.0.0:7080/environments/build",
+        f"http://{app.settings.builder.host}:{app.settings.builder.port}/environments/build",
         json={
             "name": f"{testable_env_input.path}/{testable_env_input.name}",
             "version": "1",
