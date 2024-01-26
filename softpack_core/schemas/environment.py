@@ -15,6 +15,7 @@ import starlette.datastructures
 import strawberry
 from fastapi import UploadFile
 from strawberry.file_uploads import Upload
+import yaml
 
 from softpack_core.app import app
 from softpack_core.artifacts import Artifacts, Package, State
@@ -269,10 +270,13 @@ class Environment:
                     "version": str(version),
                     "model": {
                         "description": env.description,
-                        "packages": [{
-                            "name": pkg.name,
-                            "version": pkg.version,
-                        } for pkg in env.packages],
+                        "packages": [
+                            {
+                                "name": pkg.name,
+                                "version": pkg.version,
+                            }
+                            for pkg in env.packages
+                        ],
                     },
                 },
             )
@@ -327,8 +331,17 @@ class Environment:
         # Create folder with place-holder file
         new_folder_path = Path(env.path, env.name)
         try:
-            tree_oid = cls.artifacts.create_file(
-                new_folder_path, env_type, "", True
+            softpack_definition = dict(
+                description = env.description,
+                packages = [pkg.name + ("@" + pkg.version if pkg.version else "") for pkg in env.packages]
+            )
+            ymlData = yaml.dump(softpack_definition)
+
+            tree_oid = cls.artifacts.create_files(
+                new_folder_path, [
+                    (env_type, ""),  # e.g. .built_by_softpack
+                    (cls.artifacts.environments_file, ymlData)  # softpack.yml
+                ], True
             )
             cls.artifacts.commit_and_push(
                 tree_oid, "create environment folder"

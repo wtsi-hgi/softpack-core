@@ -10,6 +10,7 @@ from typing import Optional
 
 import pygit2
 import pytest
+import yaml
 from fastapi import UploadFile
 
 from softpack_core.artifacts import Artifacts, app
@@ -42,19 +43,41 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
             name="test_env_create2",
             path="groups/not_already_in_repo",
             description="description2",
-            packages=[Package(name="pkg_test2")],
+            packages=[Package(name="pkg_test2"), Package(name="pkg_test3", version="3.1")],
         )
     )
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_called()
 
-    path = Path(
+    dir = Path(
         Environment.artifacts.environments_root,
         testable_env_input.path,
         testable_env_input.name + "-1",
-        Environment.artifacts.built_by_softpack_file,
     )
-    assert file_in_remote(path)
+    builtPath = dir / Environment.artifacts.built_by_softpack_file
+    ymlPath = dir / Environment.artifacts.environments_file
+    assert file_in_remote(builtPath)
+    ymlFile = file_in_remote(ymlPath)
+    expected_yaml = {
+        "description": "description",
+        "packages": ["pkg_test"],
+    }
+    assert yaml.safe_load(ymlFile.data.decode()) == expected_yaml
+
+    dir = Path(
+        Environment.artifacts.environments_root,
+        "groups/not_already_in_repo",
+        "test_env_create2-1"
+    )
+    builtPath = dir / Environment.artifacts.built_by_softpack_file
+    ymlPath = dir / Environment.artifacts.environments_file
+    assert file_in_remote(builtPath)
+    ymlFile = file_in_remote(ymlPath)
+    expected_yaml = {
+        "description": "description2",
+        "packages": ["pkg_test2", "pkg_test3@3.1"],
+    }
+    assert yaml.safe_load(ymlFile.data.decode()) == expected_yaml
 
     result = Environment.create(testable_env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
@@ -93,7 +116,8 @@ def builder_called_correctly(
                     {
                         "name": pkg.name,
                         "version": pkg.version,
-                    } for pkg in testable_env_input.packages
+                    }
+                    for pkg in testable_env_input.packages
                 ],
             },
         },
