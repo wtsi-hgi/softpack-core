@@ -127,4 +127,5 @@ class GraphQL(API):
             """
             super().__init__(schema=schema, path=prefix)
 
-    router = Router(schema=Schema(schemas), prefix=prefix)
+    schema = Schema(schemas)
+    router = Router(schema=schema, prefix=prefix)
