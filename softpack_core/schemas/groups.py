@@ -28,7 +28,6 @@ class Group:
         Returns:
             Iterable: An iterator over unix group names.
         """
-
         groups = LDAP().groups(username)
         return (Group(name=group) for group in groups)
 

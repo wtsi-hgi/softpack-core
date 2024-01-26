@@ -13,9 +13,9 @@ from typing import Iterable, List, Optional, Tuple, Union, cast
 import httpx
 import starlette.datastructures
 import strawberry
+import yaml
 from fastapi import UploadFile
 from strawberry.file_uploads import Upload
-import yaml
 
 from softpack_core.app import app
 from softpack_core.artifacts import Artifacts, Package, State
@@ -263,8 +263,10 @@ class Environment:
 
         # Send build request
         try:
+            host = app.settings.builder.host
+            port = app.settings.builder.port
             r = httpx.post(
-                f"http://{app.settings.builder.host}:{app.settings.builder.port}/environments/build",
+                f"http://{host}:{port}/environments/build",
                 json={
                     "name": f"{env.path}/{env.name}",
                     "version": str(version),
@@ -332,16 +334,21 @@ class Environment:
         new_folder_path = Path(env.path, env.name)
         try:
             softpack_definition = dict(
-                description = env.description,
-                packages = [pkg.name + ("@" + pkg.version if pkg.version else "") for pkg in env.packages]
+                description=env.description,
+                packages=[
+                    pkg.name + ("@" + pkg.version if pkg.version else "")
+                    for pkg in env.packages
+                ],
             )
             ymlData = yaml.dump(softpack_definition)
 
             tree_oid = cls.artifacts.create_files(
-                new_folder_path, [
+                new_folder_path,
+                [
                     (env_type, ""),  # e.g. .built_by_softpack
-                    (cls.artifacts.environments_file, ymlData)  # softpack.yml
-                ], True
+                    (cls.artifacts.environments_file, ymlData),  # softpack.yml
+                ],
+                True,
             )
             cls.artifacts.commit_and_push(
                 tree_oid, "create environment folder"

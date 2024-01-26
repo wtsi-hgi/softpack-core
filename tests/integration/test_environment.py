@@ -43,7 +43,10 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
             name="test_env_create2",
             path="groups/not_already_in_repo",
             description="description2",
-            packages=[Package(name="pkg_test2"), Package(name="pkg_test3", version="3.1")],
+            packages=[
+                Package(name="pkg_test2"),
+                Package(name="pkg_test3", version="3.1"),
+            ],
         )
     )
     assert isinstance(result, CreateEnvironmentSuccess)
@@ -67,7 +70,7 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     dir = Path(
         Environment.artifacts.environments_root,
         "groups/not_already_in_repo",
-        "test_env_create2-1"
+        "test_env_create2-1",
     )
     builtPath = dir / Environment.artifacts.built_by_softpack_file
     ymlPath = dir / Environment.artifacts.environments_file
