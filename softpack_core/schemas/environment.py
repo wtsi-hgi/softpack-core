@@ -286,7 +286,7 @@ class Environment:
         except Exception as e:
             return BuilderError(
                 message="Connection to builder failed: "
-                + "".join(format_exception_only(e))
+                + "".join(format_exception_only(type(e), e))
             )
 
         return CreateEnvironmentSuccess(
@@ -354,7 +354,9 @@ class Environment:
                 tree_oid, "create environment folder"
             )
         except RuntimeError as e:
-            return InvalidInputError(message="".join(format_exception_only(e)))
+            return InvalidInputError(
+                message="".join(format_exception_only(type(e), e))
+            )
 
         return CreateEnvironmentSuccess(
             message="Successfully created environment in artifacts repo"
@@ -572,7 +574,9 @@ class Environment:
             )
 
         except Exception as e:
-            return InvalidInputError(message="".join(format_exception_only(e)))
+            return InvalidInputError(
+                message="".join(format_exception_only(type(e), e))
+            )
 
     @classmethod
     async def update_from_module(
