@@ -93,12 +93,20 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     )
     assert file_in_remote(path)
 
-    orig_name = testable_env_input.name
+
+def test_create_name_empty_disallowed(httpx_post, testable_env_input):
     testable_env_input.name = ""
     result = Environment.create(testable_env_input)
     assert isinstance(result, InvalidInputError)
 
-    testable_env_input.name = orig_name
+
+def test_create_name_spaces_disallowed(httpx_post, testable_env_input):
+    testable_env_input.name = "names cannot have spaces"
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, InvalidInputError)
+
+
+def test_create_path_invalid_disallowed(httpx_post, testable_env_input):
     testable_env_input.path = "invalid/path"
     result = Environment.create(testable_env_input)
     assert isinstance(result, InvalidInputError)

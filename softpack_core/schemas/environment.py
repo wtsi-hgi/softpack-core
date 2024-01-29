@@ -146,14 +146,20 @@ class EnvironmentInput:
     description: str
     packages: list[PackageInput]
 
-    def validate(cls) -> Union[None, InvalidInputError]:
-        """Validate that all values have been supplied.
+    def validate(self) -> Union[None, InvalidInputError]:
+        """Validate all values.
+
+        Checks that name has no spaces.
+        Checks all values have been supplied.
 
         Returns:
             None if good, or InvalidInputError if not all values supplied.
         """
-        if any(len(value) == 0 for value in vars(cls).values()):
+        if any(len(value) == 0 for value in vars(self).values()):
             return InvalidInputError(message="all fields must be filled in")
+
+        if " " in self.name:
+            return InvalidInputError(message="name must not contain spaces")
 
         return None
 
@@ -239,9 +245,9 @@ class Environment:
         Returns:
             A message confirming the success or failure of the operation.
         """
-        result = env.validate()
-        if result is not None:
-            return result
+        input_err = env.validate()
+        if input_err is not None:
+            return input_err
 
         name = env.name
         version = 1
