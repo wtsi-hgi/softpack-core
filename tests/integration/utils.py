@@ -171,25 +171,31 @@ def get_user_path_without_environments(
     return Path(*(artifacts.user_folder(user).parts[1:]))
 
 
-def file_in_remote(*paths_with_environment: Union[str, Path]) -> bool:
+def file_in_remote(
+    *paths_with_environment: Union[str, Path]
+) -> Union[pygit2.Tree, pygit2.Blob]:
     temp_dir = tempfile.TemporaryDirectory()
     app.settings.artifacts.path = Path(temp_dir.name)
     artifacts = Artifacts()
 
+    file = None
     for path_with_environment in paths_with_environment:
         path = Path(path_with_environment)
 
-        if not file_in_repo(artifacts, path):
+        file = file_in_repo(artifacts, path)
+        if not file:
             return False
 
-    return True
+    return file
 
 
-def file_in_repo(artifacts: Artifacts, path: Path) -> bool:
+def file_in_repo(
+    artifacts: Artifacts, path: Path
+) -> Union[pygit2.Tree, pygit2.Blob]:
     current = artifacts.repo.head.peel(pygit2.Tree)
     for part in path.parts:
         if part not in current:
             return False
         current = current[part]
 
-    return True
+    return current

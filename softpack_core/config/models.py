@@ -23,6 +23,13 @@ class ServerConfig(BaseModel):
     port: int
 
 
+class BuilderConfig(BaseModel):
+    """Builder config model."""
+
+    host: str
+    port: int
+
+
 class VaultConfig(BaseModel):
     """HashiCorp vault config."""
 

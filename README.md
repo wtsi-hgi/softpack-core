@@ -38,7 +38,21 @@ $ source spack/share/spack/setup-env.sh
 ```
 
 To start the service, you will also need to configure a git repository to store
-artifacts.
+artifacts, and configure details of an LDAP server to query group information:
+
+```yaml
+artifacts:
+  repo: # see "integration tests" below
+
+ldap:
+  server: "ldaps://ldap.example"
+  base: "ou=group,dc=example,dc=ac,dc=uk"
+  filter: "memberuid={user}"
+  group:
+    attr: "cn"
+    pattern: ".*"
+
+```
 
 ### Stable release
 

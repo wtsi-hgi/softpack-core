@@ -7,14 +7,17 @@ LICENSE file in the root directory of this source tree.
 import io
 from dataclasses import dataclass
 from pathlib import Path
+from traceback import format_exception_only
 from typing import Iterable, List, Optional, Tuple, Union, cast
 
 import httpx
 import starlette.datastructures
 import strawberry
+import yaml
 from fastapi import UploadFile
 from strawberry.file_uploads import Upload
 
+from softpack_core.app import app
 from softpack_core.artifacts import Artifacts, Package, State
 from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 from softpack_core.schemas.base import BaseSchema
@@ -80,6 +83,11 @@ class EnvironmentAlreadyExistsError(Error):
     name: str
 
 
+@strawberry.type
+class BuilderError(Error):
+    """Unable to connect to builder."""
+
+
 # Unions
 CreateResponse = strawberry.union(
     "CreateResponse",
@@ -87,6 +95,7 @@ CreateResponse = strawberry.union(
         CreateEnvironmentSuccess,
         InvalidInputError,
         EnvironmentAlreadyExistsError,
+        BuilderError,
     ],
 )
 
@@ -252,19 +261,33 @@ class Environment:
 
         env.name = name
 
-        # TODO: remove hard-coding of URL.
         # Send build request
-        httpx.post(
-            "http://0.0.0.0:7080/environments/build",
-            json={
-                "name": f"{env.path}/{env.name}",
-                "version": str(version),
-                "model": {
-                    "description": env.description,
-                    "packages": [f"{pkg.name}" for pkg in env.packages],
+        try:
+            host = app.settings.builder.host
+            port = app.settings.builder.port
+            r = httpx.post(
+                f"http://{host}:{port}/environments/build",
+                json={
+                    "name": f"{env.path}/{env.name}",
+                    "version": str(version),
+                    "model": {
+                        "description": env.description,
+                        "packages": [
+                            {
+                                "name": pkg.name,
+                                "version": pkg.version,
+                            }
+                            for pkg in env.packages
+                        ],
+                    },
                 },
-            },
-        )
+            )
+            r.raise_for_status()
+        except Exception as e:
+            return BuilderError(
+                message="Connection to builder failed: "
+                + "".join(format_exception_only(type(e), e))
+            )
 
         return CreateEnvironmentSuccess(
             message="Successfully scheduled environment creation"
@@ -310,14 +333,30 @@ class Environment:
         # Create folder with place-holder file
         new_folder_path = Path(env.path, env.name)
         try:
-            tree_oid = cls.artifacts.create_file(
-                new_folder_path, env_type, "", True
+            softpack_definition = dict(
+                description=env.description,
+                packages=[
+                    pkg.name + ("@" + pkg.version if pkg.version else "")
+                    for pkg in env.packages
+                ],
+            )
+            ymlData = yaml.dump(softpack_definition)
+
+            tree_oid = cls.artifacts.create_files(
+                new_folder_path,
+                [
+                    (env_type, ""),  # e.g. .built_by_softpack
+                    (cls.artifacts.environments_file, ymlData),  # softpack.yml
+                ],
+                True,
             )
             cls.artifacts.commit_and_push(
                 tree_oid, "create environment folder"
             )
         except RuntimeError as e:
-            return InvalidInputError(message=str(e))
+            return InvalidInputError(
+                message="".join(format_exception_only(type(e), e))
+            )
 
         return CreateEnvironmentSuccess(
             message="Successfully created environment in artifacts repo"
@@ -535,7 +574,9 @@ class Environment:
             )
 
         except Exception as e:
-            return InvalidInputError(message=str(e))
+            return InvalidInputError(
+                message="".join(format_exception_only(type(e), e))
+            )
 
     @classmethod
     async def update_from_module(

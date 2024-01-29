@@ -17,6 +17,7 @@ from .api import API
 from .app import app
 from .schemas.base import BaseSchema
 from .schemas.environment import EnvironmentSchema
+from .schemas.groups import GroupsSchema
 from .schemas.package_collection import PackageCollectionSchema
 
 
@@ -24,7 +25,7 @@ class GraphQL(API):
     """GraphQL API."""
 
     prefix = "/graphql"
-    schemas = [EnvironmentSchema, PackageCollectionSchema]
+    schemas = [EnvironmentSchema, PackageCollectionSchema, GroupsSchema]
     commands = Typer(help="GraphQL commands.")
 
     @staticmethod
@@ -126,4 +127,5 @@ class GraphQL(API):
             """
             super().__init__(schema=schema, path=prefix)
 
-    router = Router(schema=Schema(schemas), prefix=prefix)
+    schema = Schema(schemas)
+    router = Router(schema=schema, prefix=prefix)
