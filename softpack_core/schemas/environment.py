@@ -5,6 +5,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 import io
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exception_only
@@ -158,8 +159,11 @@ class EnvironmentInput:
         if any(len(value) == 0 for value in vars(self).values()):
             return InvalidInputError(message="all fields must be filled in")
 
-        if " " in self.name:
-            return InvalidInputError(message="name must not contain spaces")
+        if not re.fullmatch(r"^[a-zA-Z0-9_-]+$", self.name):
+            return InvalidInputError(
+                message="name must only contain alphanumerics, "
+                "dash, and underscore"
+            )
 
         return None
 
