@@ -234,6 +234,21 @@ async def test_states(httpx_post, testable_env_input):
     assert env.state == State.queued
 
     upload = UploadFile(
+        filename=Artifacts.builder_out, file=io.BytesIO(b"some output")
+    )
+
+    result = await Environment.write_artifact(
+        file=upload,
+        folder_path=f"{testable_env_input.path}/{testable_env_input.name}-1",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, WriteArtifactSuccess)
+
+    env = get_env_from_iter(testable_env_input.name + "-1")
+    assert env is not None
+    assert env.state == State.failed
+
+    upload = UploadFile(
         filename=Artifacts.module_file, file=io.BytesIO(b"#%Module")
     )
 
