@@ -150,8 +150,8 @@ class EnvironmentInput:
     def validate(self) -> Union[None, InvalidInputError]:
         """Validate all values.
 
-        Checks that name has no spaces.
         Checks all values have been supplied.
+        Checks that name consists only of alphanumerics, dash, and underscore.
 
         Returns:
             None if good, or InvalidInputError if not all values supplied.
