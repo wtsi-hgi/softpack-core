@@ -93,12 +93,34 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     )
     assert file_in_remote(path)
 
-    orig_name = testable_env_input.name
+
+def test_create_name_empty_disallowed(httpx_post, testable_env_input):
     testable_env_input.name = ""
     result = Environment.create(testable_env_input)
     assert isinstance(result, InvalidInputError)
 
-    testable_env_input.name = orig_name
+
+def test_create_name_spaces_disallowed(httpx_post, testable_env_input):
+    testable_env_input.name = "names cannot have spaces"
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, InvalidInputError)
+
+
+def test_create_name_slashes_disallowed(httpx_post, testable_env_input):
+    testable_env_input.name = "names/cannot/have/slashes"
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, InvalidInputError)
+
+
+def test_create_name_dashes_and_number_first_allowed(
+    httpx_post, testable_env_input
+):
+    testable_env_input.name = "7-zip_piz-7"
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+
+
+def test_create_path_invalid_disallowed(httpx_post, testable_env_input):
     testable_env_input.path = "invalid/path"
     result = Environment.create(testable_env_input)
     assert isinstance(result, InvalidInputError)
@@ -224,6 +246,21 @@ async def test_states(httpx_post, testable_env_input):
     assert any(p.version == "v1.1" for p in env.packages)
     assert env.type == Artifacts.built_by_softpack
     assert env.state == State.queued
+
+    upload = UploadFile(
+        filename=Artifacts.builder_out, file=io.BytesIO(b"some output")
+    )
+
+    result = await Environment.write_artifact(
+        file=upload,
+        folder_path=f"{testable_env_input.path}/{testable_env_input.name}-1",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, WriteArtifactSuccess)
+
+    env = get_env_from_iter(testable_env_input.name + "-1")
+    assert env is not None
+    assert env.state == State.failed
 
     upload = UploadFile(
         filename=Artifacts.module_file, file=io.BytesIO(b"#%Module")

@@ -53,6 +53,7 @@ class State(Enum):
 
     ready = 'ready'
     queued = 'queued'
+    failed = 'failed'
 
 
 class Artifacts:
@@ -60,6 +61,7 @@ class Artifacts:
 
     environments_root = "environments"
     environments_file = "softpack.yml"
+    builder_out = "builder.out"
     module_file = "module"
     readme_file = "README.md"
     built_by_softpack_file = ".built_by_softpack"
@@ -131,6 +133,8 @@ class Artifacts:
 
             if Artifacts.module_file in self.obj:
                 info["state"] = State.ready
+            elif Artifacts.builder_out in self.obj:
+                info["state"] = State.failed
             else:
                 info["state"] = State.queued
 

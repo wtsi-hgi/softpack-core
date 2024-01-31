@@ -5,6 +5,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 import io
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exception_only
@@ -146,14 +147,23 @@ class EnvironmentInput:
     description: str
     packages: list[PackageInput]
 
-    def validate(cls) -> Union[None, InvalidInputError]:
-        """Validate that all values have been supplied.
+    def validate(self) -> Union[None, InvalidInputError]:
+        """Validate all values.
+
+        Checks all values have been supplied.
+        Checks that name consists only of alphanumerics, dash, and underscore.
 
         Returns:
             None if good, or InvalidInputError if not all values supplied.
         """
-        if any(len(value) == 0 for value in vars(cls).values()):
+        if any(len(value) == 0 for value in vars(self).values()):
             return InvalidInputError(message="all fields must be filled in")
+
+        if not re.fullmatch(r"^[a-zA-Z0-9_-]+$", self.name):
+            return InvalidInputError(
+                message="name must only contain alphanumerics, "
+                "dash, and underscore"
+            )
 
         return None
 
@@ -239,9 +249,9 @@ class Environment:
         Returns:
             A message confirming the success or failure of the operation.
         """
-        result = env.validate()
-        if result is not None:
-            return result
+        input_err = env.validate()
+        if input_err is not None:
+            return input_err
 
         name = env.name
         version = 1
