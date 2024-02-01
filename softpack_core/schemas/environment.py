@@ -251,11 +251,11 @@ class Environment:
         if input_err is not None:
             return input_err
 
-        name = env.name
+        versionless_name = env.name
         version = 1
 
         while True:
-            env.name = name + "-" + str(version)
+            env.name = versionless_name + "-" + str(version)
             response = cls.create_new_env(
                 env, Artifacts.built_by_softpack_file
             )
@@ -267,8 +267,6 @@ class Environment:
 
             version += 1
 
-        env.name = name
-
         # Send build request
         try:
             host = app.settings.builder.host
@@ -276,7 +274,7 @@ class Environment:
             r = httpx.post(
                 f"http://{host}:{port}/environments/build",
                 json={
-                    "name": f"{env.path}/{env.name}",
+                    "name": f"{env.path}/{versionless_name}",
                     "version": str(version),
                     "model": {
                         "description": env.description,
@@ -292,7 +290,7 @@ class Environment:
             )
             r.raise_for_status()
         except Exception as e:
-            # TODO: clean up scheduled build in repo
+            cls.delete(env.name, env.path)
             return BuilderError(
                 message="Connection to builder failed: "
                 + "".join(format_exception_only(type(e), e))
