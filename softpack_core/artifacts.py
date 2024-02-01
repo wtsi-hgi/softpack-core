@@ -335,6 +335,9 @@ class Artifacts:
             tree_oid: the oid of the tree object that will be committed. The
             tree this refers to will replace the entire contents of the repo.
             message: the commit message
+
+        Returns:
+            pygit2.Oid: the ID of the new commit
         """
         ref = self.repo.head.name
         parents = [self.repo.lookup_reference(ref).target]
