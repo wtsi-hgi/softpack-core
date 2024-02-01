@@ -59,8 +59,6 @@ class DeleteEnvironmentSuccess(Success):
 class WriteArtifactSuccess(Success):
     """Artifact successfully created."""
 
-    commit_oid: str
-
 
 # Error types
 @strawberry.type
@@ -294,6 +292,7 @@ class Environment:
             )
             r.raise_for_status()
         except Exception as e:
+            # TODO: clean up scheduled build in repo
             return BuilderError(
                 message="Connection to builder failed: "
                 + "".join(format_exception_only(type(e), e))
@@ -575,12 +574,9 @@ class Environment:
             tree_oid = cls.artifacts.create_files(
                 Path(folder_path), new_files, overwrite=True
             )
-            commit_oid = cls.artifacts.commit_and_push(
-                tree_oid, "write artifact"
-            )
+            cls.artifacts.commit_and_push(tree_oid, "write artifact")
             return WriteArtifactSuccess(
                 message="Successfully written artifact(s)",
-                commit_oid=str(commit_oid),
             )
 
         except Exception as e:

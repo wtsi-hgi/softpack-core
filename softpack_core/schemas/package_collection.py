@@ -6,7 +6,6 @@ LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
 from typing import Iterable
-from uuid import UUID
 
 import strawberry
 
@@ -23,7 +22,6 @@ class PackageMultiVersion(Package):
 class PackageCollection:
     """A Strawberry model representing a package collection."""
 
-    id: UUID
     name: str
     packages: list[PackageMultiVersion]
 
