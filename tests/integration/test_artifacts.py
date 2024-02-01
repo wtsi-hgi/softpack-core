@@ -6,6 +6,7 @@ LICENSE file in the root directory of this source tree.
 
 import os
 import shutil
+import threading
 from pathlib import Path
 
 import pygit2
@@ -226,3 +227,36 @@ def test_iter() -> None:
     assert pkgs[1].version == "v2.0.1"
     assert pkgs[2].name == "pck3"
     assert pkgs[2].version is None
+
+
+# pygit2 protects us against producing diverging histories anyway:
+#   _pygit2.GitError: failed to create commit: current tip is not the first
+#   parent
+# but the test is nice reassurance.
+def test_simultaneous_commit():
+    parallelism = 100
+    ad = new_test_artifacts()
+    artifacts: Artifacts = ad["artifacts"]
+    initial_commit_oid = ad["initial_commit_oid"]
+
+    new_tree, _ = add_test_file_to_repo(artifacts)
+
+    e = threading.Event()
+
+    def fn(i: int):
+        e.wait()
+        artifacts.commit_and_push(new_tree, f"I am thread {i}")
+
+    threads = [
+        threading.Thread(target=fn, args=[i]) for i in range(parallelism)
+    ]
+    for thread in threads:
+        thread.start()
+    e.set()
+    for thread in threads:
+        thread.join()
+
+    commit = artifacts.repo.head.peel(pygit2.Commit)
+    for _ in range(parallelism):
+        commit = commit.parents[0]
+    assert commit.oid == initial_commit_oid

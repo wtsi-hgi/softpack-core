@@ -15,6 +15,7 @@ from fastapi import UploadFile
 
 from softpack_core.artifacts import Artifacts, app
 from softpack_core.schemas.environment import (
+    BuilderError,
     CreateEnvironmentSuccess,
     DeleteEnvironmentSuccess,
     Environment,
@@ -26,7 +27,6 @@ from softpack_core.schemas.environment import (
     State,
     UpdateEnvironmentSuccess,
     WriteArtifactSuccess,
-    BuilderError,
 )
 from tests.integration.utils import file_in_remote
 
@@ -127,7 +127,9 @@ def test_create_path_invalid_disallowed(httpx_post, testable_env_input):
     assert isinstance(result, InvalidInputError)
 
 
-def test_create_cleans_up_after_builder_failure(httpx_post, testable_env_input):
+def test_create_cleans_up_after_builder_failure(
+    httpx_post, testable_env_input
+):
     httpx_post.side_effect = Exception('could not contact builder')
     result = Environment.create(testable_env_input)
     assert isinstance(result, BuilderError)
