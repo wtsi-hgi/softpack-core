@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 import os
 import shutil
 import threading
+import time
 from pathlib import Path
 
 import pygit2
@@ -73,6 +74,15 @@ def test_commit_and_push() -> None:
     assert new_commit_oid == repo_head
 
     assert file_in_remote(file_path)
+
+    time.sleep(1)
+
+    newer_commit_oid = artifacts.commit_and_push(new_tree, "new timestamp")
+
+    assert (
+        artifacts.repo.get(new_commit_oid).commit_time
+        != artifacts.repo.get(newer_commit_oid).commit_time
+    )
 
 
 def add_test_file_to_repo(artifacts: Artifacts) -> tuple[pygit2.Oid, Path]:

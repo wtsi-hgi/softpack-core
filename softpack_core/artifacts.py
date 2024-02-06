@@ -71,7 +71,6 @@ class Artifacts:
     users_folder_name = "users"
     groups_folder_name = "groups"
     credentials_callback = None
-    signature = None
 
     @dataclass
     class Object:
@@ -204,7 +203,11 @@ class Artifacts:
             ]
         )
 
-        self.signature = pygit2.Signature(
+    @property
+    def signature(self) -> pygit2.Signature:
+        """Get current pygit2 commit signature: author/committer/timestamp."""
+        # creating one of these implicitly looks up the current time.
+        return pygit2.Signature(
             self.settings.artifacts.repo.author,
             self.settings.artifacts.repo.email,
         )
