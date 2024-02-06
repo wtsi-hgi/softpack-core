@@ -34,7 +34,9 @@ pytestmark = pytest.mark.repo
 
 
 def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
+    orig_input_name = testable_env_input.name
     result = Environment.create(testable_env_input)
+    testable_env_input.name = orig_input_name
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_called_once()
     builder_called_correctly(httpx_post, testable_env_input)
@@ -84,6 +86,7 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     assert yaml.safe_load(ymlFile.data.decode()) == expected_yaml
 
     result = Environment.create(testable_env_input)
+    testable_env_input.name = orig_input_name
     assert isinstance(result, CreateEnvironmentSuccess)
 
     path = Path(
@@ -137,7 +140,7 @@ def test_create_cleans_up_after_builder_failure(
     dir = Path(
         Environment.artifacts.environments_root,
         testable_env_input.path,
-        testable_env_input.name + "-1",
+        testable_env_input.name,
     )
     builtPath = dir / Environment.artifacts.built_by_softpack_file
     ymlPath = dir / Environment.artifacts.environments_file
@@ -183,13 +186,13 @@ def test_delete(httpx_post, testable_env_input) -> None:
     path = Path(
         Environment.artifacts.environments_root,
         testable_env_input.path,
-        testable_env_input.name + "-1",
+        testable_env_input.name,
         Artifacts.built_by_softpack_file,
     )
     assert file_in_remote(path)
 
     result = Environment.delete(
-        testable_env_input.name + "-1", testable_env_input.path
+        testable_env_input.name, testable_env_input.path
     )
     assert isinstance(result, DeleteEnvironmentSuccess)
 
@@ -207,7 +210,9 @@ async def test_write_artifact(httpx_post, testable_env_input):
     )
     assert isinstance(result, InvalidInputError)
 
+    orig_name = testable_env_input.name
     result = Environment.create(testable_env_input)
+    testable_env_input.name = orig_name
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_called_once()
 
@@ -241,7 +246,9 @@ def test_iter(testable_env_input):
 
 @pytest.mark.asyncio
 async def test_states(httpx_post, testable_env_input):
+    orig_name = testable_env_input.name
     result = Environment.create(testable_env_input)
+    testable_env_input.name = orig_name
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_called_once()
 
