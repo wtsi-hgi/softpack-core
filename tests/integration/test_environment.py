@@ -124,8 +124,19 @@ def test_create_name_dashes_and_number_first_allowed(
     assert isinstance(result, CreateEnvironmentSuccess)
 
 
-def test_create_path_invalid_disallowed(httpx_post, testable_env_input):
-    testable_env_input.path = "invalid/path"
+@pytest.mark.parametrize(
+    "path",
+    [
+        "invalid/path",
+        "users/",
+        "users/username/foo",
+        "users/abc123/very/nested",
+        "users/../nasty",
+        "users/user name",
+    ],
+)
+def test_create_path_invalid_disallowed(httpx_post, testable_env_input, path):
+    testable_env_input.path = path
     result = Environment.create(testable_env_input)
     assert isinstance(result, InvalidInputError)
 

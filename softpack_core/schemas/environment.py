@@ -163,6 +163,19 @@ class EnvironmentInput:
                 "dash, and underscore"
             )
 
+        valid_dirs = [
+            Artifacts.users_folder_name,
+            Artifacts.groups_folder_name,
+        ]
+        if not any(self.path.startswith(dir + "/") for dir in valid_dirs):
+            return InvalidInputError(message="Invalid path")
+
+        if not re.fullmatch(r"^[^/]+/[a-zA-Z0-9_-]+$", self.path):
+            return InvalidInputError(
+                message="user/group subdirectory must only contain "
+                "alphanumerics, dash, and underscore"
+            )
+
         return None
 
     @classmethod
@@ -182,8 +195,8 @@ class EnvironmentInput:
         return EnvironmentInput(
             name=environment_name,
             path="/".join(environment_dirs),
-            description="",
-            packages=list(),
+            description="placeholder description",
+            packages=[PackageInput("placeholder")],
         )
 
 
@@ -247,12 +260,13 @@ class Environment:
         Returns:
             A message confirming the success or failure of the operation.
         """
-        input_err = env.validate()
-        if input_err is not None:
-            return input_err
-
         versionless_name = env.name
         version = 1
+
+        if not versionless_name:
+            return InvalidInputError(
+                message="environment name must not be blank"
+            )
 
         while True:
             env.name = versionless_name + "-" + str(version)
@@ -319,15 +333,12 @@ class Environment:
             CreateResponse: a CreateEnvironmentSuccess on success, or one of
             (InvalidInputError, EnvironmentAlreadyExistsError) on error.
         """
-        # Check if a valid path has been provided. TODO: improve this to check
-        # that they can only create stuff in their own users folder, or in
+        # TODO: improve this to check
+        # that users can only create stuff in their own users folder, or in
         # group folders of unix groups they belong to.
-        valid_dirs = [
-            cls.artifacts.users_folder_name,
-            cls.artifacts.groups_folder_name,
-        ]
-        if not any(env.path.startswith(dir) for dir in valid_dirs):
-            return InvalidInputError(message="Invalid path")
+        input_err = env.validate()
+        if input_err is not None:
+            return input_err
 
         # Check if an env with same name already exists at given path
         if cls.artifacts.get(Path(env.path), env.name):
