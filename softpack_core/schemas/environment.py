@@ -19,7 +19,7 @@ from fastapi import UploadFile
 from strawberry.file_uploads import Upload
 
 from softpack_core.app import app
-from softpack_core.artifacts import Artifacts, Package, State
+from softpack_core.artifacts import Artifacts, Package, State, Type
 from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 from softpack_core.schemas.base import BaseSchema
 
@@ -196,7 +196,7 @@ class Environment:
     path: str
     description: str
     readme: str
-    type: str
+    type: Type
     packages: list[Package]
     state: Optional[State]
     artifacts = Artifacts()

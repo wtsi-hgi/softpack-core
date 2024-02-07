@@ -56,6 +56,14 @@ class State(Enum):
     failed = 'failed'
 
 
+@strawberry.enum
+class Type(Enum):
+    """Environment types."""
+
+    softpack = "softpack"
+    module = "module"
+
+
 class Artifacts:
     """Artifacts repo access class."""
 
@@ -65,9 +73,9 @@ class Artifacts:
     module_file = "module"
     readme_file = "README.md"
     built_by_softpack_file = ".built_by_softpack"
-    built_by_softpack = "softpack"
+    built_by_softpack = Type.softpack.value
     generated_from_module_file = ".generated_from_module"
-    generated_from_module = "module"
+    generated_from_module = Type.module.value
     users_folder_name = "users"
     groups_folder_name = "groups"
     credentials_callback = None
