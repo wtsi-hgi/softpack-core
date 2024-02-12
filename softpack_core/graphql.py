@@ -19,13 +19,19 @@ from .schemas.base import BaseSchema
 from .schemas.environment import EnvironmentSchema
 from .schemas.groups import GroupsSchema
 from .schemas.package_collection import PackageCollectionSchema
+from .schemas.status import StatusSchema
 
 
 class GraphQL(API):
     """GraphQL API."""
 
     prefix = "/graphql"
-    schemas = [EnvironmentSchema, PackageCollectionSchema, GroupsSchema]
+    schemas = [
+        EnvironmentSchema,
+        PackageCollectionSchema,
+        GroupsSchema,
+        StatusSchema,
+    ]
     commands = Typer(help="GraphQL commands.")
 
     @staticmethod
