@@ -15,8 +15,6 @@ from softpack_core.schemas.package_collection import (
 )
 from softpack_core.spack import Package, Spack
 
-pytest.skip(allow_module_level=True)
-
 
 def test_spack_packages():
     spack = Spack()
