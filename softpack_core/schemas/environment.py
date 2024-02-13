@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 import datetime
 import io
 import re
+import statistics
 from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exception_only
@@ -259,6 +260,7 @@ class Environment:
     requested: Optional[datetime.datetime] = None
     build_start: Optional[datetime.datetime] = None
     build_done: Optional[datetime.datetime] = None
+    avg_wait_secs: Optional[float] = None
 
     @classmethod
     def iter(cls) -> Iterable["Environment"]:
@@ -273,6 +275,17 @@ class Environment:
 
         status_map = {s.name: s for s in statuses}
 
+        waits: list[float] = []
+        for s in statuses:
+            if s.build_done is None:
+                continue
+            waits.append((s.build_done - s.requested).total_seconds())
+
+        try:
+            avg_wait_secs = statistics.mean(waits)
+        except statistics.StatisticsError:
+            avg_wait_secs = None
+
         environment_folders = cls.artifacts.iter()
         environment_objects = list(
             filter(None, map(cls.from_artifact, environment_folders))
@@ -285,6 +298,7 @@ class Environment:
             env.requested = status.requested
             env.build_start = status.build_start
             env.build_done = status.build_done
+            env.avg_wait_secs = avg_wait_secs
 
         return environment_objects
 

@@ -256,21 +256,57 @@ def test_iter(testable_env_input, mocker):
     get_mock.return_value.json.return_value = [
         {
             "Name": "users/test_user/test_environment",
-            "Requested": "2024-01-02T03:04:05.000000000Z",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
             "BuildStart": "2025-01-02T03:04:05.000000000Z",
             "BuildDone": None,
-        }
+        },
+        {
+            "Name": "groups/test_group/test_environment",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
+            "BuildStart": "2025-01-02T03:04:05.000000000Z",
+            "BuildDone": "2025-01-02T03:04:15.000000000Z",
+        },
+        # only used for average calculations, does not map to an environment in
+        # the test data
+        {
+            "Name": "users/foo/bar",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
+            "BuildStart": "2025-01-02T03:04:05.000000000Z",
+            "BuildDone": "2025-01-02T03:04:25.000000000Z",
+        },
     ]
 
     envs = list(Environment.iter())
     assert len(envs) == 2
     assert envs[0].requested == datetime.datetime(
-        2024, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc
+        2025, 1, 2, 3, 4, 0, tzinfo=datetime.timezone.utc
     )
     assert envs[0].build_start == datetime.datetime(
         2025, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc
     )
     assert envs[0].build_done is None
+    assert envs[1].requested == datetime.datetime(
+        2025, 1, 2, 3, 4, 0, tzinfo=datetime.timezone.utc
+    )
+    assert envs[1].build_start == datetime.datetime(
+        2025, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc
+    )
+    assert envs[1].build_done == datetime.datetime(
+        2025, 1, 2, 3, 4, 15, tzinfo=datetime.timezone.utc
+    )
+    assert envs[0].avg_wait_secs == envs[1].avg_wait_secs == 20
+
+
+def test_iter_no_statuses(testable_env_input, mocker):
+    get_mock = mocker.patch("httpx.get")
+    get_mock.return_value.json.return_value = []
+
+    envs = list(Environment.iter())
+    assert len(envs) == 2
+    assert envs[0].requested is None
+    assert envs[0].build_start is None
+    assert envs[0].build_done is None
+    assert envs[0].avg_wait_secs is None
 
 
 @pytest.mark.asyncio
