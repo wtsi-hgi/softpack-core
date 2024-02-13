@@ -4,6 +4,7 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import datetime
 import io
 from pathlib import Path
 from typing import Optional
@@ -250,13 +251,68 @@ async def test_write_artifact(httpx_post, testable_env_input):
     assert isinstance(result, InvalidInputError)
 
 
-def test_iter(testable_env_input):
-    envs = Environment.iter()
-    assert len(list(envs)) == 2
+def test_iter(testable_env_input, mocker):
+    get_mock = mocker.patch("httpx.get")
+    get_mock.return_value.json.return_value = [
+        {
+            "Name": "users/test_user/test_environment",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
+            "BuildStart": "2025-01-02T03:04:05.000000000Z",
+            "BuildDone": None,
+        },
+        {
+            "Name": "groups/test_group/test_environment",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
+            "BuildStart": "2025-01-02T03:04:05.000000000Z",
+            "BuildDone": "2025-01-02T03:04:15.000000000Z",
+        },
+        # only used for average calculations, does not map to an environment in
+        # the test data
+        {
+            "Name": "users/foo/bar",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
+            "BuildStart": "2025-01-02T03:04:05.000000000Z",
+            "BuildDone": "2025-01-02T03:04:25.000000000Z",
+        },
+    ]
+
+    envs = list(Environment.iter())
+    assert len(envs) == 2
+    assert envs[0].requested == datetime.datetime(
+        2025, 1, 2, 3, 4, 0, tzinfo=datetime.timezone.utc
+    )
+    assert envs[0].build_start == datetime.datetime(
+        2025, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc
+    )
+    assert envs[0].build_done is None
+    assert envs[1].requested == datetime.datetime(
+        2025, 1, 2, 3, 4, 0, tzinfo=datetime.timezone.utc
+    )
+    assert envs[1].build_start == datetime.datetime(
+        2025, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc
+    )
+    assert envs[1].build_done == datetime.datetime(
+        2025, 1, 2, 3, 4, 15, tzinfo=datetime.timezone.utc
+    )
+    assert envs[0].avg_wait_secs == envs[1].avg_wait_secs == 20
+
+
+def test_iter_no_statuses(testable_env_input, mocker):
+    get_mock = mocker.patch("httpx.get")
+    get_mock.return_value.json.return_value = []
+
+    envs = list(Environment.iter())
+    assert len(envs) == 2
+    assert envs[0].requested is None
+    assert envs[0].build_start is None
+    assert envs[0].build_done is None
+    assert envs[0].avg_wait_secs is None
+    assert envs[0].state == State.failed
+    assert envs[1].state == State.failed
 
 
 @pytest.mark.asyncio
-async def test_states(httpx_post, testable_env_input):
+async def test_states(httpx_post, testable_env_input, mocker):
     orig_name = testable_env_input.name
     result = Environment.create(testable_env_input)
     testable_env_input.name = orig_name
@@ -277,6 +333,15 @@ async def test_states(httpx_post, testable_env_input):
     )
     assert isinstance(result, WriteArtifactSuccess)
 
+    get_mock = mocker.patch("httpx.get")
+    get_mock.return_value.json.return_value = [
+        {
+            "Name": "users/test_user/test_env_create-1",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
+            "BuildStart": None,
+            "BuildDone": None,
+        },
+    ]
     env = get_env_from_iter(testable_env_input.name + "-1")
     assert env is not None
     assert any(p.name == "zlib" for p in env.packages)

@@ -25,7 +25,11 @@ class GraphQL(API):
     """GraphQL API."""
 
     prefix = "/graphql"
-    schemas = [EnvironmentSchema, PackageCollectionSchema, GroupsSchema]
+    schemas = [
+        EnvironmentSchema,
+        PackageCollectionSchema,
+        GroupsSchema,
+    ]
     commands = Typer(help="GraphQL commands.")
 
     @staticmethod
