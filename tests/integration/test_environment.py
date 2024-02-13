@@ -307,10 +307,12 @@ def test_iter_no_statuses(testable_env_input, mocker):
     assert envs[0].build_start is None
     assert envs[0].build_done is None
     assert envs[0].avg_wait_secs is None
+    assert envs[0].state == State.failed
+    assert envs[1].state == State.failed
 
 
 @pytest.mark.asyncio
-async def test_states(httpx_post, testable_env_input):
+async def test_states(httpx_post, testable_env_input, mocker):
     orig_name = testable_env_input.name
     result = Environment.create(testable_env_input)
     testable_env_input.name = orig_name
@@ -331,6 +333,15 @@ async def test_states(httpx_post, testable_env_input):
     )
     assert isinstance(result, WriteArtifactSuccess)
 
+    get_mock = mocker.patch("httpx.get")
+    get_mock.return_value.json.return_value = [
+        {
+            "Name": "users/test_user/test_env_create-1",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
+            "BuildStart": None,
+            "BuildDone": None,
+        },
+    ]
     env = get_env_from_iter(testable_env_input.name + "-1")
     assert env is not None
     assert any(p.name == "zlib" for p in env.packages)

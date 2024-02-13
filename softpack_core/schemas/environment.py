@@ -294,6 +294,8 @@ class Environment:
         for env in environment_objects:
             status = status_map.get(str(Path(env.path, env.name)))
             if not status:
+                if env.state == State.queued:
+                    env.state = State.failed
                 continue
             env.requested = status.requested
             env.build_start = status.build_start
