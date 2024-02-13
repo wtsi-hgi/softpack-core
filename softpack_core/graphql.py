@@ -19,7 +19,6 @@ from .schemas.base import BaseSchema
 from .schemas.environment import EnvironmentSchema
 from .schemas.groups import GroupsSchema
 from .schemas.package_collection import PackageCollectionSchema
-from .schemas.status import StatusSchema
 
 
 class GraphQL(API):
@@ -30,7 +29,6 @@ class GraphQL(API):
         EnvironmentSchema,
         PackageCollectionSchema,
         GroupsSchema,
-        StatusSchema,
     ]
     commands = Typer(help="GraphQL commands.")
 

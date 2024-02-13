@@ -4,6 +4,7 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import datetime
 import io
 import re
 from dataclasses import dataclass
@@ -200,6 +201,47 @@ class EnvironmentInput:
         )
 
 
+@dataclass
+class BuildStatus:
+    """A class representing the status of a build."""
+
+    name: str
+    requested: datetime.datetime
+    build_start: Optional[datetime.datetime]
+    build_done: Optional[datetime.datetime]
+
+    @classmethod
+    def get_all(cls) -> Union[List["BuildStatus"], BuilderError]:
+        """Get all known environment build statuses."""
+        try:
+            host = app.settings.builder.host
+            port = app.settings.builder.port
+            r = httpx.get(
+                f"http://{host}:{port}/environments/status",
+            )
+            r.raise_for_status()
+            json = r.json()
+        except Exception as e:
+            return BuilderError(
+                message="Connection to builder failed: "
+                + "".join(format_exception_only(type(e), e))
+            )
+
+        return [
+            BuildStatus(
+                name=s["Name"],
+                requested=datetime.datetime.fromisoformat(s["Requested"]),
+                build_start=datetime.datetime.fromisoformat(s["BuildStart"])
+                if s["BuildStart"]
+                else None,
+                build_done=datetime.datetime.fromisoformat(s["BuildDone"])
+                if s["BuildDone"]
+                else None,
+            )
+            for s in json
+        ]
+
+
 @strawberry.type
 class Environment:
     """A Strawberry model representing a single environment."""
@@ -214,6 +256,10 @@ class Environment:
     state: Optional[State]
     artifacts = Artifacts()
 
+    requested: Optional[datetime.datetime] = None
+    build_start: Optional[datetime.datetime] = None
+    build_done: Optional[datetime.datetime] = None
+
     @classmethod
     def iter(cls) -> Iterable["Environment"]:
         """Get an iterator over all Environment objects.
@@ -221,9 +267,26 @@ class Environment:
         Returns:
             Iterable[Environment]: An iterator of Environment objects.
         """
+        statuses = BuildStatus.get_all()
+        if isinstance(statuses, BuilderError):
+            statuses = []
+
+        status_map = {s.name: s for s in statuses}
+
         environment_folders = cls.artifacts.iter()
-        environment_objects = map(cls.from_artifact, environment_folders)
-        return filter(None, environment_objects)
+        environment_objects = list(
+            filter(None, map(cls.from_artifact, environment_folders))
+        )
+
+        for env in environment_objects:
+            status = status_map.get(str(Path(env.path, env.name)))
+            if not status:
+                continue
+            env.requested = status.requested
+            env.build_start = status.build_start
+            env.build_done = status.build_done
+
+        return environment_objects
 
     @classmethod
     def from_artifact(cls, obj: Artifacts.Object) -> Optional["Environment"]:

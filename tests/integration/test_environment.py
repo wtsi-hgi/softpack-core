@@ -4,6 +4,7 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import datetime
 import io
 from pathlib import Path
 from typing import Optional
@@ -250,9 +251,26 @@ async def test_write_artifact(httpx_post, testable_env_input):
     assert isinstance(result, InvalidInputError)
 
 
-def test_iter(testable_env_input):
-    envs = Environment.iter()
-    assert len(list(envs)) == 2
+def test_iter(testable_env_input, mocker):
+    get_mock = mocker.patch("httpx.get")
+    get_mock.return_value.json.return_value = [
+        {
+            "Name": "users/test_user/test_environment",
+            "Requested": "2024-01-02T03:04:05.000000000Z",
+            "BuildStart": "2025-01-02T03:04:05.000000000Z",
+            "BuildDone": None,
+        }
+    ]
+
+    envs = list(Environment.iter())
+    assert len(envs) == 2
+    assert envs[0].requested == datetime.datetime(
+        2024, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc
+    )
+    assert envs[0].build_start == datetime.datetime(
+        2025, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc
+    )
+    assert envs[0].build_done is None
 
 
 @pytest.mark.asyncio
