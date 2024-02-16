@@ -292,15 +292,13 @@ class Environment:
         )
 
         for env in environment_objects:
+            env.avg_wait_secs = avg_wait_secs
             status = status_map.get(str(Path(env.path, env.name)))
             if not status:
-                if env.state == State.queued:
-                    env.state = State.failed
                 continue
             env.requested = status.requested
             env.build_start = status.build_start
             env.build_done = status.build_done
-            env.avg_wait_secs = avg_wait_secs
 
         return environment_objects
 
@@ -360,7 +358,30 @@ class Environment:
 
             version += 1
 
-        # Send build request
+        response = cls.submit_env_to_builder(env)
+        if response is not None:
+            cls.delete(env.name, env.path)
+            return response
+
+        return CreateEnvironmentSuccess(
+            message="Successfully scheduled environment creation"
+        )
+
+    @classmethod
+    def submit_env_to_builder(
+        cls, env: EnvironmentInput
+    ) -> Union[None, BuilderError, InvalidInputError]:
+        """Submit an environment to the builder."""
+        try:
+            m = re.fullmatch(r"^(.*)-(\d+)$", env.name)
+            if not m:
+                raise Exception
+            versionless_name, version = m.groups()
+        except Exception:
+            return InvalidInputError(
+                message=f"could not parse version from name: {env.name!r}"
+            )
+
         try:
             host = app.settings.builder.host
             port = app.settings.builder.port
@@ -383,15 +404,11 @@ class Environment:
             )
             r.raise_for_status()
         except Exception as e:
-            cls.delete(env.name, env.path)
             return BuilderError(
                 message="Connection to builder failed: "
                 + "".join(format_exception_only(type(e), e))
             )
-
-        return CreateEnvironmentSuccess(
-            message="Successfully scheduled environment creation"
-        )
+        return None
 
     @classmethod
     def create_new_env(

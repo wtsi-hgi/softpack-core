@@ -14,6 +14,7 @@ from fastapi import APIRouter, Request, UploadFile
 from typer import Typer
 from typing_extensions import Annotated
 
+from softpack_core.artifacts import State
 from softpack_core.schemas.environment import (
     CreateEnvironmentSuccess,
     Environment,
@@ -92,3 +93,14 @@ class ServiceAPI(API):
             raise Exception(resp)
 
         return resp
+
+    @staticmethod
+    @router.post("/resend-pending-builds")
+    async def resend_pending_builds():  # type: ignore[no-untyped-def]
+        """Resubmit any pending builds to the builder."""
+        for env in Environment.iter():
+            if env.state != State.queued:
+                continue
+            Environment.submit_env_to_builder(env)
+
+        return {"message": "Successfully triggered resend"}
