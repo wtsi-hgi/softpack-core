@@ -34,8 +34,6 @@ def test_spack_packages():
 
     packages = list(PackageCollection.iter())
 
-    assert len(packages) == len(pkgs)
-
     assert isinstance(packages[0], PackageMultiVersion)
 
     assert packages[0].name != ""
@@ -43,12 +41,15 @@ def test_spack_packages():
     assert len(packages[0].versions) != 0
 
     if app.settings.spack.repo == "https://github.com/custom-spack/repo":
-        pytest.skip("skipped due to missing custom repo")
+        assert len(packages) == len(pkgs)
+    else:
+        assert len(packages) > len(pkgs)
 
-    spack = Spack("spack", app.settings.spack.repo)
-    spack.packages()
+        spack = Spack(custom_repo = app.settings.spack.repo)
 
-    assert len(spack.stored_packages) > len(pkgs)
+        spack.packages()
+
+        assert len(spack.stored_packages) == len(packages)
 
 
 def test_spack_package_updater():
