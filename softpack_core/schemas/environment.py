@@ -360,7 +360,6 @@ class Environment:
 
         response = cls.submit_env_to_builder(env)
         if response is not None:
-            cls.delete(env.name, env.path)
             return response
 
         return CreateEnvironmentSuccess(
