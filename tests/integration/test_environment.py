@@ -142,7 +142,7 @@ def test_create_path_invalid_disallowed(httpx_post, testable_env_input, path):
     assert isinstance(result, InvalidInputError)
 
 
-def test_create_cleans_up_after_builder_failure(
+def test_create_does_not_clean_up_after_builder_failure(
     httpx_post, testable_env_input
 ):
     httpx_post.side_effect = Exception('could not contact builder')
@@ -156,8 +156,8 @@ def test_create_cleans_up_after_builder_failure(
     )
     builtPath = dir / Environment.artifacts.built_by_softpack_file
     ymlPath = dir / Environment.artifacts.environments_file
-    assert not file_in_remote(builtPath)
-    assert not file_in_remote(ymlPath)
+    assert file_in_remote(builtPath)
+    assert file_in_remote(ymlPath)
 
 
 def test_delete(httpx_post, testable_env_input) -> None:
