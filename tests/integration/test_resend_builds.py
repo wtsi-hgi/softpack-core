@@ -23,6 +23,8 @@ pytestmark = pytest.mark.repo
 def test_resend_pending_builds(
     httpx_post, testable_env_input: EnvironmentInput
 ):
+    Environment.delete("test_environment", "users/test_user")
+    Environment.delete("test_environment", "groups/test_group")
     ServiceAPI.register()
     client = TestClient(app.router)
 
@@ -40,7 +42,18 @@ def test_resend_pending_builds(
         url="/resend-pending-builds",
     )
     assert resp.status_code == 200
-    assert resp.json().get("message") == "Successfully triggered resend"
+    assert resp.json().get("message") == "Successfully triggered resends"
+    assert resp.json().get("successes") == 1
+    assert resp.json().get("failures") == 0
 
     httpx_post.assert_called_once()
     builder_called_correctly(httpx_post, testable_env_input)
+
+    httpx_post.side_effect = Exception('could not contact builder')
+    resp = client.post(
+        url="/resend-pending-builds",
+    )
+    assert resp.status_code == 500
+    assert resp.json().get("message") == "Failed to trigger all resends"
+    assert resp.json().get("successes") == 0
+    assert resp.json().get("failures") == 1
