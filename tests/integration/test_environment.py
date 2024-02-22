@@ -493,3 +493,21 @@ async def test_create_from_module(httpx_post, testable_env_input):
         environment_path="users/non/existant",
     )
     assert isinstance(result, EnvironmentNotFoundError)
+
+def test_environmentinput_from_path():
+    for path in (
+        "users/any1/envName",
+        "users/any1/envName-1",
+        "users/any1/envName-1.1",
+        "users/any1/env_name",
+        "groups/some1/env_name-0.1.2.3",
+    ):
+        assert EnvironmentInput.from_path(path).validate() is None
+
+    for path in [
+        "users/any1/.envName",
+        "users/any1/envName!",
+        "users/any1/..envName-1",
+        "users/any1/../envName-1.1",
+    ]:
+        assert EnvironmentInput.from_path(path).validate() is not None
