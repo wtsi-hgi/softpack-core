@@ -159,7 +159,7 @@ class EnvironmentInput:
         if any(len(value) == 0 for value in vars(self).values()):
             return InvalidInputError(message="all fields must be filled in")
 
-        if not re.fullmatch(r"^[a-zA-Z0-9_-]+$", self.name):
+        if not re.fullmatch("^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$", self.name):
             return InvalidInputError(
                 message="name must only contain alphanumerics, "
                 "dash, and underscore"
