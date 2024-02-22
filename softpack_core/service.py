@@ -10,14 +10,16 @@ from pathlib import Path
 
 import typer
 import uvicorn
-from fastapi import APIRouter, Request, UploadFile
+from fastapi import APIRouter, Request, Response, UploadFile
 from typer import Typer
 from typing_extensions import Annotated
 
+from softpack_core.artifacts import State
 from softpack_core.schemas.environment import (
     CreateEnvironmentSuccess,
     Environment,
     EnvironmentInput,
+    PackageInput,
     WriteArtifactSuccess,
 )
 
@@ -92,3 +94,35 @@ class ServiceAPI(API):
             raise Exception(resp)
 
         return resp
+
+    @staticmethod
+    @router.post("/resend-pending-builds")
+    async def resend_pending_builds(  # type: ignore[no-untyped-def]
+        response: Response,
+    ):
+        """Resubmit any pending builds to the builder."""
+        successes = 0
+        failures = 0
+        for env in Environment.iter():
+            if env.state != State.queued:
+                continue
+            result = Environment.submit_env_to_builder(
+                EnvironmentInput(
+                    name=env.name,
+                    path=env.path,
+                    description=env.description,
+                    packages=[PackageInput(**vars(p)) for p in env.packages],
+                )
+            )
+            if result is None:
+                successes += 1
+            else:
+                failures += 1
+
+        if failures == 0:
+            message = "Successfully triggered resends"
+        else:
+            response.status_code = 500
+            message = "Failed to trigger all resends"
+
+        return {"message": message, "successes": successes, "failures": failures}

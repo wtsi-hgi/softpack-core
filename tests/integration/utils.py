@@ -12,6 +12,7 @@ import pygit2
 import pytest
 
 from softpack_core.artifacts import Artifacts, app
+from softpack_core.schemas.environment import EnvironmentInput
 
 artifacts_dict = dict[
     str,
@@ -199,3 +200,28 @@ def file_in_repo(
         current = current[part]
 
     return current
+
+
+def builder_called_correctly(
+    post_mock, testable_env_input: EnvironmentInput
+) -> None:
+    # TODO: don't mock this; actually have a real builder service to test with?
+    host = app.settings.builder.host
+    port = app.settings.builder.port
+    post_mock.assert_called_with(
+        f"http://{host}:{port}/environments/build",
+        json={
+            "name": f"{testable_env_input.path}/{testable_env_input.name}",
+            "version": "1",
+            "model": {
+                "description": testable_env_input.description,
+                "packages": [
+                    {
+                        "name": pkg.name,
+                        "version": pkg.version,
+                    }
+                    for pkg in testable_env_input.packages
+                ],
+            },
+        },
+    )

@@ -14,7 +14,7 @@ import pytest
 import yaml
 from fastapi import UploadFile
 
-from softpack_core.artifacts import Artifacts, app
+from softpack_core.artifacts import Artifacts
 from softpack_core.schemas.environment import (
     BuilderError,
     CreateEnvironmentSuccess,
@@ -29,7 +29,7 @@ from softpack_core.schemas.environment import (
     UpdateEnvironmentSuccess,
     WriteArtifactSuccess,
 )
-from tests.integration.utils import file_in_remote
+from tests.integration.utils import builder_called_correctly, file_in_remote
 
 pytestmark = pytest.mark.repo
 
@@ -142,7 +142,7 @@ def test_create_path_invalid_disallowed(httpx_post, testable_env_input, path):
     assert isinstance(result, InvalidInputError)
 
 
-def test_create_cleans_up_after_builder_failure(
+def test_create_does_not_clean_up_after_builder_failure(
     httpx_post, testable_env_input
 ):
     httpx_post.side_effect = Exception('could not contact builder')
@@ -156,33 +156,8 @@ def test_create_cleans_up_after_builder_failure(
     )
     builtPath = dir / Environment.artifacts.built_by_softpack_file
     ymlPath = dir / Environment.artifacts.environments_file
-    assert not file_in_remote(builtPath)
-    assert not file_in_remote(ymlPath)
-
-
-def builder_called_correctly(
-    post_mock, testable_env_input: EnvironmentInput
-) -> None:
-    # TODO: don't mock this; actually have a real builder service to test with?
-    host = app.settings.builder.host
-    port = app.settings.builder.port
-    post_mock.assert_called_with(
-        f"http://{host}:{port}/environments/build",
-        json={
-            "name": f"{testable_env_input.path}/{testable_env_input.name}",
-            "version": "1",
-            "model": {
-                "description": testable_env_input.description,
-                "packages": [
-                    {
-                        "name": pkg.name,
-                        "version": pkg.version,
-                    }
-                    for pkg in testable_env_input.packages
-                ],
-            },
-        },
-    )
+    assert file_in_remote(builtPath)
+    assert file_in_remote(ymlPath)
 
 
 def test_delete(httpx_post, testable_env_input) -> None:
@@ -307,8 +282,8 @@ def test_iter_no_statuses(testable_env_input, mocker):
     assert envs[0].build_start is None
     assert envs[0].build_done is None
     assert envs[0].avg_wait_secs is None
-    assert envs[0].state == State.failed
-    assert envs[1].state == State.failed
+    assert envs[0].state == State.queued
+    assert envs[1].state == State.queued
 
 
 @pytest.mark.asyncio

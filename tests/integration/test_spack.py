@@ -45,7 +45,7 @@ def test_spack_packages():
     else:
         assert len(packages) > len(pkgs)
 
-        spack = Spack(custom_repo = app.settings.spack.repo)
+        spack = Spack(custom_repo=app.settings.spack.repo)
 
         spack.packages()
 
