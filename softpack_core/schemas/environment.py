@@ -53,6 +53,11 @@ class UpdateEnvironmentSuccess(Success):
 
 
 @strawberry.type
+class AddTagSuccess(Success):
+    """Successfully added tag to environment."""
+
+
+@strawberry.type
 class DeleteEnvironmentSuccess(Success):
     """Environment successfully deleted."""
 
@@ -104,6 +109,15 @@ UpdateResponse = strawberry.union(
     "UpdateResponse",
     [
         UpdateEnvironmentSuccess,
+        InvalidInputError,
+        EnvironmentNotFoundError,
+    ],
+)
+
+AddTagResponse = strawberry.union(
+    "AddTagResponse",
+    [
+        AddTagSuccess,
         InvalidInputError,
         EnvironmentNotFoundError,
     ],
@@ -255,6 +269,7 @@ class Environment:
     type: Type
     packages: list[Package]
     state: Optional[State]
+    tags: list[str]
     artifacts = Artifacts()
 
     requested: Optional[datetime.datetime] = None
@@ -263,7 +278,7 @@ class Environment:
     avg_wait_secs: Optional[float] = None
 
     @classmethod
-    def iter(cls) -> Iterable["Environment"]:
+    def iter(cls) -> list["Environment"]:
         """Get an iterator over all Environment objects.
 
         Returns:
@@ -323,6 +338,7 @@ class Environment:
                 state=spec.state,
                 readme=spec.get("readme", ""),
                 type=spec.get("type", ""),
+                tags=spec.tags,
             )
         except KeyError:
             return None
@@ -495,6 +511,34 @@ class Environment:
             path=str(path.parent),
             name=path.name,
         )
+
+    @classmethod
+    def add_tag(cls, name: str, path: str, tag: str) -> AddTagResponse:  # type: ignore
+        environment_path = Path(path, name)
+        response = cls.check_env_exists(environment_path)
+        if response is not None:
+            return response
+
+        if re.fullmatch(r"[a-zA-Z0-9 ]+", tag) is None:
+            return InvalidInputError(message="Tags must contain only alphanumerics and spaces")
+
+        box = cls.artifacts.get(Path(path), name).spec()
+        tags = set(box.tags)
+        if tag in tags:
+            return AddTagSuccess(message="Tag already present")
+        tags.add(tag)
+
+        metadata = yaml.dump({"tags": list(tags)})
+        tree_oid = cls.artifacts.create_file(
+            environment_path,
+            cls.artifacts.meta_file,
+            metadata,
+            overwrite=True
+        )
+        cls.artifacts.commit_and_push(
+            tree_oid, "create environment folder"
+        )
+        return AddTagSuccess(message="Tag successfully added")
 
     @classmethod
     def delete(cls, name: str, path: str) -> DeleteResponse:  # type: ignore

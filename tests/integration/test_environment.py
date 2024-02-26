@@ -1,4 +1,4 @@
-"""Copyright (c) 2023 Genome Research Ltd.
+"""Copyright (c) 2023, 2024 Genome Research Ltd.
 
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
@@ -16,6 +16,7 @@ from fastapi import UploadFile
 
 from softpack_core.artifacts import Artifacts
 from softpack_core.schemas.environment import (
+    AddTagSuccess,
     BuilderError,
     CreateEnvironmentSuccess,
     DeleteEnvironmentSuccess,
@@ -469,6 +470,7 @@ async def test_create_from_module(httpx_post, testable_env_input):
     )
     assert isinstance(result, EnvironmentNotFoundError)
 
+
 def test_environmentinput_from_path():
     for path in (
         "users/any1/envName",
@@ -486,3 +488,36 @@ def test_environmentinput_from_path():
         "users/any1/../envName-1.1",
     ]:
         assert EnvironmentInput.from_path(path).validate() is not None
+
+
+def test_tagging(httpx_post, testable_env_input: EnvironmentInput) -> None:
+    example_env = Environment.iter()[0]
+    assert example_env.tags == []
+
+    name, path = example_env.name, example_env.path
+    result = Environment.add_tag(name, path, tag="test")
+    assert isinstance(result, AddTagSuccess)
+    assert result.message == "Tag successfully added"
+
+    result = Environment.add_tag("foo", "users/xyz", tag="test")
+    assert isinstance(result, EnvironmentNotFoundError)
+
+    result = Environment.add_tag(name, path, tag="../")
+    assert isinstance(result, InvalidInputError)
+
+    example_env = Environment.iter()[0]
+    assert len(example_env.tags) == 1
+    assert example_env.tags[0] == "test"
+
+    result = Environment.add_tag(name, path, tag="second test")
+    assert isinstance(result, AddTagSuccess)
+
+    example_env = Environment.iter()[0]
+    assert list(sorted(example_env.tags)) == list(sorted(["test", "second test"]))
+
+    result = Environment.add_tag(name, path, tag="test")
+    assert isinstance(result, AddTagSuccess)
+    assert result.message == "Tag already present"
+
+    example_env = Environment.iter()[0]
+    assert list(sorted(example_env.tags)) == list(sorted(["test", "second test"]))
