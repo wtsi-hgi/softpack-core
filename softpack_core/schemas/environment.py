@@ -809,6 +809,7 @@ class EnvironmentSchema(BaseSchema):
 
         createEnvironment: CreateResponse = Environment.create  # type: ignore
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
+        addTag: AddTagResponse = Environment.add_tag  # type: ignore
         # writeArtifact: WriteArtifactResponse = (  # type: ignore
         #     Environment.write_artifact
         # )

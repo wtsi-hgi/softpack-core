@@ -3,6 +3,12 @@ schema {
   mutation: SchemaMutation
 }
 
+union AddTagResponse = AddTagSuccess | InvalidInputError | EnvironmentNotFoundError
+
+type AddTagSuccess implements Success {
+  message: String!
+}
+
 type BuilderError implements Error {
   message: String!
 }
@@ -31,6 +37,7 @@ type Environment {
   type: Type!
   packages: [Package!]!
   state: State
+  tags: [String!]!
   requested: DateTime
   buildStart: DateTime
   buildDone: DateTime
@@ -86,6 +93,7 @@ type PackageMultiVersion {
 type SchemaMutation {
   createEnvironment(env: EnvironmentInput!): CreateResponse!
   deleteEnvironment(name: String!, path: String!): DeleteResponse!
+  addTag(name: String!, path: String!, tag: String!): AddTagResponse!
   createFromModule(file: Upload!, modulePath: String!, environmentPath: String!): CreateResponse!
   updateFromModule(file: Upload!, modulePath: String!, environmentPath: String!): UpdateResponse!
 }
