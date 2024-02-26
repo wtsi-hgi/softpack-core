@@ -530,7 +530,8 @@ class Environment:
     ) -> AddTagResponse:  # type: ignore
         """Add a tag to an Environment.
 
-        Tags must be composed solely of alphanumerics and spaces.
+        Tags must be composed solely of alphanumerics, dots, underscores,
+        dashes, and spaces.
 
         Adding a tag that already exists is not an error.
 
@@ -547,9 +548,10 @@ class Environment:
         if response is not None:
             return response
 
-        if re.fullmatch(r"[a-zA-Z0-9 ]+", tag) is None:
+        if re.fullmatch(r"[a-zA-Z0-9 ._-]+", tag.strip()) is None:
             return InvalidInputError(
-                message="Tags must contain only alphanumerics and spaces"
+                message="Tags must contain only alphanumerics, dots, "
+                "underscores, dashes, and spaces"
             )
 
         tree = cls.artifacts.get(Path(path), name)
