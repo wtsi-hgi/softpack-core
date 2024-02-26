@@ -52,6 +52,7 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
                 Package(name="pkg_test2"),
                 Package(name="pkg_test3", version="3.1"),
             ],
+            tags=["foo", "foo", "bar"],
         )
     )
     assert isinstance(result, CreateEnvironmentSuccess)
@@ -71,6 +72,10 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
         "packages": ["pkg_test"],
     }
     assert yaml.safe_load(ymlFile.data.decode()) == expected_yaml
+    meta_yml = file_in_remote(dir / Environment.artifacts.meta_file)
+    expected_meta_yml = {"tags": []}
+    actual_meta_yml = yaml.safe_load(meta_yml.data.decode())
+    assert actual_meta_yml == expected_meta_yml
 
     dir = Path(
         Environment.artifacts.environments_root,
@@ -86,6 +91,11 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
         "packages": ["pkg_test2", "pkg_test3@3.1"],
     }
     assert yaml.safe_load(ymlFile.data.decode()) == expected_yaml
+
+    meta_yml = file_in_remote(dir / Environment.artifacts.meta_file)
+    expected_meta_yml = {"tags": ["bar", "foo"]}
+    actual_meta_yml = yaml.safe_load(meta_yml.data.decode())
+    assert actual_meta_yml == expected_meta_yml
 
     result = Environment.create(testable_env_input)
     testable_env_input.name = orig_input_name

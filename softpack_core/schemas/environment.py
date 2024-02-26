@@ -8,7 +8,7 @@ import datetime
 import io
 import re
 import statistics
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from traceback import format_exception_only
 from typing import List, Optional, Tuple, Union, cast
@@ -161,6 +161,7 @@ class EnvironmentInput:
     path: str
     description: str
     packages: list[PackageInput]
+    tags: list[str] = field(default_factory=list)
 
     def validate(self) -> Union[None, InvalidInputError]:
         """Validate all values.
@@ -171,7 +172,11 @@ class EnvironmentInput:
         Returns:
             None if good, or InvalidInputError if not all values supplied.
         """
-        if any(len(value) == 0 for value in vars(self).values()):
+        if any(
+            len(value) == 0
+            for key, value in vars(self).items()
+            if key != "tags"
+        ):
             return InvalidInputError(message="all fields must be filled in")
 
         if not re.fullmatch("^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$", self.name):
@@ -460,7 +465,7 @@ class Environment:
                 name=env.name,
             )
 
-        # Create folder with place-holder file
+        # Create folder with initial files
         new_folder_path = Path(env.path, env.name)
         try:
             softpack_definition = dict(
@@ -470,13 +475,20 @@ class Environment:
                     for pkg in env.packages
                 ],
             )
-            ymlData = yaml.dump(softpack_definition)
+            definitionData = yaml.dump(softpack_definition)
+
+            meta = dict(tags=sorted(set(env.tags)))
+            metaData = yaml.dump(meta)
 
             tree_oid = cls.artifacts.create_files(
                 new_folder_path,
                 [
                     (env_type, ""),  # e.g. .built_by_softpack
-                    (cls.artifacts.environments_file, ymlData),  # softpack.yml
+                    (
+                        cls.artifacts.environments_file,
+                        definitionData,
+                    ),  # softpack.yml
+                    (cls.artifacts.meta_file, metaData),
                 ],
                 True,
             )
