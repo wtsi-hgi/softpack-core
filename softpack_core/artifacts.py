@@ -13,7 +13,6 @@ from typing import Iterable, Iterator, List, Optional, Tuple, Union
 
 import pygit2
 import strawberry
-import yaml
 from box import Box
 from fastapi import UploadFile
 
@@ -340,7 +339,10 @@ class Artifacts:
             Object: an Object or None
         """
         try:
-            return self.Object(Path(path, name), self.tree(str(self.environments_folder(str(path), name))))
+            return self.Object(
+                Path(path, name),
+                self.tree(str(self.environments_folder(str(path), name))),
+            )
         except KeyError:
             return None
 

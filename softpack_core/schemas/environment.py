@@ -11,7 +11,7 @@ import statistics
 from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exception_only
-from typing import Iterable, List, Optional, Tuple, Union, cast
+from typing import List, Optional, Tuple, Union, cast
 
 import httpx
 import starlette.datastructures
@@ -79,6 +79,7 @@ class EnvironmentNotFoundError(Error):
 
     path: str
     name: str
+    message: str = "No environment with this path and name found."
 
 
 @strawberry.type
@@ -507,22 +508,42 @@ class Environment:
             return None
 
         return EnvironmentNotFoundError(
-            message="No environment with this path and name found.",
             path=str(path.parent),
             name=path.name,
         )
 
     @classmethod
-    def add_tag(cls, name: str, path: str, tag: str) -> AddTagResponse:  # type: ignore
+    def add_tag(
+        cls, name: str, path: str, tag: str
+    ) -> AddTagResponse:  # type: ignore
+        """Add a tag to an Environment.
+
+        Tags must be composed solely of alphanumerics and spaces.
+
+        Adding a tag that already exists is not an error.
+
+        Args:
+            name: the name of of environment
+            path: the path of the environment
+            tag: the tag to add
+
+        Returns:
+            A message confirming the success or failure of the operation.
+        """
         environment_path = Path(path, name)
         response = cls.check_env_exists(environment_path)
         if response is not None:
             return response
 
         if re.fullmatch(r"[a-zA-Z0-9 ]+", tag) is None:
-            return InvalidInputError(message="Tags must contain only alphanumerics and spaces")
+            return InvalidInputError(
+                message="Tags must contain only alphanumerics and spaces"
+            )
 
-        box = cls.artifacts.get(Path(path), name).spec()
+        tree = cls.artifacts.get(Path(path), name)
+        if tree is None:
+            return EnvironmentNotFoundError(path=path, name=name)
+        box = tree.spec()
         tags = set(box.tags)
         if tag in tags:
             return AddTagSuccess(message="Tag already present")
@@ -530,14 +551,9 @@ class Environment:
 
         metadata = yaml.dump({"tags": list(tags)})
         tree_oid = cls.artifacts.create_file(
-            environment_path,
-            cls.artifacts.meta_file,
-            metadata,
-            overwrite=True
+            environment_path, cls.artifacts.meta_file, metadata, overwrite=True
         )
-        cls.artifacts.commit_and_push(
-            tree_oid, "create environment folder"
-        )
+        cls.artifacts.commit_and_push(tree_oid, "create environment folder")
         return AddTagSuccess(message="Tag successfully added")
 
     @classmethod

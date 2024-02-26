@@ -54,5 +54,5 @@ def test_builder_upload(testable_env_input):
     tree = Environment.artifacts.get(env_parent, env_name)
     assert tree is not None
 
-    assert tree[softpackYaml].data == softpackYamlContents
-    assert tree[spackLock].data == spackLockContents
+    assert tree.get(softpackYaml).data == softpackYamlContents
+    assert tree.get(spackLock).data == spackLockContents
