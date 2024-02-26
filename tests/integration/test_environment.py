@@ -521,6 +521,9 @@ def test_tagging(httpx_post, testable_env_input: EnvironmentInput) -> None:
     result = Environment.add_tag(name, path, tag="         ")
     assert isinstance(result, InvalidInputError)
 
+    result = Environment.add_tag(name, path, tag="foo  bar")
+    assert isinstance(result, InvalidInputError)
+
     example_env = Environment.iter()[0]
     assert len(example_env.tags) == 1
     assert example_env.tags[0] == "test"

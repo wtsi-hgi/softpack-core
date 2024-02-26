@@ -554,6 +554,11 @@ class Environment:
                 "underscores, dashes, and spaces"
             )
 
+        if re.search(r"\s\s", tag) is not None:
+            return InvalidInputError(
+                message="Tags must not contain runs of multiple spaces"
+            )
+
         tree = cls.artifacts.get(Path(path), name)
         if tree is None:
             return EnvironmentNotFoundError(path=path, name=name)
