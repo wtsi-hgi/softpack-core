@@ -55,6 +55,7 @@ input EnvironmentInput {
   path: String!
   description: String!
   packages: [PackageInput!]!
+  tags: [String!] = null
 }
 
 type EnvironmentNotFoundError implements Error {

@@ -8,7 +8,7 @@ import datetime
 import io
 import re
 import statistics
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exception_only
 from typing import List, Optional, Tuple, Union, cast
@@ -141,6 +141,32 @@ WriteArtifactResponse = strawberry.union(
 )
 
 
+def validate_tag(tag: str) -> Union[None, InvalidInputError]:
+    """If the given tag is invalid, return an error describing why, else None.
+
+    Tags must be composed solely of alphanumerics, dots, underscores,
+    dashes, and spaces, and not contain runs of multiple spaces or
+    leading/trailing whitespace.
+    """
+    if tag != tag.strip():
+        return InvalidInputError(
+            message="Tags must not contain leading or trailing whitespace"
+        )
+
+    if re.fullmatch(r"[a-zA-Z0-9 ._-]+", tag) is None:
+        return InvalidInputError(
+            message="Tags must contain only alphanumerics, dots, "
+            "underscores, dashes, and spaces"
+        )
+
+    if re.search(r"\s\s", tag) is not None:
+        return InvalidInputError(
+            message="Tags must not contain runs of multiple spaces"
+        )
+
+    return None
+
+
 @strawberry.input
 class PackageInput(Package):
     """A Strawberry input model representing a package."""
@@ -161,7 +187,7 @@ class EnvironmentInput:
     path: str
     description: str
     packages: list[PackageInput]
-    tags: list[str] = field(default_factory=list)
+    tags: Optional[list[str]] = None
 
     def validate(self) -> Union[None, InvalidInputError]:
         """Validate all values.
@@ -197,6 +223,10 @@ class EnvironmentInput:
                 message="user/group subdirectory must only contain "
                 "alphanumerics, dash, and underscore"
             )
+
+        for tag in self.tags or []:
+            if (response := validate_tag(tag)) is not None:
+                return response
 
         return None
 
@@ -477,7 +507,7 @@ class Environment:
             )
             definitionData = yaml.dump(softpack_definition)
 
-            meta = dict(tags=sorted(set(env.tags)))
+            meta = dict(tags=sorted(set(env.tags or [])))
             metaData = yaml.dump(meta)
 
             tree_oid = cls.artifacts.create_files(
@@ -530,8 +560,7 @@ class Environment:
     ) -> AddTagResponse:  # type: ignore
         """Add a tag to an Environment.
 
-        Tags must be composed solely of alphanumerics, dots, underscores,
-        dashes, and spaces.
+        Tags must be valid as defined by validate_tag().
 
         Adding a tag that already exists is not an error.
 
@@ -544,20 +573,12 @@ class Environment:
             A message confirming the success or failure of the operation.
         """
         environment_path = Path(path, name)
-        response = cls.check_env_exists(environment_path)
+        response: Optional[Error] = cls.check_env_exists(environment_path)
         if response is not None:
             return response
 
-        if re.fullmatch(r"[a-zA-Z0-9 ._-]+", tag.strip()) is None:
-            return InvalidInputError(
-                message="Tags must contain only alphanumerics, dots, "
-                "underscores, dashes, and spaces"
-            )
-
-        if re.search(r"\s\s", tag) is not None:
-            return InvalidInputError(
-                message="Tags must not contain runs of multiple spaces"
-            )
+        if (response := validate_tag(tag)) is not None:
+            return response
 
         tree = cls.artifacts.get(Path(path), name)
         if tree is None:

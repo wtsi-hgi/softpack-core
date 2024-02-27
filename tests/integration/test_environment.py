@@ -110,6 +110,19 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     assert file_in_remote(path)
 
 
+def test_create_no_tags(httpx_post, testable_env_input):
+    testable_env_input.tags = None
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+
+
+def test_create_illegal_tags(httpx_post, testable_env_input):
+    for tag in ["   ", " ", " leading whitespace", "trailing whitespace "]:
+        testable_env_input.tags = [tag]
+        result = Environment.create(testable_env_input)
+        assert isinstance(result, InvalidInputError)
+
+
 def test_create_name_empty_disallowed(httpx_post, testable_env_input):
     testable_env_input.name = ""
     result = Environment.create(testable_env_input)
