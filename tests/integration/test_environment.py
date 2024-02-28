@@ -553,4 +553,3 @@ def test_tagging(httpx_post, testable_env_input: EnvironmentInput) -> None:
 
     example_env = Environment.iter()[0]
     assert example_env.tags == ["second test", "test"]
-    
