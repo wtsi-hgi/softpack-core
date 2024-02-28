@@ -545,15 +545,12 @@ def test_tagging(httpx_post, testable_env_input: EnvironmentInput) -> None:
     assert isinstance(result, AddTagSuccess)
 
     example_env = Environment.iter()[0]
-    assert list(sorted(example_env.tags)) == list(
-        sorted(["test", "second test"])
-    )
+    assert example_env.tags == ["second test", "test"]
 
     result = Environment.add_tag(name, path, tag="test")
     assert isinstance(result, AddTagSuccess)
     assert result.message == "Tag already present"
 
     example_env = Environment.iter()[0]
-    assert list(sorted(example_env.tags)) == list(
-        sorted(["test", "second test"])
-    )
+    assert example_env.tags == ["second test", "test"]
+    

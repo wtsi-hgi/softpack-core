@@ -589,7 +589,7 @@ class Environment:
             return AddTagSuccess(message="Tag already present")
         tags.add(tag)
 
-        metadata = yaml.dump({"tags": list(tags)})
+        metadata = yaml.dump({"tags": sorted(tags)})
         tree_oid = cls.artifacts.create_file(
             environment_path, cls.artifacts.meta_file, metadata, overwrite=True
         )
