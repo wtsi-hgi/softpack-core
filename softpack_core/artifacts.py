@@ -72,6 +72,7 @@ class Artifacts:
     builder_out = "builder.out"
     module_file = "module"
     readme_file = "README.md"
+    meta_file = "meta.yml"
     built_by_softpack_file = ".built_by_softpack"
     built_by_softpack = Type.softpack.value
     generated_from_module_file = ".generated_from_module"
@@ -153,6 +154,11 @@ class Artifacts:
             info.packages = list(
                 map(lambda p: Package.from_name(p), info.packages)
             )
+
+            meta = Box()
+            if Artifacts.meta_file in self.obj:
+                meta = Box.from_yaml(self.obj[Artifacts.meta_file].data)
+            info["tags"] = getattr(meta, "tags", [])
 
             return info
 
@@ -322,7 +328,7 @@ class Artifacts:
 
         return itertools.chain.from_iterable(map(self.environments, folders))
 
-    def get(self, path: Path, name: str) -> Optional[pygit2.Tree]:
+    def get(self, path: Path, name: str) -> Optional[Object]:
         """Return the environment at the specified name and path.
 
         Args:
@@ -330,10 +336,13 @@ class Artifacts:
             name: the name of the environment folder
 
         Returns:
-            pygit2.Tree: a pygit2.Tree or None
+            Object: an Object or None
         """
         try:
-            return self.tree(str(self.environments_folder(str(path), name)))
+            return self.Object(
+                Path(path, name),
+                self.tree(str(self.environments_folder(str(path), name))),
+            )
         except KeyError:
             return None
 

@@ -125,4 +125,8 @@ class ServiceAPI(API):
             response.status_code = 500
             message = "Failed to trigger all resends"
 
-        return {"message": message, "successes": successes, "failures": failures}
+        return {
+            "message": message,
+            "successes": successes,
+            "failures": failures,
+        }

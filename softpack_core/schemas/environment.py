@@ -11,7 +11,7 @@ import statistics
 from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exception_only
-from typing import Iterable, List, Optional, Tuple, Union, cast
+from typing import List, Optional, Tuple, Union, cast
 
 import httpx
 import starlette.datastructures
@@ -53,6 +53,11 @@ class UpdateEnvironmentSuccess(Success):
 
 
 @strawberry.type
+class AddTagSuccess(Success):
+    """Successfully added tag to environment."""
+
+
+@strawberry.type
 class DeleteEnvironmentSuccess(Success):
     """Environment successfully deleted."""
 
@@ -74,6 +79,7 @@ class EnvironmentNotFoundError(Error):
 
     path: str
     name: str
+    message: str = "No environment with this path and name found."
 
 
 @strawberry.type
@@ -109,6 +115,15 @@ UpdateResponse = strawberry.union(
     ],
 )
 
+AddTagResponse = strawberry.union(
+    "AddTagResponse",
+    [
+        AddTagSuccess,
+        InvalidInputError,
+        EnvironmentNotFoundError,
+    ],
+)
+
 DeleteResponse = strawberry.union(
     "DeleteResponse",
     [
@@ -124,6 +139,32 @@ WriteArtifactResponse = strawberry.union(
         InvalidInputError,
     ],
 )
+
+
+def validate_tag(tag: str) -> Union[None, InvalidInputError]:
+    """If the given tag is invalid, return an error describing why, else None.
+
+    Tags must be composed solely of alphanumerics, dots, underscores,
+    dashes, and spaces, and not contain runs of multiple spaces or
+    leading/trailing whitespace.
+    """
+    if tag != tag.strip():
+        return InvalidInputError(
+            message="Tags must not contain leading or trailing whitespace"
+        )
+
+    if re.fullmatch(r"[a-zA-Z0-9 ._-]+", tag) is None:
+        return InvalidInputError(
+            message="Tags must contain only alphanumerics, dots, "
+            "underscores, dashes, and spaces"
+        )
+
+    if re.search(r"\s\s", tag) is not None:
+        return InvalidInputError(
+            message="Tags must not contain runs of multiple spaces"
+        )
+
+    return None
 
 
 @strawberry.input
@@ -146,6 +187,7 @@ class EnvironmentInput:
     path: str
     description: str
     packages: list[PackageInput]
+    tags: Optional[list[str]] = None
 
     def validate(self) -> Union[None, InvalidInputError]:
         """Validate all values.
@@ -156,7 +198,11 @@ class EnvironmentInput:
         Returns:
             None if good, or InvalidInputError if not all values supplied.
         """
-        if any(len(value) == 0 for value in vars(self).values()):
+        if any(
+            len(value) == 0
+            for key, value in vars(self).items()
+            if key != "tags"
+        ):
             return InvalidInputError(message="all fields must be filled in")
 
         if not re.fullmatch("^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$", self.name):
@@ -177,6 +223,10 @@ class EnvironmentInput:
                 message="user/group subdirectory must only contain "
                 "alphanumerics, dash, and underscore"
             )
+
+        for tag in self.tags or []:
+            if (response := validate_tag(tag)) is not None:
+                return response
 
         return None
 
@@ -255,6 +305,7 @@ class Environment:
     type: Type
     packages: list[Package]
     state: Optional[State]
+    tags: list[str]
     artifacts = Artifacts()
 
     requested: Optional[datetime.datetime] = None
@@ -263,7 +314,7 @@ class Environment:
     avg_wait_secs: Optional[float] = None
 
     @classmethod
-    def iter(cls) -> Iterable["Environment"]:
+    def iter(cls) -> list["Environment"]:
         """Get an iterator over all Environment objects.
 
         Returns:
@@ -323,6 +374,7 @@ class Environment:
                 state=spec.state,
                 readme=spec.get("readme", ""),
                 type=spec.get("type", ""),
+                tags=spec.tags,
             )
         except KeyError:
             return None
@@ -443,7 +495,7 @@ class Environment:
                 name=env.name,
             )
 
-        # Create folder with place-holder file
+        # Create folder with initial files
         new_folder_path = Path(env.path, env.name)
         try:
             softpack_definition = dict(
@@ -453,13 +505,20 @@ class Environment:
                     for pkg in env.packages
                 ],
             )
-            ymlData = yaml.dump(softpack_definition)
+            definitionData = yaml.dump(softpack_definition)
+
+            meta = dict(tags=sorted(set(env.tags or [])))
+            metaData = yaml.dump(meta)
 
             tree_oid = cls.artifacts.create_files(
                 new_folder_path,
                 [
                     (env_type, ""),  # e.g. .built_by_softpack
-                    (cls.artifacts.environments_file, ymlData),  # softpack.yml
+                    (
+                        cls.artifacts.environments_file,
+                        definitionData,
+                    ),  # softpack.yml
+                    (cls.artifacts.meta_file, metaData),
                 ],
                 True,
             )
@@ -491,10 +550,51 @@ class Environment:
             return None
 
         return EnvironmentNotFoundError(
-            message="No environment with this path and name found.",
             path=str(path.parent),
             name=path.name,
         )
+
+    @classmethod
+    def add_tag(
+        cls, name: str, path: str, tag: str
+    ) -> AddTagResponse:  # type: ignore
+        """Add a tag to an Environment.
+
+        Tags must be valid as defined by validate_tag().
+
+        Adding a tag that already exists is not an error.
+
+        Args:
+            name: the name of of environment
+            path: the path of the environment
+            tag: the tag to add
+
+        Returns:
+            A message confirming the success or failure of the operation.
+        """
+        environment_path = Path(path, name)
+        response: Optional[Error] = cls.check_env_exists(environment_path)
+        if response is not None:
+            return response
+
+        if (response := validate_tag(tag)) is not None:
+            return response
+
+        tree = cls.artifacts.get(Path(path), name)
+        if tree is None:
+            return EnvironmentNotFoundError(path=path, name=name)
+        box = tree.spec()
+        tags = set(box.tags)
+        if tag in tags:
+            return AddTagSuccess(message="Tag already present")
+        tags.add(tag)
+
+        metadata = yaml.dump({"tags": sorted(tags)})
+        tree_oid = cls.artifacts.create_file(
+            environment_path, cls.artifacts.meta_file, metadata, overwrite=True
+        )
+        cls.artifacts.commit_and_push(tree_oid, "create environment folder")
+        return AddTagSuccess(message="Tag successfully added")
 
     @classmethod
     def delete(cls, name: str, path: str) -> DeleteResponse:  # type: ignore
@@ -749,6 +849,7 @@ class EnvironmentSchema(BaseSchema):
 
         createEnvironment: CreateResponse = Environment.create  # type: ignore
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
+        addTag: AddTagResponse = Environment.add_tag  # type: ignore
         # writeArtifact: WriteArtifactResponse = (  # type: ignore
         #     Environment.write_artifact
         # )
