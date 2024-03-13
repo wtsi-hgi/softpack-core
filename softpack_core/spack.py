@@ -120,7 +120,10 @@ class Spack:
 
     def keep_packages_updated(self, interval: float) -> None:
         """Runs package list retireval on a timer."""
-        self.load_package_list(self.spack_exe, self.custom_repo)
+        try:
+            self.load_package_list(self.spack_exe, self.custom_repo)
+        except Exception:
+            pass
 
         self.timer = threading.Timer(
             interval, self.keep_packages_updated, [interval]
