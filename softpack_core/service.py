@@ -63,6 +63,8 @@ class ServiceAPI(API):
         """
         if branch != 'main':
             print(f'Changing branch to {branch}')
+            # FIXME do only when branch does not exist
+            artifacts.create_remote_branch(branch)
         
         artifacts.clone_repo(branch=branch)
 
