@@ -6,11 +6,11 @@ LICENSE file in the root directory of this source tree.
 
 import itertools
 import shutil
+import tempfile
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Iterable, Iterator, List, Optional, Tuple, Union
-import tempfile
 
 import pygit2
 import strawberry
@@ -202,8 +202,9 @@ class Artifacts:
             self.settings.artifacts.repo.author,
             self.settings.artifacts.repo.email,
         )
-    
-    def clone_repo(self, branch: str = None):
+
+    def clone_repo(self, branch: Optional[str] = None) -> None:
+        """Clone the specified branch (default main) to path in settings."""
         if branch is None:
             branch = self.settings.artifacts.repo.branch
 
@@ -229,23 +230,29 @@ class Artifacts:
                 self.repo.head.shorthand,
             ]
         )
-    
-    def create_remote_branch(self, branch: str):
+
+    def create_remote_branch(self, branch: str) -> None:
+        """Create a branch in remote if it doesn't exist yet."""
         temp_dir = tempfile.TemporaryDirectory()
 
         repo = pygit2.clone_repository(
             self.settings.artifacts.repo.url,
             path=temp_dir.name,
             callbacks=self.credentials_callback,
-            bare=True
+            bare=True,
         )
-        
-        commit = repo.revparse_single('HEAD')
-        repo.create_branch(branch, commit)
 
-        remote = repo.remotes[0]
-        remote.push([f'refs/heads/{branch}'], callbacks=self.credentials_callback)
-        
+        try:
+            repo.branches['origin/' + branch]
+        except KeyError:
+            commit = repo.revparse_single('HEAD')
+            repo.create_branch(branch, commit)
+
+            remote = repo.remotes[0]
+            remote.push(
+                [f'refs/heads/{branch}'], callbacks=self.credentials_callback
+            )
+
     def user_folder(self, user: Optional[str] = None) -> Path:
         """Get the user folder for a given user.
 
@@ -531,5 +538,6 @@ class Artifacts:
         new_tree = tree_builder.write()
 
         return self.build_tree(self.repo, root_tree, new_tree, full_path)
+
 
 artifacts = Artifacts()

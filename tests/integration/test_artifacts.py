@@ -37,6 +37,7 @@ def test_clone() -> None:
     assert os.path.isdir(path) is False
 
     artifacts = Artifacts()
+    artifacts.clone_repo()
     assert os.path.isdir(path) is True
 
     orig_repo_path = app.settings.artifacts.path
@@ -48,6 +49,7 @@ def test_clone() -> None:
 
     app.settings.artifacts.path = orig_repo_path
     artifacts = Artifacts()
+    artifacts.clone_repo()
 
     assert file_in_repo(artifacts, file_path)
 

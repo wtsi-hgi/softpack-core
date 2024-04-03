@@ -21,7 +21,7 @@ from fastapi import UploadFile
 from strawberry.file_uploads import Upload
 
 from softpack_core.app import app
-from softpack_core.artifacts import artifacts, Artifacts, Package, State, Type
+from softpack_core.artifacts import Artifacts, Package, State, Type, artifacts
 from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 from softpack_core.schemas.base import BaseSchema
 
@@ -521,9 +521,7 @@ class Environment:
                 ],
                 True,
             )
-            artifacts.commit_and_push(
-                tree_oid, "create environment folder"
-            )
+            artifacts.commit_and_push(tree_oid, "create environment folder")
         except RuntimeError as e:
             return InvalidInputError(
                 message="".join(format_exception_only(type(e), e))

@@ -50,7 +50,7 @@ class ServiceAPI(API):
                 "--branch",
                 help="Create and use this branch of Artefacts repo.",
             ),
-        ] = 'main'
+        ] = 'main',
     ) -> None:
         """Start the SoftPack Core REST API service.
 
@@ -65,7 +65,7 @@ class ServiceAPI(API):
             print(f'Changing branch to {branch}')
             # FIXME do only when branch does not exist
             artifacts.create_remote_branch(branch)
-        
+
         artifacts.clone_repo(branch=branch)
 
         uvicorn.run(
@@ -98,7 +98,7 @@ class ServiceAPI(API):
         if Environment.check_env_exists(Path(env_path)) is not None:
             create_response = Environment.create_new_env(
                 EnvironmentInput.from_path(env_path),
-                Environment.artifacts.built_by_softpack_file,
+                artifacts.built_by_softpack_file,
             )
 
             if not isinstance(create_response, CreateEnvironmentSuccess):

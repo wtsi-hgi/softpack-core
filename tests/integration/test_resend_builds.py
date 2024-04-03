@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from softpack_core.app import app
+from softpack_core.artifacts import artifacts
 from softpack_core.schemas.environment import (
     CreateEnvironmentSuccess,
     Environment,
@@ -31,7 +32,7 @@ def test_resend_pending_builds(
     orig_name = testable_env_input.name
     testable_env_input.name += "-1"
     r = Environment.create_new_env(
-        testable_env_input, Environment.artifacts.built_by_softpack_file
+        testable_env_input, artifacts.built_by_softpack_file
     )
     assert isinstance(r, CreateEnvironmentSuccess)
     testable_env_input.name = orig_name

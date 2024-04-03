@@ -14,7 +14,7 @@ import pytest
 import yaml
 from fastapi import UploadFile
 
-from softpack_core.artifacts import Artifacts
+from softpack_core.artifacts import Artifacts, artifacts
 from softpack_core.schemas.environment import (
     AddTagSuccess,
     BuilderError,
@@ -59,12 +59,12 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     httpx_post.assert_called()
 
     dir = Path(
-        Environment.artifacts.environments_root,
+        artifacts.environments_root,
         testable_env_input.path,
         testable_env_input.name + "-1",
     )
-    builtPath = dir / Environment.artifacts.built_by_softpack_file
-    ymlPath = dir / Environment.artifacts.environments_file
+    builtPath = dir / artifacts.built_by_softpack_file
+    ymlPath = dir / artifacts.environments_file
     assert file_in_remote(builtPath)
     ymlFile = file_in_remote(ymlPath)
     expected_yaml = {
@@ -72,18 +72,18 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
         "packages": ["pkg_test"],
     }
     assert yaml.safe_load(ymlFile.data.decode()) == expected_yaml
-    meta_yml = file_in_remote(dir / Environment.artifacts.meta_file)
+    meta_yml = file_in_remote(dir / artifacts.meta_file)
     expected_meta_yml = {"tags": []}
     actual_meta_yml = yaml.safe_load(meta_yml.data.decode())
     assert actual_meta_yml == expected_meta_yml
 
     dir = Path(
-        Environment.artifacts.environments_root,
+        artifacts.environments_root,
         "groups/not_already_in_repo",
         "test_env_create2-1",
     )
-    builtPath = dir / Environment.artifacts.built_by_softpack_file
-    ymlPath = dir / Environment.artifacts.environments_file
+    builtPath = dir / artifacts.built_by_softpack_file
+    ymlPath = dir / artifacts.environments_file
     assert file_in_remote(builtPath)
     ymlFile = file_in_remote(ymlPath)
     expected_yaml = {
@@ -92,7 +92,7 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     }
     assert yaml.safe_load(ymlFile.data.decode()) == expected_yaml
 
-    meta_yml = file_in_remote(dir / Environment.artifacts.meta_file)
+    meta_yml = file_in_remote(dir / artifacts.meta_file)
     expected_meta_yml = {"tags": ["bar", "foo"]}
     actual_meta_yml = yaml.safe_load(meta_yml.data.decode())
     assert actual_meta_yml == expected_meta_yml
@@ -102,10 +102,10 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     assert isinstance(result, CreateEnvironmentSuccess)
 
     path = Path(
-        Environment.artifacts.environments_root,
+        artifacts.environments_root,
         testable_env_input.path,
         testable_env_input.name + "-2",
-        Environment.artifacts.built_by_softpack_file,
+        artifacts.built_by_softpack_file,
     )
     assert file_in_remote(path)
 
@@ -174,12 +174,12 @@ def test_create_does_not_clean_up_after_builder_failure(
     assert isinstance(result, BuilderError)
 
     dir = Path(
-        Environment.artifacts.environments_root,
+        artifacts.environments_root,
         testable_env_input.path,
         testable_env_input.name,
     )
-    builtPath = dir / Environment.artifacts.built_by_softpack_file
-    ymlPath = dir / Environment.artifacts.environments_file
+    builtPath = dir / artifacts.built_by_softpack_file
+    ymlPath = dir / artifacts.environments_file
     assert file_in_remote(builtPath)
     assert file_in_remote(ymlPath)
 
@@ -195,7 +195,7 @@ def test_delete(httpx_post, testable_env_input) -> None:
     httpx_post.assert_called_once()
 
     path = Path(
-        Environment.artifacts.environments_root,
+        artifacts.environments_root,
         testable_env_input.path,
         testable_env_input.name,
         Artifacts.built_by_softpack_file,
@@ -235,7 +235,7 @@ async def test_write_artifact(httpx_post, testable_env_input):
     assert isinstance(result, WriteArtifactSuccess)
 
     path = Path(
-        Environment.artifacts.environments_root,
+        artifacts.environments_root,
         testable_env_input.path,
         testable_env_input.name + "-1",
         upload.filename,
@@ -418,23 +418,23 @@ async def test_create_from_module(httpx_post, testable_env_input):
     assert isinstance(result, EnvironmentAlreadyExistsError)
 
     parent_path = Path(
-        Environment.artifacts.group_folder(),
+        artifacts.group_folder(),
         "hgi",
         env_name,
     )
 
-    readme_path = Path(parent_path, Environment.artifacts.readme_file)
+    readme_path = Path(parent_path, artifacts.readme_file)
     assert file_in_remote(
-        Path(parent_path, Environment.artifacts.environments_file),
-        Path(parent_path, Environment.artifacts.module_file),
+        Path(parent_path, artifacts.environments_file),
+        Path(parent_path, artifacts.module_file),
         readme_path,
-        Path(parent_path, Environment.artifacts.generated_from_module_file),
+        Path(parent_path, artifacts.generated_from_module_file),
     )
 
     with open(test_files_dir / "shpc.readme", "rb") as fh:
         expected_readme_data = fh.read()
 
-    tree = Environment.artifacts.repo.head.peel(pygit2.Tree)
+    tree = artifacts.repo.head.peel(pygit2.Tree)
     obj = tree[str(readme_path)]
     assert obj is not None
     assert obj.data == expected_readme_data

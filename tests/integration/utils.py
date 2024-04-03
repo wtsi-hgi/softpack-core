@@ -11,7 +11,7 @@ from typing import Union
 import pygit2
 import pytest
 
-from softpack_core.artifacts import Artifacts, app
+from softpack_core.artifacts import Artifacts, app, artifacts
 from softpack_core.schemas.environment import EnvironmentInput
 
 artifacts_dict = dict[
@@ -21,21 +21,20 @@ artifacts_dict = dict[
 
 
 def new_test_artifacts() -> artifacts_dict:
-    temp_dir = tempfile.TemporaryDirectory()
-    app.settings.artifacts.path = Path(temp_dir.name)
-
-    artifacts = Artifacts()
-
     branch_name = app.settings.artifacts.repo.branch
-    branch = artifacts.repo.branches.get(branch_name)
 
-    if branch is None or branch_name == "main":
+    if branch_name == "" or branch_name == "main":
         pytest.skip(
             (
                 "Your artifacts repo must have a branch named after your "
                 "username."
             )
         )
+
+    temp_dir = tempfile.TemporaryDirectory()
+    app.settings.artifacts.path = Path(temp_dir.name)
+    artifacts.create_remote_branch(branch_name)
+    artifacts.clone_repo(branch=branch_name)
 
     dict = reset_test_repo(artifacts)
     dict["temp_dir"] = temp_dir
@@ -178,6 +177,7 @@ def file_in_remote(
     temp_dir = tempfile.TemporaryDirectory()
     app.settings.artifacts.path = Path(temp_dir.name)
     artifacts = Artifacts()
+    artifacts.clone_repo()
 
     file = None
     for path_with_environment in paths_with_environment:
