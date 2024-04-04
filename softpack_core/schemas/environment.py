@@ -21,7 +21,7 @@ from fastapi import UploadFile
 from strawberry.file_uploads import Upload
 
 from softpack_core.app import app
-from softpack_core.artifacts import Artifacts, Package, State, Type
+from softpack_core.artifacts import Artifacts, Package, State, Type, artifacts
 from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 from softpack_core.schemas.base import BaseSchema
 
@@ -306,7 +306,6 @@ class Environment:
     packages: list[Package]
     state: Optional[State]
     tags: list[str]
-    artifacts = Artifacts()
 
     requested: Optional[datetime.datetime] = None
     build_start: Optional[datetime.datetime] = None
@@ -337,7 +336,7 @@ class Environment:
         except statistics.StatisticsError:
             avg_wait_secs = None
 
-        environment_folders = cls.artifacts.iter()
+        environment_folders = artifacts.iter()
         environment_objects = list(
             filter(None, map(cls.from_artifact, environment_folders))
         )
@@ -488,7 +487,7 @@ class Environment:
             return input_err
 
         # Check if an env with same name already exists at given path
-        if cls.artifacts.get(Path(env.path), env.name):
+        if artifacts.get(Path(env.path), env.name):
             return EnvironmentAlreadyExistsError(
                 message="This name is already used in this location",
                 path=env.path,
@@ -510,21 +509,19 @@ class Environment:
             meta = dict(tags=sorted(set(env.tags or [])))
             metaData = yaml.dump(meta)
 
-            tree_oid = cls.artifacts.create_files(
+            tree_oid = artifacts.create_files(
                 new_folder_path,
                 [
                     (env_type, ""),  # e.g. .built_by_softpack
                     (
-                        cls.artifacts.environments_file,
+                        artifacts.environments_file,
                         definitionData,
                     ),  # softpack.yml
-                    (cls.artifacts.meta_file, metaData),
+                    (artifacts.meta_file, metaData),
                 ],
                 True,
             )
-            cls.artifacts.commit_and_push(
-                tree_oid, "create environment folder"
-            )
+            artifacts.commit_and_push(tree_oid, "create environment folder")
         except RuntimeError as e:
             return InvalidInputError(
                 message="".join(format_exception_only(type(e), e))
@@ -546,7 +543,7 @@ class Environment:
         Returns:
             Union[None, EnvironmentNotFoundError]: an error if env not found.
         """
-        if cls.artifacts.get(path.parent, path.name):
+        if artifacts.get(path.parent, path.name):
             return None
 
         return EnvironmentNotFoundError(
@@ -580,7 +577,7 @@ class Environment:
         if (response := validate_tag(tag)) is not None:
             return response
 
-        tree = cls.artifacts.get(Path(path), name)
+        tree = artifacts.get(Path(path), name)
         if tree is None:
             return EnvironmentNotFoundError(path=path, name=name)
         box = tree.spec()
@@ -590,10 +587,10 @@ class Environment:
         tags.add(tag)
 
         metadata = yaml.dump({"tags": sorted(tags)})
-        tree_oid = cls.artifacts.create_file(
-            environment_path, cls.artifacts.meta_file, metadata, overwrite=True
+        tree_oid = artifacts.create_file(
+            environment_path, artifacts.meta_file, metadata, overwrite=True
         )
-        cls.artifacts.commit_and_push(tree_oid, "create environment folder")
+        artifacts.commit_and_push(tree_oid, "create environment folder")
         return AddTagSuccess(message="Tag successfully added")
 
     @classmethod
@@ -607,9 +604,9 @@ class Environment:
         Returns:
             A message confirming the success or failure of the operation.
         """
-        if cls.artifacts.get(Path(path), name):
-            tree_oid = cls.artifacts.delete_environment(name, path)
-            cls.artifacts.commit_and_push(tree_oid, "delete environment")
+        if artifacts.get(Path(path), name):
+            tree_oid = artifacts.delete_environment(name, path)
+            artifacts.commit_and_push(tree_oid, "delete environment")
             return DeleteEnvironmentSuccess(
                 message="Successfully deleted the environment"
             )
@@ -690,13 +687,13 @@ class Environment:
         readme = GenerateEnvReadme(module_path)
 
         module_file = UploadFile(
-            filename=cls.artifacts.module_file, file=io.BytesIO(contents)
+            filename=artifacts.module_file, file=io.BytesIO(contents)
         )
         softpack_file = UploadFile(
-            filename=cls.artifacts.environments_file, file=io.BytesIO(yml)
+            filename=artifacts.environments_file, file=io.BytesIO(yml)
         )
         readme_file = UploadFile(
-            filename=cls.artifacts.readme_file, file=io.BytesIO(readme)
+            filename=artifacts.readme_file, file=io.BytesIO(readme)
         )
 
         return await cls.write_module_artifacts(
@@ -729,9 +726,9 @@ class Environment:
             WriteArtifactResponse: contains message and commit hash of
             softpack.yml upload.
         """
-        module_file.name = cls.artifacts.module_file
-        readme_file.name = cls.artifacts.readme_file
-        softpack_file.name = cls.artifacts.environments_file
+        module_file.name = artifacts.module_file
+        readme_file.name = artifacts.readme_file
+        softpack_file.name = artifacts.environments_file
 
         return await cls.write_artifacts(
             folder_path=environment_path,
@@ -775,10 +772,10 @@ class Environment:
                         (file.name, cast(str, (await file.read()).decode()))
                     )
 
-            tree_oid = cls.artifacts.create_files(
+            tree_oid = artifacts.create_files(
                 Path(folder_path), new_files, overwrite=True
             )
-            cls.artifacts.commit_and_push(tree_oid, "write artifact")
+            artifacts.commit_and_push(tree_oid, "write artifact")
             return WriteArtifactSuccess(
                 message="Successfully written artifact(s)",
             )

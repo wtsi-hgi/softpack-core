@@ -14,7 +14,7 @@ from fastapi import APIRouter, Request, Response, UploadFile
 from typer import Typer
 from typing_extensions import Annotated
 
-from softpack_core.artifacts import State
+from softpack_core.artifacts import State, artifacts
 from softpack_core.schemas.environment import (
     CreateEnvironmentSuccess,
     Environment,
@@ -43,16 +43,31 @@ class ServiceAPI(API):
                 "--reload",
                 help="Automatically reload when changes are detected.",
             ),
-        ] = False
+        ] = False,
+        branch: Annotated[
+            str,
+            typer.Option(
+                "--branch",
+                help="Create and use this branch of Artefacts repo.",
+            ),
+        ] = 'main',
     ) -> None:
         """Start the SoftPack Core REST API service.
 
         Args:
             reload: Enable auto-reload.
+            branch: branch to use
 
         Returns:
             None.
         """
+        if branch != 'main':
+            print(f'Changing branch to {branch}')
+            # FIXME do only when branch does not exist
+            artifacts.create_remote_branch(branch)
+
+        artifacts.clone_repo(branch=branch)
+
         uvicorn.run(
             "softpack_core.app:app.router",
             host=app.settings.server.host,
@@ -83,7 +98,7 @@ class ServiceAPI(API):
         if Environment.check_env_exists(Path(env_path)) is not None:
             create_response = Environment.create_new_env(
                 EnvironmentInput.from_path(env_path),
-                Environment.artifacts.built_by_softpack_file,
+                artifacts.built_by_softpack_file,
             )
 
             if not isinstance(create_response, CreateEnvironmentSuccess):

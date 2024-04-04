@@ -6,6 +6,7 @@ LICENSE file in the root directory of this source tree.
 
 import itertools
 import shutil
+import tempfile
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -180,7 +181,6 @@ class Artifacts:
         self.ldap = LDAP()
         self.settings = app.settings
 
-        path = self.settings.artifacts.path.expanduser() / ".git"
         credentials = None
         try:
             credentials = pygit2.UserPass(
@@ -194,10 +194,24 @@ class Artifacts:
             credentials=credentials
         )
 
-        branch = self.settings.artifacts.repo.branch
+    @property
+    def signature(self) -> pygit2.Signature:
+        """Get current pygit2 commit signature: author/committer/timestamp."""
+        # creating one of these implicitly looks up the current time.
+        return pygit2.Signature(
+            self.settings.artifacts.repo.author,
+            self.settings.artifacts.repo.email,
+        )
+
+    def clone_repo(self, branch: Optional[str] = None) -> None:
+        """Clone the specified branch (default main) to path in settings."""
+        if branch is None:
+            branch = self.settings.artifacts.repo.branch
+
         if branch is None:
             branch = "main"
 
+        path = self.settings.artifacts.path.expanduser() / ".git"
         if path.is_dir():
             shutil.rmtree(path)
 
@@ -217,14 +231,27 @@ class Artifacts:
             ]
         )
 
-    @property
-    def signature(self) -> pygit2.Signature:
-        """Get current pygit2 commit signature: author/committer/timestamp."""
-        # creating one of these implicitly looks up the current time.
-        return pygit2.Signature(
-            self.settings.artifacts.repo.author,
-            self.settings.artifacts.repo.email,
+    def create_remote_branch(self, branch: str) -> None:
+        """Create a branch in remote if it doesn't exist yet."""
+        temp_dir = tempfile.TemporaryDirectory()
+
+        repo = pygit2.clone_repository(
+            self.settings.artifacts.repo.url,
+            path=temp_dir.name,
+            callbacks=self.credentials_callback,
+            bare=True,
         )
+
+        try:
+            repo.branches['origin/' + branch]
+        except KeyError:
+            commit = repo.revparse_single('HEAD')
+            repo.create_branch(branch, commit)
+
+            remote = repo.remotes[0]
+            remote.push(
+                [f'refs/heads/{branch}'], callbacks=self.credentials_callback
+            )
 
     def user_folder(self, user: Optional[str] = None) -> Path:
         """Get the user folder for a given user.
@@ -511,3 +538,6 @@ class Artifacts:
         new_tree = tree_builder.write()
 
         return self.build_tree(self.repo, root_tree, new_tree, full_path)
+
+
+artifacts = Artifacts()

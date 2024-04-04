@@ -9,7 +9,7 @@ import os
 import pytest
 
 from softpack_core.artifacts import Artifacts, Package, app
-from softpack_core.schemas.environment import Environment, EnvironmentInput
+from softpack_core.schemas.environment import EnvironmentInput
 from tests.integration.utils import (
     get_user_path_without_environments,
     new_test_artifacts,
@@ -48,7 +48,7 @@ def testable_env_input(mocker) -> EnvironmentInput:
     artifacts: Artifacts = ad["artifacts"]
     user = ad["test_user"]
 
-    mocker.patch.object(Environment, 'artifacts', new=artifacts)
+    # mocker.patch.object(Environment, 'artifacts', new=artifacts)
 
     testable_env_input = EnvironmentInput(
         name="test_env_create",

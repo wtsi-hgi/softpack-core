@@ -186,6 +186,20 @@ poetry run strawberry export-schema softpack_core.graphql:GraphQL.schema > schem
 [Tox]: https://tox.wiki
 [MkDocs]: https://www.mkdocs.org
 
+## Usage
+
+To start a server in production:
+
+```bash
+softpack-core service run
+```
+
+To run a server to test softpack-web:
+
+```bash
+softpack-core service run --branch <any-name>
+```
+
 ## Credits
 
 This package was created with [Cookiecutter](https://github.com/audreyr/cookiecutter) and the [altaf-ali/cookiecutter-pypackage](https://altaf-ali.github.io/cookiecutter-pypackage) project template.

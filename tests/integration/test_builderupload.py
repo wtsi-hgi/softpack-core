@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from softpack_core.app import app
+from softpack_core.artifacts import artifacts
 from softpack_core.schemas.environment import Environment
 from softpack_core.service import ServiceAPI
 from tests.integration.utils import file_in_repo
@@ -43,15 +44,15 @@ def test_builder_upload(testable_env_input):
     assert resp.json().get("message") == "Successfully written artifact(s)"
     assert Environment.check_env_exists(Path(env_path)) is None
     assert file_in_repo(
-        Environment.artifacts,
-        Path(Environment.artifacts.environments_root, env_path, softpackYaml),
+        artifacts,
+        Path(artifacts.environments_root, env_path, softpackYaml),
     )
     assert file_in_repo(
-        Environment.artifacts,
-        Path(Environment.artifacts.environments_root, env_path, spackLock),
+        artifacts,
+        Path(artifacts.environments_root, env_path, spackLock),
     )
 
-    tree = Environment.artifacts.get(env_parent, env_name)
+    tree = artifacts.get(env_parent, env_name)
     assert tree is not None
 
     assert tree.get(softpackYaml).data == softpackYamlContents
