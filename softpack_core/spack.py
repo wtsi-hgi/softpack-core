@@ -84,7 +84,7 @@ class Spack:
             try:
                 with open(path.join(self.cache, "pkgs"), "r") as f:
                     data = f.read()
-            except:
+            except Exception:
                 data = None
 
         if data is not None and len(data) > 0:
