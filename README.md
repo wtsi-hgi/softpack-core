@@ -186,6 +186,40 @@ poetry run strawberry export-schema softpack_core.graphql:GraphQL.schema > schem
 [Tox]: https://tox.wiki
 [MkDocs]: https://www.mkdocs.org
 
+## Configuration
+
+The SoftPack Core configuration file is located at `~/.softpack/core/config.yml`.
+
+The following is the schema for the settings:
+
+```yaml
+server:
+  header:
+    origins: list[AnyHttpUrl] # List of valid origin URLs from which the Core API can be called.
+  host: str # Host on which to bind the server.
+  port: int # Port on which to bind the server.
+
+artifacts:
+    path: Path # Path to store artefacts repo.
+    repo:
+      url: AnyUrl # URL to artefacts repo.
+      username: Optional[str] # Username required to access artefacts repo.
+      author: str # Author name for git commits to artefacts repo.
+      email: str # Email address for author of git commits to artefacts repo.
+      reader: Optional[str] # Auth token for read access to artefacts repo.
+      writer: Optional[str] # Auth token for write access to artefacts repo.
+      branch: Optional[str] # Branch to use for artefacts repo.
+
+spack:
+  repo: str # URL to spack recipe repo.
+  bin: str # Path to spack exectable.
+  cache: Optional[str] # Directory to store cached spack recipe information.
+
+builder:
+  host: str # URL to a GSB server
+  port: int # Port of the GSB server
+```
+
 ## Usage
 
 To start a server in production:
