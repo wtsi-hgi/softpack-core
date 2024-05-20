@@ -32,7 +32,7 @@ class Spack:
     def __init__(
         self,
         spack_exe: str = "spack",
-        custom_repo: str = None,
+        custom_repo: str = "",
         cache: str = "",
     ) -> None:
         """Constructor."""
