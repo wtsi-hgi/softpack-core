@@ -80,20 +80,22 @@ class Spack:
         """
         data = None
 
-        if len(self.stored_packages) == 0 and self.cache is not None:
+        if len(self.stored_packages) == 0 and self.cache != "":
             try:
-                with open(path.join(self.cache, "pkgs"), "r") as f:
+                with open(path.join(self.cache, "pkgs"), "rb") as f:
                     data = f.read()
             except Exception:
                 data = None
 
         if data is not None and len(data) > 0:
-            result = {"stdout": data}
+            jsonData = data
         elif checkout_path == "":
             result = subprocess.run(
                 [spack_exe, "list", "--format", "version_json"],
                 capture_output=True,
             )
+
+            jsonData = result.stdout
         else:
             result = subprocess.run(
                 [
@@ -107,11 +109,13 @@ class Spack:
                 capture_output=True,
             )
 
-        if data is None and self.cache is not None:
-            with open(path.join(self.cache, "pkgs"), "wb") as f:
-                f.write(result.stdout)
+            jsonData = result.stdout
 
-        pkgs = json.loads(result.stdout)
+        if data is None and self.cache != "":
+            with open(path.join(self.cache, "pkgs"), "wb") as f:
+                f.write(jsonData)
+
+        pkgs = json.loads(jsonData)
 
         self.stored_packages = list(
             map(

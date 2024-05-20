@@ -47,7 +47,7 @@ class Application:
         self.spack = Spack(
             self.settings.spack.bin,
             self.settings.spack.repo,
-            self.settings.spack.cache,
+            self.settings.spack.cache or "",
         )
 
         self.router.add_middleware(
