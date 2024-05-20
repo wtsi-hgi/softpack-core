@@ -8,6 +8,7 @@ import json
 import subprocess
 import tempfile
 import threading
+from os import path
 from dataclasses import dataclass
 
 
@@ -29,12 +30,14 @@ class Spack:
     """Spack interface class."""
 
     def __init__(
-        self, spack_exe: str = "spack", custom_repo: str = ""
+        self, spack_exe: str = "spack", custom_repo: str = None,
+        cache: str = "",
     ) -> None:
         """Constructor."""
         self.stored_packages: list[Package] = []
         self.checkout_path = ""
         self.spack_exe = spack_exe
+        self.cache = cache
         self.custom_repo = custom_repo
 
     def load_package_list(self, spack_exe: str, custom_repo: str) -> None:
@@ -73,7 +76,18 @@ class Spack:
             spack_exe (str): Path to the spack executable.
             checkout_path (str): Path to the cloned custom spack repo.
         """
-        if checkout_path == "":
+        data = None
+
+        if len(self.stored_packages) == 0 and self.cache is not None:
+            try:
+                with open(path.join(self.cache, "pkgs"), "r") as f:
+                    data = f.read()
+            except:
+                data = None
+
+        if data is not None and len(data) > 0:
+            result = {"stdout": data}
+        elif checkout_path == "":
             result = subprocess.run(
                 [spack_exe, "list", "--format", "version_json"],
                 capture_output=True,
@@ -90,6 +104,10 @@ class Spack:
                 ],
                 capture_output=True,
             )
+
+        if data is None and self.cache is not None:
+            with open(path.join(self.cache, "pkgs"), "wb") as f:
+                f.write(result.stdout)
 
         pkgs = json.loads(result.stdout)
 
