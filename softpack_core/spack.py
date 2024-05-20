@@ -8,8 +8,8 @@ import json
 import subprocess
 import tempfile
 import threading
-from os import path
 from dataclasses import dataclass
+from os import path
 
 
 @dataclass
@@ -30,7 +30,9 @@ class Spack:
     """Spack interface class."""
 
     def __init__(
-        self, spack_exe: str = "spack", custom_repo: str = None,
+        self,
+        spack_exe: str = "spack",
+        custom_repo: str = None,
         cache: str = "",
     ) -> None:
         """Constructor."""
