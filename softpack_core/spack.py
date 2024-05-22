@@ -10,7 +10,7 @@ import tempfile
 import threading
 from dataclasses import dataclass
 from os import path
-from typing import Union, Tuple
+from typing import Tuple, Union
 
 
 @dataclass
