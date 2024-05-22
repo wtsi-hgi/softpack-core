@@ -10,6 +10,7 @@ import tempfile
 import threading
 from dataclasses import dataclass
 from os import path
+from typing import Union, Tuple
 
 
 @dataclass
@@ -39,7 +40,7 @@ class Spack:
         self.stored_packages: list[Package] = []
         self.checkout_path = ""
         self.spack_exe = spack_exe
-        self.cache = cache
+        self.cacheDir = cache
         self.custom_repo = custom_repo
 
     def load_package_list(self, spack_exe: str, custom_repo: str) -> None:
@@ -78,44 +79,12 @@ class Spack:
             spack_exe (str): Path to the spack executable.
             checkout_path (str): Path to the cloned custom spack repo.
         """
-        data = None
+        jsonData, didReadFromCache = self.__readPackagesFromCacheOnce()
 
-        if len(self.stored_packages) == 0 and self.cache != "":
-            try:
-                with open(path.join(self.cache, "pkgs"), "rb") as f:
-                    data = f.read()
-            except Exception:
-                data = None
+        if not didReadFromCache:
+            jsonData = self.__getPackagesFromSpack(spack_exe, checkout_path)
 
-        if data is not None and len(data) > 0:
-            jsonData = data
-        elif checkout_path == "":
-            result = subprocess.run(
-                [spack_exe, "list", "--format", "version_json"],
-                capture_output=True,
-            )
-
-            jsonData = result.stdout
-        else:
-            result = subprocess.run(
-                [
-                    spack_exe,
-                    "--config",
-                    "repos:[" + checkout_path + "]",
-                    "list",
-                    "--format",
-                    "version_json",
-                ],
-                capture_output=True,
-            )
-
-            jsonData = result.stdout
-
-        if data is None and self.cache != "":
-            with open(path.join(self.cache, "pkgs"), "wb") as f:
-                f.write(jsonData)
-
-        pkgs = json.loads(jsonData)
+            self.__writeToCache(jsonData)
 
         self.stored_packages = list(
             map(
@@ -125,9 +94,28 @@ class Spack:
                         str(ver) for ver in list(package.get("versions"))
                     ],
                 ),
-                pkgs,
+                json.loads(jsonData),
             )
         )
+
+    def __readPackagesFromCacheOnce(self) -> Tuple[Union[bytes, None], bool]:
+        if len(self.stored_packages) > 0 or self.cacheDir == "":
+            return (None, False)
+
+        try:
+            with open(path.join(self.cacheDir, "pkgs"), "rb") as f:
+                cachedData = f.read()
+
+                return (cachedData, len(cachedData) > 0)
+        except Exception:
+            return (None, False)
+
+    def __writeToCache(self, jsonData: bytes) -> None:
+        if self.cacheDir == "":
+            return
+
+        with open(path.join(self.cacheDir, "pkgs"), "wb") as f:
+            f.write(jsonData)
 
     def packages(self) -> list[Package]:
         """Returns the list of stored packages.
@@ -159,3 +147,28 @@ class Spack:
         """Stops any running timer threads."""
         if self.timer is not None:
             self.timer.cancel()
+
+    def __getPackagesFromSpack(
+        self, spack_exe: str, checkout_path: str
+    ) -> bytes:
+        if checkout_path == "":
+            result = subprocess.run(
+                [spack_exe, "list", "--format", "version_json"],
+                capture_output=True,
+            )
+
+            return result.stdout
+
+        result = subprocess.run(
+            [
+                spack_exe,
+                "--config",
+                "repos:[" + checkout_path + "]",
+                "list",
+                "--format",
+                "version_json",
+            ],
+            capture_output=True,
+        )
+
+        return result.stdout
