@@ -10,7 +10,7 @@ import tempfile
 import threading
 from dataclasses import dataclass
 from os import path
-from typing import Tuple, Union
+from typing import Tuple
 
 
 @dataclass
@@ -98,9 +98,9 @@ class Spack:
             )
         )
 
-    def __readPackagesFromCacheOnce(self) -> Tuple[Union[bytes, None], bool]:
+    def __readPackagesFromCacheOnce(self) -> Tuple[bytes, bool]:
         if len(self.stored_packages) > 0 or self.cacheDir == "":
-            return (None, False)
+            return (b"", False)
 
         try:
             with open(path.join(self.cacheDir, "pkgs"), "rb") as f:
@@ -108,7 +108,7 @@ class Spack:
 
                 return (cachedData, len(cachedData) > 0)
         except Exception:
-            return (None, False)
+            return (b"", False)
 
     def __writeToCache(self, jsonData: bytes) -> None:
         if self.cacheDir == "":
