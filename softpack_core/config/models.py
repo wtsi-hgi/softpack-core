@@ -77,3 +77,4 @@ class SpackConfig(BaseModel):
 
     repo: str
     bin: str
+    cache: Optional[str]

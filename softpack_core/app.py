@@ -44,7 +44,11 @@ class Application:
     def __init__(self) -> None:
         """Constructor."""
         self.settings = Settings.parse_obj({})
-        self.spack = Spack(self.settings.spack.bin, self.settings.spack.repo)
+        self.spack = Spack(
+            self.settings.spack.bin,
+            self.settings.spack.repo,
+            self.settings.spack.cache or "",
+        )
 
         self.router.add_middleware(
             CORSMiddleware,
