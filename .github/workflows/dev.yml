@@ -74,5 +74,5 @@ jobs:
       - name: Run code coverage
         uses: codecov/codecov-action@v3
         with:
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           files: coverage.xml
