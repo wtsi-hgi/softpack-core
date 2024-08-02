@@ -6,13 +6,15 @@ LICENSE file in the root directory of this source tree.
 
 import getpass
 
+import os
+
 import ldap
 
 from softpack_core.schemas.groups import Group
 
 
 def test_groups(mocker) -> None:
-    username = getpass.getuser()
+    username = os.environ.get("LDAP_USER", getpass.getuser())
     groups = list(Group.from_username(username))
     assert len(groups)
     assert groups[0].name
