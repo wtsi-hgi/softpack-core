@@ -129,7 +129,7 @@ AddTagResponse = strawberry.union(
 )
 
 HiddenResponse = strawberry.union(
-    "AddTagResponse",
+    "HiddenResponse",
     [
         HiddenSuccess,
         InvalidInputError,
@@ -320,7 +320,6 @@ class Environment:
     state: Optional[State]
     tags: list[str]
     hidden: bool
-    force_hidden: bool
 
     requested: Optional[datetime.datetime] = None
     build_start: Optional[datetime.datetime] = None
@@ -353,7 +352,7 @@ class Environment:
 
         environment_folders = artifacts.iter()
         environment_objects = list(
-            filter(lambda e : not e.force_hidden, map(cls.from_artifact, environment_folders))
+            filter(None, map(cls.from_artifact, environment_folders))
         )
 
         for env in environment_objects:
@@ -379,6 +378,9 @@ class Environment:
         """
         try:
             spec = obj.spec()
+            if spec.force_hidden:
+                return None
+
             return Environment(
                 id=obj.oid,
                 name=obj.name,
@@ -390,7 +392,6 @@ class Environment:
                 type=spec.get("type", ""),
                 tags=spec.tags,
                 hidden=spec.hidden,
-                force_hidden=spec.force_hidden,
             )
         except KeyError:
             return None
@@ -898,6 +899,7 @@ class EnvironmentSchema(BaseSchema):
         createEnvironment: CreateResponse = Environment.create  # type: ignore
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
         addTag: AddTagResponse = Environment.add_tag  # type: ignore
+        setHidden: HiddenResponse = Environment.set_hidden  # type: ignore
         # writeArtifact: WriteArtifactResponse = (  # type: ignore
         #     Environment.write_artifact
         # )
