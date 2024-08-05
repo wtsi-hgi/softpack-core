@@ -13,6 +13,7 @@ from pathlib import Path
 from traceback import format_exception_only
 from typing import List, Optional, Tuple, Union, cast
 
+from box import Box
 import httpx
 import starlette.datastructures
 import strawberry
@@ -56,6 +57,9 @@ class UpdateEnvironmentSuccess(Success):
 class AddTagSuccess(Success):
     """Successfully added tag to environment."""
 
+@strawberry.type
+class HiddenSuccess(Success):
+    """Successfully set hidden status on environment."""
 
 @strawberry.type
 class DeleteEnvironmentSuccess(Success):
@@ -119,6 +123,15 @@ AddTagResponse = strawberry.union(
     "AddTagResponse",
     [
         AddTagSuccess,
+        InvalidInputError,
+        EnvironmentNotFoundError,
+    ],
+)
+
+HiddenResponse = strawberry.union(
+    "AddTagResponse",
+    [
+        HiddenSuccess,
         InvalidInputError,
         EnvironmentNotFoundError,
     ],
@@ -306,6 +319,7 @@ class Environment:
     packages: list[Package]
     state: Optional[State]
     tags: list[str]
+    hidden: bool
 
     requested: Optional[datetime.datetime] = None
     build_start: Optional[datetime.datetime] = None
@@ -374,6 +388,7 @@ class Environment:
                 readme=spec.get("readme", ""),
                 type=spec.get("type", ""),
                 tags=spec.tags,
+                hidden=spec.hidden,
             )
         except KeyError:
             return None
@@ -586,12 +601,46 @@ class Environment:
             return AddTagSuccess(message="Tag already present")
         tags.add(tag)
 
-        metadata = yaml.dump({"tags": sorted(tags)})
-        tree_oid = artifacts.create_file(
-            environment_path, artifacts.meta_file, metadata, overwrite=True
-        )
-        artifacts.commit_and_push(tree_oid, "create environment folder")
+        metadata = cls.read_metadata(path, name)
+        metadata.tags = sorted(tags)
+
+        cls.store_metadata(environment_path, metadata)
+
         return AddTagSuccess(message="Tag successfully added")
+
+    @classmethod
+    def read_metadata(cls, path: str, name: str) -> Box:
+        return artifacts.get(path, name).metadata()
+
+    @classmethod
+    def store_metadata(cls, environment_path: str, metadata: Box):
+        tree_oid = artifacts.create_file(
+            environment_path,
+            artifacts.meta_file,
+            metadata.to_yaml(),
+            overwrite=True
+        )
+
+        artifacts.commit_and_push(tree_oid, "update metadata")
+
+    @classmethod
+    def set_hidden(cls, name: str, path: str, hidden: bool) -> HiddenResponse: # type: ignore
+        environment_path = Path(path, name)
+        response: Optional[Error] = cls.check_env_exists(environment_path)
+        if response is not None:
+            return response
+
+        metadata = cls.read_metadata(path, name)
+
+        if metadata.get("hidden") == hidden:
+            return HiddenSuccess(message="Hidden metadata already set")
+
+        metadata.hidden = hidden
+
+        cls.store_metadata(environment_path, metadata)
+
+        return HiddenSuccess(message="Hidden metadata set")
+
 
     @classmethod
     def delete(cls, name: str, path: str) -> DeleteResponse:  # type: ignore
