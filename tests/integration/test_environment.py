@@ -589,3 +589,13 @@ def test_hidden(httpx_post, testable_env_input: EnvironmentInput) -> None:
     assert result.message == "Hidden metadata set"
     example_env = Environment.iter()[0]
     assert example_env.hidden == True
+
+def test_force_hidden(httpx_post, testable_env_input: EnvironmentInput) -> None:
+    first_env = Environment.iter()[0]
+    metadata = Environment.read_metadata(first_env.path, first_env.name)
+    metadata.force_hidden = True
+    Environment.store_metadata(Path(first_env.path, first_env.name), metadata)
+
+    new_first = Environment.iter()[0]
+
+    assert first_env.path != new_first.path or first_env.name != new_first.name

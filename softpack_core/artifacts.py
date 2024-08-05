@@ -160,6 +160,7 @@ class Artifacts:
 
             info["tags"] = getattr(metadata, "tags", [])
             info["hidden"] = getattr(metadata, "hidden", False)
+            info["force_hidden"] = getattr(metadata, "force_hidden", False)
 
             return info
 
