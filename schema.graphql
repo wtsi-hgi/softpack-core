@@ -38,6 +38,7 @@ type Environment {
   packages: [Package!]!
   state: State
   tags: [String!]!
+  hidden: Boolean!
   requested: DateTime
   buildStart: DateTime
   buildDone: DateTime
@@ -72,6 +73,12 @@ type Group {
   name: String!
 }
 
+union HiddenResponse = HiddenSuccess | InvalidInputError | EnvironmentNotFoundError
+
+type HiddenSuccess implements Success {
+  message: String!
+}
+
 type InvalidInputError implements Error {
   message: String!
 }
@@ -95,6 +102,7 @@ type SchemaMutation {
   createEnvironment(env: EnvironmentInput!): CreateResponse!
   deleteEnvironment(name: String!, path: String!): DeleteResponse!
   addTag(name: String!, path: String!, tag: String!): AddTagResponse!
+  setHidden(name: String!, path: String!, hidden: Boolean!): HiddenResponse!
   createFromModule(file: Upload!, modulePath: String!, environmentPath: String!): CreateResponse!
   updateFromModule(file: Upload!, modulePath: String!, environmentPath: String!): UpdateResponse!
 }

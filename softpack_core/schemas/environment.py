@@ -17,6 +17,7 @@ import httpx
 import starlette.datastructures
 import strawberry
 import yaml
+from box import Box
 from fastapi import UploadFile
 from strawberry.file_uploads import Upload
 
@@ -55,6 +56,11 @@ class UpdateEnvironmentSuccess(Success):
 @strawberry.type
 class AddTagSuccess(Success):
     """Successfully added tag to environment."""
+
+
+@strawberry.type
+class HiddenSuccess(Success):
+    """Successfully set hidden status on environment."""
 
 
 @strawberry.type
@@ -119,6 +125,15 @@ AddTagResponse = strawberry.union(
     "AddTagResponse",
     [
         AddTagSuccess,
+        InvalidInputError,
+        EnvironmentNotFoundError,
+    ],
+)
+
+HiddenResponse = strawberry.union(
+    "HiddenResponse",
+    [
+        HiddenSuccess,
         InvalidInputError,
         EnvironmentNotFoundError,
     ],
@@ -306,6 +321,7 @@ class Environment:
     packages: list[Package]
     state: Optional[State]
     tags: list[str]
+    hidden: bool
 
     requested: Optional[datetime.datetime] = None
     build_start: Optional[datetime.datetime] = None
@@ -364,6 +380,9 @@ class Environment:
         """
         try:
             spec = obj.spec()
+            if spec.force_hidden:
+                return None
+
             return Environment(
                 id=obj.oid,
                 name=obj.name,
@@ -374,6 +393,7 @@ class Environment:
                 readme=spec.get("readme", ""),
                 type=spec.get("type", ""),
                 tags=spec.tags,
+                hidden=spec.hidden,
             )
         except KeyError:
             return None
@@ -586,12 +606,63 @@ class Environment:
             return AddTagSuccess(message="Tag already present")
         tags.add(tag)
 
-        metadata = yaml.dump({"tags": sorted(tags)})
-        tree_oid = artifacts.create_file(
-            environment_path, artifacts.meta_file, metadata, overwrite=True
-        )
-        artifacts.commit_and_push(tree_oid, "create environment folder")
+        metadata = cls.read_metadata(path, name)
+        metadata.tags = sorted(tags)
+
+        cls.store_metadata(environment_path, metadata)
+
         return AddTagSuccess(message="Tag successfully added")
+
+    @classmethod
+    def read_metadata(cls, path: str, name: str) -> Box:
+        """Read an environments metadata.
+
+        This method returns the metadata for an environment with the given
+        path and name.
+        """
+        arts = artifacts.get(Path(path), name)
+
+        if arts is not None:
+            return arts.metadata()
+
+        return Box()
+
+    @classmethod
+    def store_metadata(cls, environment_path: Path, metadata: Box) -> None:
+        """Store an environments metadata.
+
+        This method writes the given metadata to the repo for the
+        environment path given.
+        """
+        tree_oid = artifacts.create_file(
+            environment_path,
+            artifacts.meta_file,
+            metadata.to_yaml(),
+            overwrite=True,
+        )
+
+        artifacts.commit_and_push(tree_oid, "update metadata")
+
+    @classmethod
+    def set_hidden(
+        cls, name: str, path: str, hidden: bool
+    ) -> HiddenResponse:  # type: ignore
+        """This method sets the hidden status for the given environment."""
+        environment_path = Path(path, name)
+        response: Optional[Error] = cls.check_env_exists(environment_path)
+        if response is not None:
+            return response
+
+        metadata = cls.read_metadata(path, name)
+
+        if metadata.get("hidden") == hidden:
+            return HiddenSuccess(message="Hidden metadata already set")
+
+        metadata.hidden = hidden
+
+        cls.store_metadata(environment_path, metadata)
+
+        return HiddenSuccess(message="Hidden metadata set")
 
     @classmethod
     def delete(cls, name: str, path: str) -> DeleteResponse:  # type: ignore
@@ -847,6 +918,7 @@ class EnvironmentSchema(BaseSchema):
         createEnvironment: CreateResponse = Environment.create  # type: ignore
         deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
         addTag: AddTagResponse = Environment.add_tag  # type: ignore
+        setHidden: HiddenResponse = Environment.set_hidden  # type: ignore
         # writeArtifact: WriteArtifactResponse = (  # type: ignore
         #     Environment.write_artifact
         # )

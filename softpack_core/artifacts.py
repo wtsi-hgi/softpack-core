@@ -156,12 +156,27 @@ class Artifacts:
                 map(lambda p: Package.from_name(p), info.packages)
             )
 
+            metadata = self.metadata()
+
+            info["tags"] = getattr(metadata, "tags", [])
+            info["hidden"] = getattr(metadata, "hidden", False)
+            info["force_hidden"] = getattr(metadata, "force_hidden", False)
+
+            return info
+
+        def metadata(self) -> Box:
+            """Returns the metadata for an Environment.
+
+            Should contain keys:
+                - tags: list[string]
+                - hidden: boolean
+                - force_hidden: boolean
+            """
             meta = Box()
             if Artifacts.meta_file in self.obj:
                 meta = Box.from_yaml(self.obj[Artifacts.meta_file].data)
-            info["tags"] = getattr(meta, "tags", [])
 
-            return info
+            return meta
 
         def __iter__(self) -> Iterator["Artifacts.Object"]:
             """A generator for returning items under an artifacts.
