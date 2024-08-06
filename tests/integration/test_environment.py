@@ -557,39 +557,38 @@ def test_tagging(httpx_post, testable_env_input: EnvironmentInput) -> None:
 
 def test_hidden(httpx_post, testable_env_input: EnvironmentInput) -> None:
     example_env = Environment.iter()[0]
-    assert example_env.hidden == False
+    assert not example_env.hidden
     name, path = example_env.name, example_env.path
 
     result = Environment.set_hidden(name, path, True)
     assert isinstance(result, HiddenSuccess)
     assert result.message == "Hidden metadata set"
     example_env = Environment.iter()[0]
-    assert example_env.hidden == True
+    assert example_env.hidden
 
     result = Environment.set_hidden(name, path, True)
     assert isinstance(result, HiddenSuccess)
     assert result.message == "Hidden metadata already set"
     example_env = Environment.iter()[0]
-    assert example_env.hidden == True
+    assert example_env.hidden
 
     result = Environment.set_hidden(name, path, False)
     assert isinstance(result, HiddenSuccess)
     assert result.message == "Hidden metadata set"
     example_env = Environment.iter()[0]
-    assert example_env.hidden == False
+    assert not example_env.hidden
 
     result = Environment.set_hidden(name, path, False)
     assert isinstance(result, HiddenSuccess)
     assert result.message == "Hidden metadata already set"
     example_env = Environment.iter()[0]
-    assert example_env.hidden == False
+    assert not example_env.hidden
 
     result = Environment.set_hidden(name, path, True)
     assert isinstance(result, HiddenSuccess)
     assert result.message == "Hidden metadata set"
     example_env = Environment.iter()[0]
-    assert example_env.hidden == True
-
+    assert example_env.hidden
 def test_force_hidden(httpx_post, testable_env_input: EnvironmentInput) -> None:
     first_env = Environment.iter()[0]
     metadata = Environment.read_metadata(first_env.path, first_env.name)
