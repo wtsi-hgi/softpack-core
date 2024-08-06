@@ -165,6 +165,13 @@ class Artifacts:
             return info
 
         def metadata(self) -> Box:
+            """Returns the metadata for an Environment.
+
+            Should contain keys:
+                - tags: list[string]
+                - hidden: boolean
+                - force_hidden: boolean
+            """
             meta = Box()
             if Artifacts.meta_file in self.obj:
                 meta = Box.from_yaml(self.obj[Artifacts.meta_file].data)

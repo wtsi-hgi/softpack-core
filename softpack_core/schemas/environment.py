@@ -613,10 +613,16 @@ class Environment:
 
     @classmethod
     def read_metadata(cls, path: str, name: str) -> Box:
+        """This method returns the metadata for an environment with the given
+        path and name.
+        """
         return artifacts.get(path, name).metadata()
 
     @classmethod
     def store_metadata(cls, environment_path: str, metadata: Box):
+        """This method writes the given metadata to the repo for the environment
+        path given.
+        """
         tree_oid = artifacts.create_file(
             environment_path,
             artifacts.meta_file,
@@ -627,7 +633,10 @@ class Environment:
         artifacts.commit_and_push(tree_oid, "update metadata")
 
     @classmethod
-    def set_hidden(cls, name: str, path: str, hidden: bool) -> HiddenResponse: # type: ignore
+    def set_hidden(
+            cls, name: str, path: str, hidden: bool
+        ) -> HiddenResponse: # type: ignore
+        """This method sets the hidden status for the given environment."""
         environment_path = Path(path, name)
         response: Optional[Error] = cls.check_env_exists(environment_path)
         if response is not None:
