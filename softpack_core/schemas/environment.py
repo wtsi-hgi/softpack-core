@@ -613,15 +613,19 @@ class Environment:
 
     @classmethod
     def read_metadata(cls, path: str, name: str) -> Box:
-        """This method returns the metadata for an environment with the given
+        """Read an environments metadata.
+
+        This method returns the metadata for an environment with the given
         path and name.
         """
         return artifacts.get(path, name).metadata()
 
     @classmethod
     def store_metadata(cls, environment_path: str, metadata: Box):
-        """This method writes the given metadata to the repo for the environment
-        path given.
+        """Store an environments metadata.
+
+        This method writes the given metadata to the repo for the
+        environment path given.
         """
         tree_oid = artifacts.create_file(
             environment_path,
