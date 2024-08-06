@@ -555,6 +555,7 @@ def test_tagging(httpx_post, testable_env_input: EnvironmentInput) -> None:
     example_env = Environment.iter()[0]
     assert example_env.tags == ["second test", "test"]
 
+
 def test_hidden(httpx_post, testable_env_input: EnvironmentInput) -> None:
     example_env = Environment.iter()[0]
     assert not example_env.hidden
@@ -589,7 +590,11 @@ def test_hidden(httpx_post, testable_env_input: EnvironmentInput) -> None:
     assert result.message == "Hidden metadata set"
     example_env = Environment.iter()[0]
     assert example_env.hidden
-def test_force_hidden(httpx_post, testable_env_input: EnvironmentInput) -> None:
+
+
+def test_force_hidden(
+    httpx_post, testable_env_input: EnvironmentInput
+) -> None:
     first_env = Environment.iter()[0]
     metadata = Environment.read_metadata(first_env.path, first_env.name)
     metadata.force_hidden = True

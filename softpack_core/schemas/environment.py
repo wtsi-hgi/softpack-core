@@ -13,11 +13,11 @@ from pathlib import Path
 from traceback import format_exception_only
 from typing import List, Optional, Tuple, Union, cast
 
-from box import Box
 import httpx
 import starlette.datastructures
 import strawberry
 import yaml
+from box import Box
 from fastapi import UploadFile
 from strawberry.file_uploads import Upload
 
@@ -57,9 +57,11 @@ class UpdateEnvironmentSuccess(Success):
 class AddTagSuccess(Success):
     """Successfully added tag to environment."""
 
+
 @strawberry.type
 class HiddenSuccess(Success):
     """Successfully set hidden status on environment."""
+
 
 @strawberry.type
 class DeleteEnvironmentSuccess(Success):
@@ -618,10 +620,15 @@ class Environment:
         This method returns the metadata for an environment with the given
         path and name.
         """
-        return artifacts.get(path, name).metadata()
+        arts = artifacts.get(path, name)
+
+        if arts is not None:
+            return arts.metadata()
+
+        return Box()
 
     @classmethod
-    def store_metadata(cls, environment_path: str, metadata: Box):
+    def store_metadata(cls, environment_path: Path, metadata: Box) -> None:
         """Store an environments metadata.
 
         This method writes the given metadata to the repo for the
@@ -631,17 +638,16 @@ class Environment:
             environment_path,
             artifacts.meta_file,
             metadata.to_yaml(),
-            overwrite=True
+            overwrite=True,
         )
 
         artifacts.commit_and_push(tree_oid, "update metadata")
 
     @classmethod
     def set_hidden(
-            cls, name: str, path: str, hidden: bool
-        ) -> HiddenResponse: # type: ignore
-        """This method sets the hidden status for the given environment.
-        """
+        cls, name: str, path: str, hidden: bool
+    ) -> HiddenResponse:  # type: ignore
+        """This method sets the hidden status for the given environment."""
         environment_path = Path(path, name)
         response: Optional[Error] = cls.check_env_exists(environment_path)
         if response is not None:
@@ -657,7 +663,6 @@ class Environment:
         cls.store_metadata(environment_path, metadata)
 
         return HiddenSuccess(message="Hidden metadata set")
-
 
     @classmethod
     def delete(cls, name: str, path: str) -> DeleteResponse:  # type: ignore
