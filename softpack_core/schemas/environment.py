@@ -620,7 +620,7 @@ class Environment:
         This method returns the metadata for an environment with the given
         path and name.
         """
-        arts = artifacts.get(path, name)
+        arts = artifacts.get(Path(path), name)
 
         if arts is not None:
             return arts.metadata()
