@@ -32,16 +32,6 @@ class GraphQL(API):
     ]
     commands = Typer(help="GraphQL commands.")
 
-    @staticmethod
-    @commands.command("query", help="Execute a GraphQL query.")
-    def query_command() -> None:
-        """Execute a GraphQL query.
-
-        Returns:
-            None.
-        """
-        app.echo("GraphQL Query")
-
     class Schema(strawberry.Schema):
         """GraphQL Schema class."""
 

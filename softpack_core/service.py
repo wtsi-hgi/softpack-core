@@ -5,6 +5,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 
+import multiprocessing
 import urllib.parse
 from pathlib import Path
 
@@ -51,6 +52,7 @@ class ServiceAPI(API):
                 help="Create and use this branch of Artefacts repo.",
             ),
         ] = 'main',
+        serviceReady = None,
     ) -> None:
         """Start the SoftPack Core REST API service.
 
@@ -68,6 +70,8 @@ class ServiceAPI(API):
 
         artifacts.clone_repo(branch=branch)
 
+        if serviceReady is not None:
+            serviceReady.set()
         uvicorn.run(
             "softpack_core.app:app.router",
             host=app.settings.server.host,
