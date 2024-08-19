@@ -14,7 +14,6 @@ from typer import Typer
 from typing_extensions import Type
 
 from .api import API
-from .app import app
 from .schemas.base import BaseSchema
 from .schemas.environment import EnvironmentSchema
 from .schemas.groups import GroupsSchema

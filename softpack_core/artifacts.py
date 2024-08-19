@@ -229,7 +229,7 @@ class Artifacts:
         path = self.settings.artifacts.path.expanduser() / ".git"
         if path.is_dir():
             shutil.rmtree(path)
-        
+
         self.repo = pygit2.clone_repository(
             self.settings.artifacts.repo.url,
             path=path,
@@ -237,7 +237,7 @@ class Artifacts:
             bare=True,
             checkout_branch=branch,
         )
-        
+
         self.reference = "/".join(
             [
                 "refs/remotes",

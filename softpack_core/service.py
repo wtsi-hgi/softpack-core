@@ -6,7 +6,6 @@ LICENSE file in the root directory of this source tree.
 
 
 import urllib.parse
-from multiprocessing.synchronize import Event as EventClass
 from pathlib import Path
 
 import typer
