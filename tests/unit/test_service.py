@@ -19,7 +19,7 @@ def test_service_run() -> None:
     run = multiprocessing.Process(target=ServiceAPI.run, kwargs={"serviceReady": ready})
     run.start()
     ready.wait(timeout=120)
-    response = httpx.get(app.url())
+    sleep(10)
     run.terminate()
     status = Box(response.json())
     assert status.softpack.core.version == __version__
