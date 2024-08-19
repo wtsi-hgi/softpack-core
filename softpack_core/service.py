@@ -5,8 +5,8 @@ LICENSE file in the root directory of this source tree.
 """
 
 
-import multiprocessing
 import urllib.parse
+from multiprocessing.synchronize import Event as EventClass
 from pathlib import Path
 
 import typer
@@ -52,7 +52,7 @@ class ServiceAPI(API):
                 help="Create and use this branch of Artefacts repo.",
             ),
         ] = 'main',
-        serviceReady = None,
+        serviceReady: EventClass = None,
     ) -> None:
         """Start the SoftPack Core REST API service.
 
