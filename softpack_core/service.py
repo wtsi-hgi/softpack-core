@@ -6,7 +6,6 @@ LICENSE file in the root directory of this source tree.
 
 
 import urllib.parse
-from multiprocessing import Event
 from multiprocessing.synchronize import Event as EventClass
 from pathlib import Path
 
@@ -53,7 +52,6 @@ class ServiceAPI(API):
                 help="Create and use this branch of Artefacts repo.",
             ),
         ] = 'main',
-        serviceReady: EventClass = Event(),
     ) -> None:
         """Start the SoftPack Core REST API service.
 
@@ -71,7 +69,6 @@ class ServiceAPI(API):
 
         artifacts.clone_repo(branch=branch)
 
-        serviceReady.set()
         uvicorn.run(
             "softpack_core.app:app.router",
             host=app.settings.server.host,
