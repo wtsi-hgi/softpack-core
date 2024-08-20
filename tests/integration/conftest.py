@@ -43,7 +43,7 @@ def httpx_post(mocker):
 
 
 @pytest.fixture
-def testable_env_input(mocker) -> EnvironmentInput:
+def testable_env_input(mocker) -> EnvironmentInput:  # type: ignore
     ad = new_test_artifacts()
     artifacts: Artifacts = ad["artifacts"]
     user = ad["test_user"]
