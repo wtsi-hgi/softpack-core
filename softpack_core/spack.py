@@ -30,7 +30,6 @@ class Package(PackageBase):
 class Spack:
     """Spack interface class."""
 
-    packages: list[Package]
     packagesUpdated: bool = True
 
     def __init__(

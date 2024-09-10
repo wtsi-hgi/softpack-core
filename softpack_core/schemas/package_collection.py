@@ -5,7 +5,6 @@ LICENSE file in the root directory of this source tree.
 """
 
 from dataclasses import dataclass
-from typing import Iterable
 
 import strawberry
 

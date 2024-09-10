@@ -8,7 +8,7 @@ import datetime
 import io
 import re
 import statistics
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from traceback import format_exception_only
 from typing import List, Optional, Tuple, Union, cast
@@ -322,7 +322,7 @@ class Environment:
     state: Optional[State]
     tags: list[str]
     hidden: bool
-    cachedEnvs: list["Environment"] = None
+    cachedEnvs: list["Environment"] = field(default_factory=list)
     envsUpdates: bool = True
 
     requested: Optional[datetime.datetime] = None
