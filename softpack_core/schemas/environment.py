@@ -322,6 +322,8 @@ class Environment:
     state: Optional[State]
     tags: list[str]
     hidden: bool
+    cachedEnvs: list["Environment"] = None
+    envsUpdates: bool = True
 
     requested: Optional[datetime.datetime] = None
     build_start: Optional[datetime.datetime] = None
@@ -335,6 +337,9 @@ class Environment:
         Returns:
             Iterable[Environment]: An iterator of Environment objects.
         """
+        if not cls.envsUpdates:
+            return cls.cachedEnvs
+
         statuses = BuildStatus.get_all()
         if isinstance(statuses, BuilderError):
             statuses = []
@@ -365,6 +370,9 @@ class Environment:
             env.requested = status.requested
             env.build_start = status.build_start
             env.build_done = status.build_done
+
+        cls.cachedEnvs = environment_objects
+        cls.envsUpdates = False
 
         return environment_objects
 
@@ -541,6 +549,7 @@ class Environment:
                 ],
                 True,
             )
+            cls.envsUpdates = True
             artifacts.commit_and_push(tree_oid, "create environment folder")
         except RuntimeError as e:
             return InvalidInputError(
@@ -640,7 +649,7 @@ class Environment:
             metadata.to_yaml(),
             overwrite=True,
         )
-
+        cls.envsUpdates = True
         artifacts.commit_and_push(tree_oid, "update metadata")
 
     @classmethod
@@ -677,6 +686,7 @@ class Environment:
         """
         if artifacts.get(Path(path), name):
             tree_oid = artifacts.delete_environment(name, path)
+            cls.envsUpdates = True
             artifacts.commit_and_push(tree_oid, "delete environment")
             return DeleteEnvironmentSuccess(
                 message="Successfully deleted the environment"
@@ -846,6 +856,7 @@ class Environment:
             tree_oid = artifacts.create_files(
                 Path(folder_path), new_files, overwrite=True
             )
+            cls.envsUpdates = True
             artifacts.commit_and_push(tree_oid, "write artifact")
             return WriteArtifactSuccess(
                 message="Successfully written artifact(s)",
