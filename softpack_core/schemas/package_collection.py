@@ -5,7 +5,6 @@ LICENSE file in the root directory of this source tree.
 """
 
 from dataclasses import dataclass
-from typing import Iterable
 
 import strawberry
 
@@ -26,14 +25,18 @@ class PackageCollection:
     packages: list[PackageMultiVersion]
 
     @classmethod
-    def iter(cls) -> Iterable["PackageMultiVersion"]:
+    def iter(cls) -> list["PackageMultiVersion"]:
         """Get an iterator over PackageCollection objects.
 
         Returns:
             Iterable[PackageCollection]: An iterator of PackageCollection
             objects.
         """
-        return map(cls.from_package, app.spack.packages())
+        if app.spack.packagesUpdated:
+            cls.packages = list(map(cls.from_package, app.spack.packages()))
+            app.spack.packagesUpdated = False
+
+        return cls.packages
 
     @classmethod
     def from_package(cls, package: Package) -> PackageMultiVersion:

@@ -8,7 +8,7 @@ import datetime
 import io
 import re
 import statistics
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from traceback import format_exception_only
 from typing import List, Optional, Tuple, Union, cast
@@ -322,6 +322,7 @@ class Environment:
     state: Optional[State]
     tags: list[str]
     hidden: bool
+    cachedEnvs: list["Environment"] = field(default_factory=list)
 
     requested: Optional[datetime.datetime] = None
     build_start: Optional[datetime.datetime] = None
@@ -335,6 +336,9 @@ class Environment:
         Returns:
             Iterable[Environment]: An iterator of Environment objects.
         """
+        if not artifacts.updated:
+            return cls.cachedEnvs
+
         statuses = BuildStatus.get_all()
         if isinstance(statuses, BuilderError):
             statuses = []
@@ -365,6 +369,9 @@ class Environment:
             env.requested = status.requested
             env.build_start = status.build_start
             env.build_done = status.build_done
+
+        cls.cachedEnvs = environment_objects
+        artifacts.updated = False
 
         return environment_objects
 
@@ -640,7 +647,6 @@ class Environment:
             metadata.to_yaml(),
             overwrite=True,
         )
-
         artifacts.commit_and_push(tree_oid, "update metadata")
 
     @classmethod

@@ -30,6 +30,8 @@ class Package(PackageBase):
 class Spack:
     """Spack interface class."""
 
+    packagesUpdated: bool = True
+
     def __init__(
         self,
         spack_exe: str = "spack",
@@ -97,6 +99,7 @@ class Spack:
                 json.loads(jsonData),
             )
         )
+        self.packagesUpdated = True
 
     def __readPackagesFromCacheOnce(self) -> Tuple[bytes, bool]:
         if len(self.stored_packages) > 0 or self.cacheDir == "":
