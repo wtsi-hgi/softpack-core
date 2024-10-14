@@ -39,6 +39,7 @@ type Environment {
   state: State
   tags: [String!]!
   hidden: Boolean!
+  cachedEnvs: [Environment!]!
   requested: DateTime
   buildStart: DateTime
   buildDone: DateTime
@@ -117,6 +118,7 @@ enum State {
   ready
   queued
   failed
+  waiting
 }
 
 interface Success {

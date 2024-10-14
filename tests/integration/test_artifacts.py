@@ -118,7 +118,11 @@ def test_create_file() -> None:
     basename = "create_file.txt"
 
     oid = artifacts.create_file(
-        folder_path, basename, "lorem ipsum", True, False
+        Path(artifacts.environments_root, folder_path),
+        basename,
+        "lorem ipsum",
+        True,
+        False,
     )
 
     user_envs_tree = get_user_envs_tree(artifacts, user, oid)
@@ -129,19 +133,31 @@ def test_create_file() -> None:
 
     with pytest.raises(RuntimeError) as exc_info:
         artifacts.create_file(
-            folder_path, basename, "lorem ipsum", False, True
+            Path(artifacts.environments_root, folder_path),
+            basename,
+            "lorem ipsum",
+            False,
+            True,
         )
     assert exc_info.value.args[0] == 'No changes made to the environment'
 
     basename2 = "create_file2.txt"
     with pytest.raises(RuntimeError) as exc_info:
         artifacts.create_file(
-            folder_path, basename2, "lorem ipsum", True, False
+            Path(artifacts.environments_root, folder_path),
+            basename2,
+            "lorem ipsum",
+            True,
+            True,
         )
     assert exc_info.value.args[0] == 'Too many changes to the repo'
 
     oid = artifacts.create_file(
-        folder_path, basename2, "lorem ipsum", False, False
+        Path(artifacts.environments_root, folder_path),
+        basename2,
+        "lorem ipsum",
+        False,
+        False,
     )
 
     artifacts.commit_and_push(oid, "create file2")
@@ -151,11 +167,21 @@ def test_create_file() -> None:
 
     with pytest.raises(FileExistsError) as exc_info:
         artifacts.create_file(
-            folder_path, basename, "lorem ipsum", False, False
+            Path(artifacts.environments_root, folder_path),
+            basename,
+            "lorem ipsum",
+            False,
+            False,
         )
     assert exc_info.value.args[0] == 'File already exists'
 
-    oid = artifacts.create_file(folder_path, basename, "override", False, True)
+    oid = artifacts.create_file(
+        Path(artifacts.environments_root, folder_path),
+        basename,
+        "override",
+        False,
+        True,
+    )
 
     artifacts.commit_and_push(oid, "update created file")
 
@@ -272,3 +298,66 @@ def test_simultaneous_commit():
     for _ in range(parallelism):
         commit = commit.parents[0]
     assert commit.oid == initial_commit_oid
+
+
+def test_recipes():
+    ad = new_test_artifacts()
+    artifacts: Artifacts = ad["artifacts"]
+
+    assert artifacts.get_recipe_request("recipeA", "1.23") is None
+    assert artifacts.get_recipe_request("recipeB", "0.1a") is None
+
+    recipeA = Artifacts.RecipeObject(
+        "recipeA", "1.23", "A new recipe", "http://example.com", "user1"
+    )
+    recipeB = Artifacts.RecipeObject(
+        "recipeB",
+        "0.1a",
+        "Another recipe",
+        "http://example.com/another",
+        "user2",
+    )
+
+    artifacts.create_recipe_request(recipeA)
+
+    retrieved_recipe = artifacts.get_recipe_request("recipeA", "1.23")
+
+    assert retrieved_recipe is not None
+    assert retrieved_recipe.name == recipeA.name
+    assert retrieved_recipe.version == recipeA.version
+    assert retrieved_recipe.description == recipeA.description
+    assert retrieved_recipe.url == recipeA.url
+    assert retrieved_recipe.username == recipeA.username
+
+    exists = False
+
+    try:
+        artifacts.create_recipe_request(recipeA)
+    except Exception:
+        exists = True
+
+    assert exists
+
+    artifacts.create_recipe_request(recipeB)
+
+    requests = list(artifacts.iter_recipe_requests())
+
+    assert len(requests) == 2
+
+    removed = artifacts.remove_recipe_request("recipeA", "1.23")
+
+    assert removed is not None
+    assert artifacts.get_recipe_request("recipeA", "1.23") is None
+
+    retrieved_recipe = artifacts.get_recipe_request("recipeB", "0.1a")
+
+    assert retrieved_recipe is not None
+    assert retrieved_recipe.name == recipeB.name
+    assert retrieved_recipe.version == recipeB.version
+    assert retrieved_recipe.description == recipeB.description
+    assert retrieved_recipe.url == recipeB.url
+    assert retrieved_recipe.username == recipeB.username
+
+    requests = list(artifacts.iter_recipe_requests())
+
+    assert len(requests) == 1

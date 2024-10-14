@@ -59,6 +59,12 @@ def delete_environments_folder_from_test_repo(artifacts: Artifacts):
             artifacts, oid, "delete environments"
         )
 
+    if artifacts.recipes_root in tree:
+        treeBuilder = artifacts.repo.TreeBuilder(tree)
+        treeBuilder.remove(artifacts.recipes_root)
+        oid = treeBuilder.write()
+        commit_and_push_test_repo_changes(artifacts, oid, "delete recipes")
+
 
 def commit_and_push_test_repo_changes(
     artifacts: Artifacts, oid: pygit2.Oid, msg: str
