@@ -25,6 +25,12 @@ spack:
   repo: https://github.com/custom-spack/repo
   bin: /path/to/spack
 
+recipes:
+  toAddr: none@domain.com
+  fromAddr: none@domain.com
+  smtp: some.mail.relay
+
+
 # Vault Config
 #  vault:
 #      url:

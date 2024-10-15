@@ -18,6 +18,7 @@ from .models import (
     ArtifactsConfig,
     BuilderConfig,
     LDAPConfig,
+    RecipeConfig,
     ServerConfig,
     SpackConfig,
     VaultConfig,
@@ -34,6 +35,7 @@ class Settings(BaseSettings):
     artifacts: ArtifactsConfig
     spack: SpackConfig
     builder: BuilderConfig
+    recipes: RecipeConfig
 
     class Config:
         """Configuration loader."""

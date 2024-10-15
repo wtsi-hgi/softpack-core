@@ -78,3 +78,11 @@ class SpackConfig(BaseModel):
     repo: str
     bin: str
     cache: Optional[str]
+
+
+class RecipeConfig(BaseModel):
+    """Email settings to send recipe requests to."""
+
+    toAddr: Optional[str]
+    fromAddr: Optional[str]
+    smtp: Optional[str]

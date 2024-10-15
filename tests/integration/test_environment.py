@@ -276,6 +276,7 @@ def test_iter(testable_env_input, mocker):
         },
     ]
 
+    artifacts.updated = True
     envs = list(Environment.iter())
     assert len(envs) == 2
     assert envs[0].requested == datetime.datetime(
@@ -297,10 +298,8 @@ def test_iter(testable_env_input, mocker):
     assert envs[0].avg_wait_secs == envs[1].avg_wait_secs == 20
 
 
-def test_iter_no_statuses(testable_env_input, mocker):
-    get_mock = mocker.patch("httpx.get")
-    get_mock.return_value.json.return_value = []
-
+def test_iter_no_statuses(testable_env_input):
+    artifacts.updated = True
     envs = list(Environment.iter())
     assert len(envs) == 2
     assert envs[0].requested is None
@@ -603,3 +602,14 @@ def test_force_hidden(
     new_first = Environment.iter()[0]
 
     assert first_env.path != new_first.path or first_env.name != new_first.name
+
+
+def test_environment_with_requested_recipe(
+    httpx_post, testable_env_input: EnvironmentInput
+) -> None:
+    testable_env_input.packages[0].name = (
+        "*" + testable_env_input.packages[0].name
+    )
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+    httpx_post.assert_not_called()

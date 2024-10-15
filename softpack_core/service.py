@@ -5,16 +5,19 @@ LICENSE file in the root directory of this source tree.
 """
 
 
+import smtplib
 import urllib.parse
+from email.mime.text import MIMEText
 from pathlib import Path
 
 import typer
 import uvicorn
+import yaml
 from fastapi import APIRouter, Request, Response, UploadFile
 from typer import Typer
 from typing_extensions import Annotated
 
-from softpack_core.artifacts import State, artifacts
+from softpack_core.artifacts import Artifacts, State, artifacts
 from softpack_core.schemas.environment import (
     CreateEnvironmentSuccess,
     Environment,
@@ -121,6 +124,7 @@ class ServiceAPI(API):
         for env in Environment.iter():
             if env.state != State.queued:
                 continue
+
             result = Environment.submit_env_to_builder(
                 EnvironmentInput(
                     name=env.name,
@@ -129,6 +133,7 @@ class ServiceAPI(API):
                     packages=[PackageInput(**vars(p)) for p in env.packages],
                 )
             )
+
             if result is None:
                 successes += 1
             else:
@@ -145,3 +150,172 @@ class ServiceAPI(API):
             "successes": successes,
             "failures": failures,
         }
+
+    @staticmethod
+    @router.post("/requestRecipe")
+    async def request_recipe(  # type: ignore[no-untyped-def]
+        request: Request,
+    ):
+        """Request a recipe to be created."""
+        data = await request.json()
+
+        for key in ("name", "version", "description", "url", "username"):
+            if key not in data or not isinstance(data[key], str):
+                return {"error": "Invalid Input"}
+
+        try:
+            artifacts.create_recipe_request(
+                Artifacts.RecipeObject(
+                    data["name"],
+                    data["version"],
+                    data["description"],
+                    data["url"],
+                    data["username"],
+                )
+            )
+        except Exception as e:
+            return {"error": str(e)}
+
+        recipeConfig = app.settings.recipes.dict()
+
+        if all(
+            key in recipeConfig and isinstance(recipeConfig[key], str)
+            for key in ["fromAddr", "toAddr", "smtp"]
+        ):
+            msg = MIMEText(
+                f'User: {data["username"]}\n'
+                + f'Recipe: {data["name"]}\n'
+                + f'Version: {data["version"]}\n'
+                + f'URL: {data["url"]}\n'
+                + f'Description: {data["description"]}'
+            )
+            msg["Subject"] = "SoftPack Recipe Request"
+            msg["From"] = recipeConfig["fromAddr"]
+            msg["To"] = recipeConfig["toAddr"]
+
+            s = smtplib.SMTP(recipeConfig["smtp"])
+            s.sendmail(
+                recipeConfig["fromAddr"],
+                [recipeConfig["toAddr"]],
+                msg.as_string(),
+            )
+            s.quit()
+
+        return {"message": "Request Created"}
+
+    @staticmethod
+    @router.get("/requestedRecipes")
+    async def requested_recipes(  # type: ignore[no-untyped-def]
+        request: Request,
+    ):
+        """List requested recipes."""
+        return list(artifacts.iter_recipe_requests())
+
+    @staticmethod
+    @router.post("/fulfilRequestedRecipe")
+    async def fulfil_recipe(  # type: ignore[no-untyped-def]
+        request: Request,
+    ):
+        """Fulfil a recipe request."""
+        data = await request.json()
+
+        for key in ("name", "version", "requestedName", "requestedVersion"):
+            if not isinstance(data[key], str):
+                return {"error": "Invalid Input"}
+
+        r = artifacts.get_recipe_request(
+            data["requestedName"], data["requestedVersion"]
+        )
+
+        if r is None:
+            return {"error": "Unknown Recipe"}
+
+        for env in Environment.iter():
+            if env.state != State.waiting:
+                continue
+
+            changed = False
+
+            for pkg in env.packages:
+                if (
+                    pkg.name.startswith("*")
+                    and pkg.name[1:] == data["requestedName"]
+                    and pkg.version == data["requestedVersion"]
+                ):
+                    pkg.name = data["name"]
+                    pkg.version = data["version"]
+                    changed = True
+
+                    break
+
+            if not changed:
+                continue
+
+            artifacts.commit_and_push(
+                artifacts.create_file(
+                    Path(Artifacts.environments_root, env.path, env.name),
+                    Artifacts.environments_file,
+                    yaml.dump(
+                        dict(
+                            description=env.description,
+                            packages=[
+                                pkg.name
+                                + ("@" + pkg.version if pkg.version else "")
+                                for pkg in env.packages
+                            ],
+                        )
+                    ),
+                    False,
+                    True,
+                ),
+                "fulfil recipe request for environment",
+            )
+
+            if not env.has_requested_recipes():
+                Environment.submit_env_to_builder(
+                    EnvironmentInput(
+                        name=env.name,
+                        path=env.path,
+                        description=env.description,
+                        packages=[
+                            PackageInput(**vars(p)) for p in env.packages
+                        ],
+                    )
+                )
+
+        artifacts.remove_recipe_request(
+            data["requestedName"], data["requestedVersion"]
+        )
+
+        return {"message": "Recipe Fulfilled"}
+
+    @staticmethod
+    @router.post("/removeRequestedRecipe")
+    async def remove_recipe(  # type: ignore[no-untyped-def]
+        request: Request,
+    ):
+        """Remove a recipe request."""
+        data = await request.json()
+
+        for key in ("name", "version"):
+            if not isinstance(data[key], str):
+                return {"error": "Invalid Input"}
+
+        for env in Environment.iter():
+            for pkg in env.packages:
+                if (
+                    pkg.name.startswith("*")
+                    and pkg.name[1:] == data["name"]
+                    and pkg.version == data["version"]
+                ):
+                    return {
+                        "error": "There are environments relying on this "
+                        + "requested recipe; can not delete."
+                    }
+
+        try:
+            artifacts.remove_recipe_request(data["name"], data["version"])
+        except Exception as e:
+            return {"error": e}
+
+        return {"message": "Request Removed"}

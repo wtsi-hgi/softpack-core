@@ -10,10 +10,11 @@ import tempfile
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional, Tuple, Union
+from typing import Iterable, Iterator, List, Optional, Tuple, Union, cast
 
 import pygit2
 import strawberry
+import yaml
 from box import Box
 from fastapi import UploadFile
 
@@ -55,6 +56,7 @@ class State(Enum):
     ready = 'ready'
     queued = 'queued'
     failed = 'failed'
+    waiting = 'waiting'
 
 
 @strawberry.enum
@@ -68,6 +70,7 @@ class Type(Enum):
 class Artifacts:
     """Artifacts repo access class."""
 
+    recipes_root = "recipes"
     environments_root = "environments"
     environments_file = "softpack.yml"
     builder_out = "builder.out"
@@ -141,13 +144,6 @@ class Artifacts:
             if Artifacts.readme_file in self.obj:
                 info["readme"] = self.obj[Artifacts.readme_file].data.decode()
 
-            if Artifacts.module_file in self.obj:
-                info["state"] = State.ready
-            elif Artifacts.builder_out in self.obj:
-                info["state"] = State.failed
-            else:
-                info["state"] = State.queued
-
             if Artifacts.generated_from_module_file in self.obj:
                 info["type"] = Artifacts.generated_from_module
             else:
@@ -156,6 +152,15 @@ class Artifacts:
             info.packages = list(
                 map(lambda p: Package.from_name(p), info.packages)
             )
+
+            if Artifacts.module_file in self.obj:
+                info["state"] = State.ready
+            elif Artifacts.builder_out in self.obj:
+                info["state"] = State.failed
+            elif any(pkg.name.startswith("*") for pkg in info.packages):
+                info["state"] = State.waiting
+            else:
+                info["state"] = State.queued
 
             metadata = self.metadata()
 
@@ -209,6 +214,16 @@ class Artifacts:
         self.credentials_callback = pygit2.RemoteCallbacks(
             credentials=credentials
         )
+
+    @dataclass
+    class RecipeObject:
+        """The Recipe object represents the data for a requested recipe."""
+
+        name: str
+        version: str
+        description: str
+        url: str
+        username: str
 
     @property
     def signature(self) -> pygit2.Signature:
@@ -389,6 +404,71 @@ class Artifacts:
         except KeyError:
             return None
 
+    def create_recipe_request(self, recipe: RecipeObject) -> pygit2.Oid:
+        """Create a recipe request.
+
+        Args:
+            recipe: the recipe to be created.
+        """
+        return self.commit_and_push(
+            self.create_file(
+                Path(self.recipes_root),
+                recipe.name + "-" + recipe.version,
+                yaml.dump(recipe),
+                True,
+            ),
+            "add recipe request",
+        )
+
+    def get_recipe_request(
+        self, name: str, version: str
+    ) -> Optional[RecipeObject]:
+        """Get the details of a requested recipe.
+
+        Args:
+            name: the name of the recipe.
+            version: the version of the recipe.
+        """
+        try:
+            recipeData = self.tree(self.recipes_root)[name + "-" + version]
+        except Exception:
+            return None
+
+        if not recipeData:
+            return None
+
+        return cast(Artifacts.RecipeObject, Box.from_yaml(recipeData.data))
+
+    def remove_recipe_request(self, name: str, version: str) -> pygit2.Oid:
+        """Remove a recipe request.
+
+        Args:
+            name: the name of the recipe.
+            version: the version of the recipe.
+        """
+        try:
+            recipeData = self.tree(self.recipes_root)[name + "-" + version]
+        except Exception:
+            raise FileNotFoundError("recipe request does not exist")
+
+        if not recipeData:
+            raise FileNotFoundError("recipe request does not exist")
+
+        return self.commit_and_push(
+            self.remove(Path(self.recipes_root), name + "-" + version),
+            "removed recipe request",
+        )
+
+    def iter_recipe_requests(self) -> Iterable[RecipeObject]:
+        """Iterate over recipe requests."""
+        try:
+            tree = self.tree(self.recipes_root)
+        except Exception:
+            return []
+
+        for recipe in tree:
+            yield cast(Artifacts.RecipeObject, Box.from_yaml(recipe.data))
+
     def commit_and_push(
         self, tree_oid: pygit2.Oid, message: str
     ) -> pygit2.Oid:
@@ -471,7 +551,7 @@ class Artifacts:
 
     def create_files(
         self,
-        folder_path: Path,
+        full_path: Path,
         files: List[Tuple[str, Union[str, UploadFile]]],
         new_folder: bool = False,
         overwrite: bool = False,
@@ -490,13 +570,17 @@ class Artifacts:
             the OID of the new tree structure of the repository
         """
         for file_name, _ in files:
-            if not overwrite and self.get(Path(folder_path), file_name):
+            try:
+                tree = self.tree(str(full_path))
+            except Exception:
+                continue
+
+            if not overwrite and tree and file_name in tree:
                 raise FileExistsError("File already exists")
 
         root_tree = self.repo.head.peel(pygit2.Tree)
-        full_path = Path(self.environments_root, folder_path)
 
-        if new_folder:
+        if new_folder and (full_path not in root_tree or overwrite):
             new_treebuilder = self.repo.TreeBuilder()
         else:
             folder = root_tree[full_path]
@@ -544,10 +628,19 @@ class Artifacts:
         if len(Path(path).parts) != 2:
             raise ValueError("Not a valid environment path")
 
+        return self.remove(Path(self.environments_root, path), name)
+
+    def remove(self, full_path: Path, name: str) -> pygit2.Oid:
+        """Remove a target from the artefacts repo.
+
+        Args:
+            full_path: the parent directory to remove from
+            name: the file/directory to remove from the parent
+            commit_message: the commit message
+        """
         # Get repository tree
         root_tree = self.repo.head.peel(pygit2.Tree)
         # Find environment in the tree
-        full_path = Path(self.environments_root, path)
         target_tree = root_tree[full_path]
         # Remove the environment
         tree_builder = self.repo.TreeBuilder(target_tree)

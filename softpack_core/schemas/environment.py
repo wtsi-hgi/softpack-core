@@ -266,6 +266,10 @@ class EnvironmentInput:
             packages=[PackageInput("placeholder")],
         )
 
+    def has_requested_recipes(self) -> bool:
+        """Do any of the requested packages have an unmade recipe."""
+        return any(pkg.name.startswith("*") for pkg in self.packages)
+
 
 @dataclass
 class BuildStatus:
@@ -375,6 +379,10 @@ class Environment:
 
         return environment_objects
 
+    def has_requested_recipes(self) -> bool:
+        """Do any of the requested packages have an unmade recipe."""
+        return any(pkg.name.startswith("*") for pkg in self.packages)
+
     @classmethod
     def from_artifact(cls, obj: Artifacts.Object) -> Optional["Environment"]:
         """Create an Environment object from an artifact.
@@ -459,6 +467,9 @@ class Environment:
                 message=f"could not parse version from name: {env.name!r}"
             )
 
+        if env.has_requested_recipes():
+            return None
+
         try:
             host = app.settings.builder.host
             port = app.settings.builder.port
@@ -537,7 +548,7 @@ class Environment:
             metaData = yaml.dump(meta)
 
             tree_oid = artifacts.create_files(
-                new_folder_path,
+                Path(artifacts.environments_root, new_folder_path),
                 [
                     (env_type, ""),  # e.g. .built_by_softpack
                     (
@@ -546,6 +557,7 @@ class Environment:
                     ),  # softpack.yml
                     (artifacts.meta_file, metaData),
                 ],
+                True,
                 True,
             )
             artifacts.commit_and_push(tree_oid, "create environment folder")
@@ -642,7 +654,7 @@ class Environment:
         environment path given.
         """
         tree_oid = artifacts.create_file(
-            environment_path,
+            Path(artifacts.environments_root, environment_path),
             artifacts.meta_file,
             metadata.to_yaml(),
             overwrite=True,
@@ -850,7 +862,9 @@ class Environment:
                     )
 
             tree_oid = artifacts.create_files(
-                Path(folder_path), new_files, overwrite=True
+                Path(artifacts.environments_root, folder_path),
+                new_files,
+                overwrite=True,
             )
             artifacts.commit_and_push(tree_oid, "write artifact")
             return WriteArtifactSuccess(

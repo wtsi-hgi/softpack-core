@@ -202,22 +202,27 @@ server:
 artifacts:
     path: Path # Path to store artefacts repo.
     repo:
-      url: AnyUrl # URL to artefacts repo.
+      url: AnyUrl             # URL to artefacts repo.
       username: Optional[str] # Username required to access artefacts repo.
-      author: str # Author name for git commits to artefacts repo.
-      email: str # Email address for author of git commits to artefacts repo.
-      reader: Optional[str] # Auth token for read access to artefacts repo.
-      writer: Optional[str] # Auth token for write access to artefacts repo.
-      branch: Optional[str] # Branch to use for artefacts repo.
+      author: str             # Author name for git commits to artefacts repo.
+      email: str              # Email address for author of git commits to artefacts repo.
+      reader: Optional[str]   # Auth token for read access to artefacts repo.
+      writer: Optional[str]   # Auth token for write access to artefacts repo.
+      branch: Optional[str]   # Branch to use for artefacts repo.
 
 spack:
-  repo: str # URL to spack recipe repo.
-  bin: str # Path to spack exectable.
+  repo: str            # URL to spack recipe repo.
+  bin: str             # Path to spack exectable.
   cache: Optional[str] # Directory to store cached spack recipe information.
 
 builder:
   host: str # URL to a GSB server
   port: int # Port of the GSB server
+
+recipes:
+  toAddr: Optional[str]   # Address to which recipe requests will be sent.
+  fromAddr: Optional[str] # Address from which recipe requests will be sent.
+  smtp: Optional[str]     # Address to an SMTP relay
 ```
 
 ## Usage
