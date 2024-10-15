@@ -22,7 +22,14 @@ from fastapi import UploadFile
 from strawberry.file_uploads import Upload
 
 from softpack_core.app import app
-from softpack_core.artifacts import Artifacts, Package, State, Type, artifacts
+from softpack_core.artifacts import (
+    Artifacts,
+    Interpreters,
+    Package,
+    State,
+    Type,
+    artifacts,
+)
 from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 from softpack_core.schemas.base import BaseSchema
 
@@ -327,6 +334,7 @@ class Environment:
     tags: list[str]
     hidden: bool
     cachedEnvs: list["Environment"] = field(default_factory=list)
+    interpreters: Interpreters = field(default_factory=Interpreters)
 
     requested: Optional[datetime.datetime] = None
     build_start: Optional[datetime.datetime] = None
@@ -409,6 +417,7 @@ class Environment:
                 type=spec.get("type", ""),
                 tags=spec.tags,
                 hidden=spec.hidden,
+                interpreters=spec.get("interpreters", Interpreters()),
             )
         except KeyError:
             return None

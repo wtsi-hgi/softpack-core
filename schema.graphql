@@ -40,6 +40,7 @@ type Environment {
   tags: [String!]!
   hidden: Boolean!
   cachedEnvs: [Environment!]!
+  interpreters: Interpreters!
   requested: DateTime
   buildStart: DateTime
   buildDone: DateTime
@@ -78,6 +79,11 @@ union HiddenResponse = HiddenSuccess | InvalidInputError | EnvironmentNotFoundEr
 
 type HiddenSuccess implements Success {
   message: String!
+}
+
+type Interpreters {
+  r: String
+  python: String
 }
 
 type InvalidInputError implements Error {

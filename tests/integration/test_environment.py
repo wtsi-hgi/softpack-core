@@ -6,6 +6,7 @@ LICENSE file in the root directory of this source tree.
 
 import datetime
 import io
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -27,6 +28,7 @@ from softpack_core.schemas.environment import (
     HiddenSuccess,
     InvalidInputError,
     Package,
+    PackageInput,
     State,
     UpdateEnvironmentSuccess,
     WriteArtifactSuccess,
@@ -613,3 +615,166 @@ def test_environment_with_requested_recipe(
     result = Environment.create(testable_env_input)
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_not_called()
+
+
+def test_interpreters(
+    httpx_post, testable_env_input: EnvironmentInput
+) -> None:
+    env = EnvironmentInput.from_path("users/me/my_env-1")
+    env.packages = [
+        PackageInput.from_name("pkg@1"),
+        PackageInput.from_name("pkg@2"),
+    ]
+
+    assert isinstance(Environment.create(env), CreateEnvironmentSuccess)
+
+    artifacts.commit_and_push(
+        artifacts.create_file(
+            Path(Artifacts.environments_root, env.path, env.name),
+            Artifacts.spack_file,
+            json.dumps(
+                {
+                    "concrete_specs": {
+                        "long_hash": {
+                            "name": "python",
+                            "version": "1.2.3",
+                        }
+                    }
+                }
+            ),
+            False,
+            True,
+        ),
+        "add spack.lock for environment",
+    )
+
+    env = Environment.from_artifact(artifacts.get(env.path, env.name))
+
+    assert env.interpreters.python == "1.2.3"
+    assert env.interpreters.r is None
+
+    artifacts.commit_and_push(
+        artifacts.create_file(
+            Path(Artifacts.environments_root, env.path, env.name),
+            Artifacts.spack_file,
+            json.dumps(
+                {
+                    "concrete_specs": {
+                        "long_hash": {
+                            "name": "r",
+                            "version": "4.5.6",
+                        }
+                    }
+                }
+            ),
+            False,
+            True,
+        ),
+        "add spack.lock for environment",
+    )
+
+    env = Environment.from_artifact(artifacts.get(env.path, env.name))
+
+    assert env.interpreters.python is None
+    assert env.interpreters.r == "4.5.6"
+
+    artifacts.commit_and_push(
+        artifacts.create_file(
+            Path(Artifacts.environments_root, env.path, env.name),
+            Artifacts.spack_file,
+            json.dumps(
+                {
+                    "concrete_specs": {
+                        "short_hash": {
+                            "name": "python",
+                            "version": "3.11.4",
+                        },
+                        "long_hash": {
+                            "name": "r",
+                            "version": "4.4.1",
+                        },
+                    }
+                }
+            ),
+            False,
+            True,
+        ),
+        "add spack.lock for environment",
+    )
+
+    env = Environment.from_artifact(artifacts.get(env.path, env.name))
+
+    assert env.interpreters.python == "3.11.4"
+    assert env.interpreters.r == "4.4.1"
+
+    env = EnvironmentInput.from_path("users/me/my_env-2")
+    env.packages = [
+        PackageInput.from_name("r@1"),
+    ]
+
+    assert isinstance(Environment.create(env), CreateEnvironmentSuccess)
+
+    artifacts.commit_and_push(
+        artifacts.create_file(
+            Path(Artifacts.environments_root, env.path, env.name),
+            Artifacts.spack_file,
+            json.dumps(
+                {
+                    "concrete_specs": {
+                        "short_hash": {
+                            "name": "python",
+                            "version": "3.11.4",
+                        },
+                        "long_hash": {
+                            "name": "r",
+                            "version": "4.4.1",
+                        },
+                    }
+                }
+            ),
+            False,
+            True,
+        ),
+        "add spack.lock for environment",
+    )
+
+    env = Environment.from_artifact(artifacts.get(env.path, env.name))
+
+    assert env.interpreters.python == "3.11.4"
+    assert env.interpreters.r is None
+
+    env = EnvironmentInput.from_path("users/me/my_env-3")
+    env.packages = [
+        PackageInput.from_name("python@2"),
+    ]
+
+    assert isinstance(Environment.create(env), CreateEnvironmentSuccess)
+
+    artifacts.commit_and_push(
+        artifacts.create_file(
+            Path(Artifacts.environments_root, env.path, env.name),
+            Artifacts.spack_file,
+            json.dumps(
+                {
+                    "concrete_specs": {
+                        "short_hash": {
+                            "name": "python",
+                            "version": "3.11.4",
+                        },
+                        "long_hash": {
+                            "name": "r",
+                            "version": "4.4.1",
+                        },
+                    }
+                }
+            ),
+            False,
+            True,
+        ),
+        "add spack.lock for environment",
+    )
+
+    env = Environment.from_artifact(artifacts.get(env.path, env.name))
+
+    assert env.interpreters.python is None
+    assert env.interpreters.r == "4.4.1"
