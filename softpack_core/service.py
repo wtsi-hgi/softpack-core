@@ -309,7 +309,7 @@ class ServiceAPI(API):
                     and pkg.version == data["version"]
                 ):
                     return {
-                        "error": "There are environments relying of this "
+                        "error": "There are environments relying on this "
                         + "requested recipe; can not delete."
                     }
 

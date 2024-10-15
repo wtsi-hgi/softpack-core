@@ -197,6 +197,6 @@ def test_request_recipe(httpx_post, testable_env_input):
     )
 
     assert resp.json() == {
-        "error": "There are environments relying of this requested recipe; "
+        "error": "There are environments relying on this requested recipe; "
         + "can not delete."
     }
