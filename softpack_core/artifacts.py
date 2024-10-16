@@ -5,6 +5,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 import itertools
+import json
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -49,6 +50,14 @@ class Package(PackageBase):
         return Package(name=name)
 
 
+@strawberry.type
+class Interpreters:
+    """A Strawberry model representing the interpreters in an environment."""
+
+    r: Optional[str] = None
+    python: Optional[str] = None
+
+
 @strawberry.enum
 class State(Enum):
     """Environment states."""
@@ -77,6 +86,7 @@ class Artifacts:
     module_file = "module"
     readme_file = "README.md"
     meta_file = "meta.yml"
+    spack_file = "spack.lock"
     built_by_softpack_file = ".built_by_softpack"
     built_by_softpack = Type.softpack.value
     generated_from_module_file = ".generated_from_module"
@@ -167,6 +177,41 @@ class Artifacts:
             info["tags"] = getattr(metadata, "tags", [])
             info["hidden"] = getattr(metadata, "hidden", False)
             info["force_hidden"] = getattr(metadata, "force_hidden", False)
+
+            info["interpreters"] = Interpreters()
+
+            if Artifacts.spack_file in self.obj:
+                hasR = False
+                hasPython = False
+
+                for pkg in cast(list[Package], info["packages"]):
+                    if pkg.name == "r":
+                        hasR = True
+
+                    if pkg.name == "python":
+                        hasPython = True
+
+                    if hasR and hasPython:
+                        break
+
+                if not hasR or not hasPython:
+                    data = json.loads(self.obj[Artifacts.spack_file].data)
+
+                    for hash in data.get("concrete_specs", {}):
+                        spec = data["concrete_specs"][hash]
+
+                        if not hasR and spec.get("name", "") == "r":
+                            hasR = True
+                            info["interpreters"].r = spec.get("version", "")
+
+                        if not hasPython and spec.get("name", "") == "python":
+                            hasPython = True
+                            info["interpreters"].python = spec.get(
+                                "version", ""
+                            )
+
+                        if hasR and hasPython:
+                            break
 
             return info
 
