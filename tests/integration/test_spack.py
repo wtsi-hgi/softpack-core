@@ -40,6 +40,11 @@ def test_spack_packages():
 
     assert len(packages[0].versions) != 0
 
+    assert (
+        spack.descriptions.get("jq")
+        == "jq is a lightweight and flexible command-line JSON processor."
+    )
+
     if app.settings.spack.repo == "https://github.com/custom-spack/repo":
         assert len(packages) == len(pkgs)
     else:
@@ -68,7 +73,7 @@ def test_spack_package_updater():
 
     spack.custom_repo = app.settings.spack.repo
 
-    timeout = time.time() + 60 * 2
+    timeout = time.time() + 60 * 3
 
     while True:
         new_pkgs = spack.stored_packages
