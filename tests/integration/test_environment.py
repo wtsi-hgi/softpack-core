@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 import datetime
 import io
 import json
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -78,6 +79,7 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     meta_yml = file_in_remote(dir / artifacts.meta_file)
     expected_meta_yml = {"tags": []}
     actual_meta_yml = yaml.safe_load(meta_yml.data.decode())
+    del actual_meta_yml["created"]
     assert actual_meta_yml == expected_meta_yml
 
     dir = Path(
@@ -98,6 +100,7 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
     meta_yml = file_in_remote(dir / artifacts.meta_file)
     expected_meta_yml = {"tags": ["bar", "foo"]}
     actual_meta_yml = yaml.safe_load(meta_yml.data.decode())
+    del actual_meta_yml["created"]
     assert actual_meta_yml == expected_meta_yml
 
     result = Environment.create(testable_env_input)
@@ -315,7 +318,9 @@ def test_iter_no_statuses(testable_env_input):
 @pytest.mark.asyncio
 async def test_states(httpx_post, testable_env_input, mocker):
     orig_name = testable_env_input.name
+    startTime = time.time() - 1
     result = Environment.create(testable_env_input)
+    endTime = time.time() + 1
     testable_env_input.name = orig_name
     assert isinstance(result, CreateEnvironmentSuccess)
     httpx_post.assert_called_once()
@@ -349,6 +354,7 @@ async def test_states(httpx_post, testable_env_input, mocker):
     assert any(p.version == "v1.1" for p in env.packages)
     assert env.type == Artifacts.built_by_softpack
     assert env.state == State.queued
+    assert env.created >= startTime and env.created <= endTime
 
     upload = UploadFile(
         filename=Artifacts.builder_out, file=io.BytesIO(b"some output")
