@@ -319,3 +319,19 @@ class ServiceAPI(API):
             return {"error": e}
 
         return {"message": "Request Removed"}
+
+    @staticmethod
+    @router.post("/getRecipeDescription")
+    async def recipe_description(  # type: ignore[no-untyped-def]
+        request: Request,
+    ):
+        """Return the description for a recipe."""
+        data = await request.json()
+
+        if (
+            not isinstance(data["recipe"], str)
+            or data["recipe"] not in app.spack.descriptions
+        ):
+            return {"error": "Invalid Input"}
+
+        return {"description": app.spack.descriptions[data["recipe"]]}

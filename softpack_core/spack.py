@@ -4,11 +4,11 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-import json
 import subprocess
 import tempfile
 import threading
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from os import path
 from typing import Tuple
 
@@ -27,6 +27,54 @@ class Package(PackageBase):
     versions: list[str]
 
 
+class SpackHTMLParser(HTMLParser):
+    """Class to parse HTML output from `spack list --format=html`."""
+
+    def __init__(self) -> None:
+        """Init class."""
+        super().__init__()
+
+        self.onDT = False
+        self.onDD = True
+        self.nextIsVersion = False
+        self.nextIsDescription = False
+        self.recipe = ""
+
+        self.versions: list[Package] = list()
+        self.descriptions: dict[str, str] = dict()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """Handle open tags."""
+        if tag == "div":
+            self.recipe = next(
+                attr[1] for attr in attrs if attr[0] == "id" and isinstance(attr[1], str)
+            )
+        elif tag == "dt":
+            self.onDT = True
+        elif tag == "dd":
+            self.onDD = True
+
+    def handle_data(self, data: str) -> None:
+        """Handle data."""
+        if self.onDT:
+            self.onDT = False
+            self.nextIsVersion = data == "Versions:"
+            self.nextIsDescription = data == "Description:"
+        elif self.onDD:
+            self.onDD = False
+
+            if self.nextIsVersion:
+                self.nextIsVersion = False
+                self.versions.append(
+                    Package(
+                        name=self.recipe, versions=data.strip().split(", ")
+                    )
+                )
+            elif self.nextIsDescription:
+                self.nextIsDescription = False
+                self.descriptions[self.recipe] = data.strip()
+
+
 class Spack:
     """Spack interface class."""
 
@@ -40,6 +88,7 @@ class Spack:
     ) -> None:
         """Constructor."""
         self.stored_packages: list[Package] = []
+        self.descriptions: dict[str, str] = dict()
         self.checkout_path = ""
         self.spack_exe = spack_exe
         self.cacheDir = cache
@@ -81,24 +130,19 @@ class Spack:
             spack_exe (str): Path to the spack executable.
             checkout_path (str): Path to the cloned custom spack repo.
         """
-        jsonData, didReadFromCache = self.__readPackagesFromCacheOnce()
+        htmlData, didReadFromCache = self.__readPackagesFromCacheOnce()
 
         if not didReadFromCache:
-            jsonData = self.__getPackagesFromSpack(spack_exe, checkout_path)
+            htmlData = self.__getPackagesFromSpack(spack_exe, checkout_path)
 
-            self.__writeToCache(jsonData)
+            self.__writeToCache(htmlData)
 
-        self.stored_packages = list(
-            map(
-                lambda package: Package(
-                    name=package.get("name"),
-                    versions=[
-                        str(ver) for ver in list(package.get("versions"))
-                    ],
-                ),
-                json.loads(jsonData),
-            )
-        )
+        shp = SpackHTMLParser()
+
+        shp.feed(htmlData.decode("utf-8"))
+
+        self.stored_packages = shp.versions
+        self.descriptions = shp.descriptions
         self.packagesUpdated = True
 
     def __readPackagesFromCacheOnce(self) -> Tuple[bytes, bool]:
@@ -156,7 +200,7 @@ class Spack:
     ) -> bytes:
         if checkout_path == "":
             result = subprocess.run(
-                [spack_exe, "list", "--format", "version_json"],
+                [spack_exe, "list", "--format", "html"],
                 capture_output=True,
             )
 
@@ -169,7 +213,7 @@ class Spack:
                 "repos:[" + checkout_path + "]",
                 "list",
                 "--format",
-                "version_json",
+                "html",
             ],
             capture_output=True,
         )

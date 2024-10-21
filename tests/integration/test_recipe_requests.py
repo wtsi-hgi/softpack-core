@@ -4,6 +4,7 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import pytest
 from fastapi.testclient import TestClient
 
 from softpack_core.app import app
@@ -14,6 +15,8 @@ from softpack_core.schemas.environment import (
     PackageInput,
 )
 from tests.integration.utils import builder_called_correctly
+
+pytestmark = pytest.mark.repo
 
 
 def test_request_recipe(httpx_post, testable_env_input):
