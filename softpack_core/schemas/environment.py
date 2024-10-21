@@ -10,6 +10,7 @@ import re
 import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
+from time import time
 from traceback import format_exception_only
 from typing import List, Optional, Tuple, Union, cast
 
@@ -333,6 +334,7 @@ class Environment:
     state: Optional[State]
     tags: list[str]
     hidden: bool
+    created: int
     cachedEnvs: list["Environment"] = field(default_factory=list)
     interpreters: Interpreters = field(default_factory=Interpreters)
 
@@ -417,6 +419,7 @@ class Environment:
                 type=spec.get("type", ""),
                 tags=spec.tags,
                 hidden=spec.hidden,
+                created=spec.created,
                 interpreters=spec.get("interpreters", Interpreters()),
             )
         except KeyError:
@@ -553,7 +556,9 @@ class Environment:
             )
             definitionData = yaml.dump(softpack_definition)
 
-            meta = dict(tags=sorted(set(env.tags or [])))
+            meta = dict(
+                tags=sorted(set(env.tags or [])), created=round(time())
+            )
             metaData = yaml.dump(meta)
 
             tree_oid = artifacts.create_files(

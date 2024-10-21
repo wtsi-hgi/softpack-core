@@ -39,6 +39,7 @@ type Environment {
   state: State
   tags: [String!]!
   hidden: Boolean!
+  created: Int!
   cachedEnvs: [Environment!]!
   interpreters: Interpreters!
   requested: DateTime
