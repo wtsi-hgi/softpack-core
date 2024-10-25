@@ -220,9 +220,10 @@ builder:
   port: int # Port of the GSB server
 
 recipes:
-  toAddr: Optional[str]   # Address to which recipe requests will be sent.
-  fromAddr: Optional[str] # Address from which recipe requests will be sent.
-  smtp: Optional[str]     # Address to an SMTP relay
+  toAddr: Optional[str]        # Address to which recipe requests will be sent.
+  fromAddr: Optional[str]      # Address from which recipe requests will be sent.
+  smtp: Optional[str]          # Address to an SMTP relay
+  localHostname: Optional[str] # Hostname to use for SMTP HELO.
 ```
 
 ## Usage

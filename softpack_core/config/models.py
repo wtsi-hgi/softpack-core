@@ -86,3 +86,4 @@ class RecipeConfig(BaseModel):
     toAddr: Optional[str]
     fromAddr: Optional[str]
     smtp: Optional[str]
+    localHostname: Optional[str]

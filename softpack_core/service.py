@@ -193,7 +193,13 @@ class ServiceAPI(API):
             msg["From"] = recipeConfig["fromAddr"]
             msg["To"] = recipeConfig["toAddr"]
 
-            s = smtplib.SMTP(recipeConfig["smtp"])
+            localhostname = None
+
+            if recipeConfig["localHostname"] is not None:
+                localhostname = recipeConfig["localHostname"]
+
+
+            s = smtplib.SMTP(recipeConfig["smtp"], local_hostname=localhostname)
             s.sendmail(
                 recipeConfig["fromAddr"],
                 [recipeConfig["toAddr"]],
