@@ -189,7 +189,7 @@ class ServiceAPI(API):
                 + f'URL: {data["url"]}\n'
                 + f'Description: {data["description"]}'
             )
-            msg["Subject"] = "SoftPack Recipe Request"
+            msg["Subject"] = f'SoftPack Recipe Request: {data["name"]}@{data["version"]}'
             msg["From"] = recipeConfig["fromAddr"]
             msg["To"] = recipeConfig["toAddr"]
 
