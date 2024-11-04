@@ -189,7 +189,9 @@ class ServiceAPI(API):
                 + f'URL: {data["url"]}\n'
                 + f'Description: {data["description"]}'
             )
-            msg["Subject"] = f'SoftPack Recipe Request: {data["name"]}@{data["version"]}'
+            msg[
+                "Subject"
+            ] = f'SoftPack Recipe Request: {data["name"]}@{data["version"]}'
             msg["From"] = recipeConfig["fromAddr"]
             msg["To"] = recipeConfig["toAddr"]
 
@@ -198,8 +200,9 @@ class ServiceAPI(API):
             if recipeConfig["localHostname"] is not None:
                 localhostname = recipeConfig["localHostname"]
 
-
-            s = smtplib.SMTP(recipeConfig["smtp"], local_hostname=localhostname)
+            s = smtplib.SMTP(
+                recipeConfig["smtp"], local_hostname=localhostname
+            )
             s.sendmail(
                 recipeConfig["fromAddr"],
                 [recipeConfig["toAddr"]],
@@ -233,7 +236,12 @@ class ServiceAPI(API):
             data["requestedName"], data["requestedVersion"]
         )
 
-        if r is None:
+        if r is None or not any(
+            version == data["version"]
+            for pkg in app.spack.stored_packages
+            if pkg.name == data["name"]
+            for version in pkg.versions
+        ):
             return {"error": "Unknown Recipe"}
 
         for env in Environment.iter():

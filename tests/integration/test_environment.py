@@ -39,7 +39,10 @@ from tests.integration.utils import builder_called_correctly, file_in_remote
 pytestmark = pytest.mark.repo
 
 
-def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
+@pytest.mark.asyncio
+async def test_create(
+    httpx_post, testable_env_input: EnvironmentInput
+) -> None:
     orig_input_name = testable_env_input.name
     result = Environment.create(testable_env_input)
     testable_env_input.name = orig_input_name
@@ -114,6 +117,79 @@ def test_create(httpx_post, testable_env_input: EnvironmentInput) -> None:
         artifacts.built_by_softpack_file,
     )
     assert file_in_remote(path)
+
+    env = Environment.get_env(
+        testable_env_input.path, testable_env_input.name + "-2"
+    )
+    assert env.state == State.queued
+
+    upload = UploadFile(
+        filename=Artifacts.builder_out,
+        file=io.BytesIO(b""),
+    )
+
+    result = await Environment.write_artifact(
+        file=upload,
+        folder_path=f"{testable_env_input.path}/{testable_env_input.name}-2",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, WriteArtifactSuccess)
+
+    env = Environment.get_env(
+        testable_env_input.path, testable_env_input.name + "-2"
+    )
+    assert env.state == State.failed
+
+    assert isinstance(
+        Environment.check_env_exists(
+            Path(testable_env_input.path, testable_env_input.name + "-3")
+        ),
+        EnvironmentNotFoundError,
+    )
+
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+    assert testable_env_input.name == "test_env_create-2"
+    testable_env_input.name = orig_input_name
+
+    assert isinstance(
+        Environment.check_env_exists(
+            Path(testable_env_input.path, testable_env_input.name + "-3")
+        ),
+        EnvironmentNotFoundError,
+    )
+
+    env = Environment.get_env(
+        testable_env_input.path, testable_env_input.name + "-2"
+    )
+    assert env.state == State.queued
+
+    upload = UploadFile(
+        filename=Artifacts.builder_out,
+        file=io.BytesIO(b""),
+    )
+
+    result = await Environment.write_artifact(
+        file=upload,
+        folder_path=f"{testable_env_input.path}/{testable_env_input.name}-2",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, WriteArtifactSuccess)
+
+    env = Environment.get_env(
+        testable_env_input.path, testable_env_input.name + "-2"
+    )
+    assert env.state == State.failed
+
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+    assert testable_env_input.name == "test_env_create-2"
+    testable_env_input.name = orig_input_name
+
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+    assert testable_env_input.name == "test_env_create-3"
+    testable_env_input.name = orig_input_name
 
 
 def test_create_no_tags(httpx_post, testable_env_input):

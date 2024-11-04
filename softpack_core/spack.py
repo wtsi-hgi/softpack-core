@@ -43,11 +43,15 @@ class SpackHTMLParser(HTMLParser):
         self.versions: list[Package] = list()
         self.descriptions: dict[str, str] = dict()
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+    def handle_starttag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
         """Handle open tags."""
         if tag == "div":
             self.recipe = next(
-                attr[1] for attr in attrs if attr[0] == "id" and isinstance(attr[1], str)
+                attr[1]
+                for attr in attrs
+                if attr[0] == "id" and isinstance(attr[1], str)
             )
         elif tag == "dt":
             self.onDT = True
