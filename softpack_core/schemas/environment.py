@@ -394,6 +394,22 @@ class Environment:
         return any(pkg.name.startswith("*") for pkg in self.packages)
 
     @classmethod
+    def get_env(cls, path: Path, name: str) -> Optional["Environment"]:
+        """Return an Environment object given a path.
+
+        Args:
+            path: A path.
+
+        Returns:
+            Environment: An Environment object.
+        """
+        artifact_env = artifacts.get(path, name)
+        if not artifact_env:
+            return None
+
+        return cls.from_artifact(artifact_env)
+
+    @classmethod
     def from_artifact(cls, obj: Artifacts.Object) -> Optional["Environment"]:
         """Create an Environment object from an artifact.
 
@@ -435,26 +451,39 @@ class Environment:
         Returns:
             A message confirming the success or failure of the operation.
         """
-        versionless_name = env.name
         version = 1
 
-        if not versionless_name:
+        if not env.name:
             return InvalidInputError(
                 message="environment name must not be blank"
             )
 
-        while True:
-            env.name = versionless_name + "-" + str(version)
-            response = cls.create_new_env(
-                env, Artifacts.built_by_softpack_file
-            )
-            if isinstance(response, CreateEnvironmentSuccess):
-                break
-
-            if not isinstance(response, EnvironmentAlreadyExistsError):
-                return response
-
+        while not isinstance(
+            cls.check_env_exists(
+                Path(env.path, env.name + "-" + str(version))
+            ),
+            EnvironmentNotFoundError,
+        ):
             version += 1
+
+        if version != 1:
+            prevEnv = cls.get_env(
+                Path(env.path), env.name + "-" + str(version - 1)
+            )
+            if cast(Environment, prevEnv).state == State.failed:
+                version -= 1
+
+                tree_oid = artifacts.delete_environment(
+                    env.name + "-" + str(version), env.path
+                )
+                artifacts.commit_and_push(
+                    tree_oid, "remove failed environment"
+                )
+
+        env.name += "-" + str(version)
+        response = cls.create_new_env(env, Artifacts.built_by_softpack_file)
+        if not isinstance(response, CreateEnvironmentSuccess):
+            return response
 
         response = cls.submit_env_to_builder(env)
         if response is not None:

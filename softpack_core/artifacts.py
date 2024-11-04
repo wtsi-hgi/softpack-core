@@ -666,7 +666,6 @@ class Artifacts:
         Args:
             name: the name of the environment
             path: the path of the environment
-            commit_message: the commit message
 
         Returns:
             the OID of the new tree structure of the repository
@@ -682,7 +681,6 @@ class Artifacts:
         Args:
             full_path: the parent directory to remove from
             name: the file/directory to remove from the parent
-            commit_message: the commit message
         """
         # Get repository tree
         root_tree = self.repo.head.peel(pygit2.Tree)
