@@ -17,8 +17,8 @@ from pydantic.env_settings import SettingsSourceCallable
 from .models import (
     ArtifactsConfig,
     BuilderConfig,
+    EmailConfig,
     LDAPConfig,
-    RecipeConfig,
     ServerConfig,
     SpackConfig,
     VaultConfig,
@@ -35,7 +35,8 @@ class Settings(BaseSettings):
     artifacts: ArtifactsConfig
     spack: SpackConfig
     builder: BuilderConfig
-    recipes: RecipeConfig
+    recipes: EmailConfig
+    environments: EmailConfig
 
     class Config:
         """Configuration loader."""

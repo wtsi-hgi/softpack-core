@@ -178,6 +178,7 @@ class Artifacts:
             info["hidden"] = getattr(metadata, "hidden", False)
             info["force_hidden"] = getattr(metadata, "force_hidden", False)
             info["created"] = getattr(metadata, "created", 0)
+            info["username"] = getattr(metadata, "username", None)
 
             info["interpreters"] = Interpreters()
 

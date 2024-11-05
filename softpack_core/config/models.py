@@ -80,7 +80,7 @@ class SpackConfig(BaseModel):
     cache: Optional[str]
 
 
-class RecipeConfig(BaseModel):
+class EmailConfig(BaseModel):
     """Email settings to send recipe requests to."""
 
     toAddr: Optional[str]
