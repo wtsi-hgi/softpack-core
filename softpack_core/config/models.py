@@ -85,5 +85,6 @@ class EmailConfig(BaseModel):
 
     toAddr: Optional[str]
     fromAddr: Optional[str]
+    adminAddr: Optional[str]
     smtp: Optional[str]
     localHostname: Optional[str]

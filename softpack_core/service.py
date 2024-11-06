@@ -179,7 +179,13 @@ class ServiceAPI(API):
                     else "Your environment failed to build"
                 )
 
-                send_email(envEmailConfig, message, subject, env.username)
+                send_email(
+                    envEmailConfig,
+                    message,
+                    subject,
+                    env.username,
+                    newState != State.ready,
+                )
                 env.remove_username()
 
         resp = await Environment.write_artifacts(env_path, files)
@@ -407,7 +413,11 @@ class ServiceAPI(API):
 
 
 def send_email(
-    emailConfig: EmailConfig, message: str, subject: str, username: str
+    emailConfig: EmailConfig,
+    message: str,
+    subject: str,
+    username: str,
+    sendAdmin: bool = True,
 ) -> None:
     """The send_email functions sends an email."""
     if (
@@ -434,7 +444,9 @@ def send_email(
     s = smtplib.SMTP(emailConfig.smtp, local_hostname=localhostname)
     s.sendmail(
         fromAddr,
-        [toAddr],
+        [toAddr, emailConfig.adminAddr]
+        if sendAdmin and emailConfig.adminAddr is not None
+        else [toAddr],
         msg.as_string(),
     )
     s.quit()
