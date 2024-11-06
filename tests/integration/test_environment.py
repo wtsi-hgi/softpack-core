@@ -393,6 +393,7 @@ async def test_email_on_build_complete(
 
     assert send_email.call_args[0][0] == app.settings.environments
     assert "built sucessfully" in send_email.call_args[0][1]
+    assert "The error was" not in send_email.call_args[0][1]
     assert send_email.call_args[0][2] == "Your environment is ready!"
     assert send_email.call_args[0][3] == "me"
 
@@ -429,6 +430,10 @@ async def test_email_on_build_complete(
 
     assert send_email.call_args[0][0] == app.settings.environments
     assert "failed to build" in send_email.call_args[0][1]
+    assert (
+        "The error was a build error. Contact your softpack administrator."
+        in send_email.call_args[0][1]
+    )
     assert send_email.call_args[0][2] == "Your environment failed to build"
     assert send_email.call_args[0][3] == "me"
 
@@ -451,6 +456,79 @@ async def test_email_on_build_complete(
     assert resp.json().get("message") == "Successfully written artifact(s)"
 
     assert send_email.call_count == 2
+
+    testable_env_input.username = "me"
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+
+    client = TestClient(app.router)
+    resp = client.post(
+        url="/upload?"
+        + testable_env_input.path
+        + "/"
+        + testable_env_input.name,
+        files=[
+            (
+                "file",
+                (
+                    Artifacts.builder_out,
+                    "concretization failed for the following reasons:",
+                ),
+            ),
+        ],
+    )
+    assert resp.status_code == 200
+    assert resp.json().get("message") == "Successfully written artifact(s)"
+
+    assert send_email.call_count == 3
+
+    assert send_email.call_args[0][0] == app.settings.environments
+    assert "failed to build" in send_email.call_args[0][1]
+    assert "version conflict" in send_email.call_args[0][1]
+    assert send_email.call_args[0][2] == "Your environment failed to build"
+    assert send_email.call_args[0][3] == "me"
+
+
+def test_failure_reason_from_build_log(
+    httpx_post, send_email, testable_env_input
+):
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+
+    client = TestClient(app.router)
+    client.post(
+        url="/upload?"
+        + testable_env_input.path
+        + "/"
+        + testable_env_input.name,
+        files=[
+            ("file", (Artifacts.builder_out, "")),
+        ],
+    )
+
+    env = Environment.get_env(testable_env_input.path, testable_env_input.name)
+
+    assert env.failure_reason == "build"
+
+    client.post(
+        url="/upload?"
+        + testable_env_input.path
+        + "/"
+        + testable_env_input.name,
+        files=[
+            (
+                "file",
+                (
+                    Artifacts.builder_out,
+                    "concretization failed for the following reasons:",
+                ),
+            ),
+        ],
+    )
+
+    env = Environment.get_env(testable_env_input.path, testable_env_input.name)
+
+    assert env.failure_reason == "concretization"
 
 
 def test_iter(testable_env_input, mocker):

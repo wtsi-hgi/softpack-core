@@ -60,6 +60,7 @@ def test_send_email(mocker):
     emailConfig = EmailConfig(
         fromAddr="{}@domain.com",
         toAddr="{}@other-domain.com",
+        adminAddr="admin@domain.com",
         smtp="host.mail.com",
         localHostname="something",
     )
@@ -73,6 +74,13 @@ def test_send_email(mocker):
         == "USERNAME2@domain.com"
     )
     assert mock_SMTP.return_value.sendmail.call_args[0][1] == [
+        "USERNAME2@other-domain.com",
+        "admin@domain.com",
+    ]
+
+    send_email(emailConfig, "MESSAGE2", "SUBJECT2", "USERNAME2", False)
+    assert mock_SMTP.return_value.sendmail.call_count == 3
+    assert mock_SMTP.return_value.sendmail.call_args[0][1] == [
         "USERNAME2@other-domain.com"
     ]
 
@@ -82,4 +90,4 @@ def test_send_email(mocker):
     emailConfig = EmailConfig()
 
     send_email(emailConfig, "MESSAGE3", "SUBJECT3", "USERNAME3")
-    assert mock_SMTP.return_value.sendmail.call_count == 2
+    assert mock_SMTP.return_value.sendmail.call_count == 3

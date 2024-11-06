@@ -335,6 +335,7 @@ class Environment:
     state: Optional[State]
     tags: list[str]
     username: Optional[str]
+    failure_reason: Optional[str]
     hidden: bool
     created: int
     cachedEnvs: list["Environment"] = field(default_factory=list)
@@ -437,6 +438,7 @@ class Environment:
                 type=spec.get("type", ""),
                 tags=spec.tags,
                 username=spec.username,
+                failure_reason=spec.failure_reason,
                 hidden=spec.hidden,
                 created=spec.created,
                 interpreters=spec.get("interpreters", Interpreters()),
@@ -736,13 +738,20 @@ class Environment:
 
         return HiddenSuccess(message="Hidden metadata set")
 
-    def remove_username(cls) -> None:
-        """Remove the username metadata from the meta.yaml file."""
+    def update_metadata(cls, key: str, value: str | None) -> None:
+        """Takes a key and sets the value unless value is None."""
         metadata = cls.read_metadata(cls.path, cls.name)
 
-        del metadata["username"]
+        if value is None:
+            del metadata[key]
+        else:
+            metadata[key] = value
 
         cls.store_metadata(Path(cls.path, cls.name), metadata)
+
+    def remove_username(cls) -> None:
+        """Remove the username metadata from the meta.yaml file."""
+        cls.update_metadata("username", None)
 
     @classmethod
     def delete(cls, name: str, path: str) -> DeleteResponse:  # type: ignore
@@ -903,7 +912,9 @@ class Environment:
 
     @classmethod
     async def write_artifacts(
-        cls, folder_path: str, files: list[Union[Upload, UploadFile]]
+        cls,
+        folder_path: str,
+        files: list[Union[Upload, UploadFile, Tuple[str, str]]],
     ) -> WriteArtifactResponse:  # type: ignore
         """Add one or more files to the Artifacts repo.
 
@@ -914,7 +925,11 @@ class Environment:
         try:
             new_files: List[Tuple[str, Union[str, UploadFile]]] = []
             for file in files:
-                if isinstance(file, starlette.datastructures.UploadFile):
+                if isinstance(file, tuple):
+                    new_files.append(
+                        cast(Tuple[str, Union[str, UploadFile]], file)
+                    )
+                elif isinstance(file, starlette.datastructures.UploadFile):
                     new_files.append(
                         (file.filename or "", cast(UploadFile, file))
                     )

@@ -222,12 +222,14 @@ builder:
 recipes: # Used to send recipe request emails; needs toAddr, fromAddr, and smtp to be set to send out emails.
   toAddr: Optional[str]        # Address to which recipe requests will be sent, uses of '{}' will be replaced with the username of the requestor.
   fromAddr: Optional[str]      # Address from which recipe requests will be sent, uses of '{}' will be replaced by the same username as above.
+  adminAddr:                   # Address to send a copy of the recipe request email to.
   smtp: Optional[str]          # Address to an SMTP relay
   localHostname: Optional[str] # Hostname to use for SMTP HELO.
 
 environments: # Used to send environment update emails; needs toAddr, fromAddr, and smtp to be set to send out emails.
   toAddr: Optional[str]        # Address to which environment build failure/success emails are sent, uses of '{}' will be replaced with the username associated with the environment.
   fromAddr: Optional[str]      # Address from which environment updates will be sent, uses of '{}' will be replaced by the same username as above.
+  adminAddr: Optional[str]     # Address to send a copy of failure emails to.
   smtp: Optional[str]          # Address to an SMTP relay
   localHostname: Optional[str] # Hostname to use for SMTP HELO.
 ```
