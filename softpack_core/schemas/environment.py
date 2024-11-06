@@ -208,6 +208,7 @@ class EnvironmentInput:
 
     name: str
     path: str
+    username: Optional[str] = ""
     description: str
     packages: list[PackageInput]
     tags: Optional[list[str]] = None
@@ -224,7 +225,7 @@ class EnvironmentInput:
         if any(
             len(value) == 0
             for key, value in vars(self).items()
-            if key != "tags"
+            if key != "tags" and key != "username"
         ):
             return InvalidInputError(message="all fields must be filled in")
 
@@ -333,6 +334,7 @@ class Environment:
     packages: list[Package]
     state: Optional[State]
     tags: list[str]
+    username: Optional[str]
     hidden: bool
     created: int
     cachedEnvs: list["Environment"] = field(default_factory=list)
@@ -434,6 +436,7 @@ class Environment:
                 readme=spec.get("readme", ""),
                 type=spec.get("type", ""),
                 tags=spec.tags,
+                username=spec.username,
                 hidden=spec.hidden,
                 created=spec.created,
                 interpreters=spec.get("interpreters", Interpreters()),
@@ -470,7 +473,10 @@ class Environment:
             prevEnv = cls.get_env(
                 Path(env.path), env.name + "-" + str(version - 1)
             )
-            if cast(Environment, prevEnv).state == State.failed:
+            if (
+                prevEnv is not None
+                and cast(Environment, prevEnv).state == State.failed
+            ):
                 version -= 1
 
                 tree_oid = artifacts.delete_environment(
@@ -586,8 +592,13 @@ class Environment:
             definitionData = yaml.dump(softpack_definition)
 
             meta = dict(
-                tags=sorted(set(env.tags or [])), created=round(time())
+                tags=sorted(set(env.tags or [])),
+                created=round(time()),
             )
+
+            if env.username != "" and env.username is not None:
+                meta["username"] = env.username
+
             metaData = yaml.dump(meta)
 
             tree_oid = artifacts.create_files(
@@ -724,6 +735,14 @@ class Environment:
         cls.store_metadata(environment_path, metadata)
 
         return HiddenSuccess(message="Hidden metadata set")
+
+    def remove_username(cls) -> None:
+        """Remove the username metadata from the meta.yaml file."""
+        metadata = cls.read_metadata(cls.path, cls.name)
+
+        del metadata["username"]
+
+        cls.store_metadata(Path(cls.path, cls.name), metadata)
 
     @classmethod
     def delete(cls, name: str, path: str) -> DeleteResponse:  # type: ignore

@@ -18,6 +18,7 @@ from typer import Typer
 from typing_extensions import Annotated
 
 from softpack_core.artifacts import Artifacts, State, artifacts
+from softpack_core.config.models import EmailConfig
 from softpack_core.schemas.environment import (
     CreateEnvironmentSuccess,
     Environment,
@@ -107,6 +108,50 @@ class ServiceAPI(API):
             if not isinstance(create_response, CreateEnvironmentSuccess):
                 return create_response
 
+        path = Path(env_path)
+        env = Environment.get_env(path.parent, path.name)
+        newState = State.queued
+
+        for f in file:
+            if f.filename == artifacts.builder_out:
+                newState = State.failed
+
+                break
+
+            if f.filename == artifacts.module_file:
+                newState = State.ready
+
+                break
+
+        if (
+            newState != State.queued
+            and env is not None
+            and env.username is not None
+            and env.username != ""
+        ):
+            envEmailConfig = app.settings.environments
+            m = (
+                "built sucessfully"
+                if newState == State.ready
+                else "failed to build"
+            )
+            message = (
+                f"Hi {env.username},\n"
+                + "\n"
+                + f"Your environment, {env_path}, has {m}.\n"
+                + "\n"
+                + "SoftPack Team"
+            )
+
+            subject = (
+                "Your environment is ready!"
+                if newState == State.ready
+                else "Your environment failed to build"
+            )
+
+            send_email(envEmailConfig, message, subject, env.username)
+            env.remove_username()
+
         resp = await Environment.write_artifacts(env_path, file)
         if not isinstance(resp, WriteArtifactSuccess):
             raise Exception(resp)
@@ -176,39 +221,19 @@ class ServiceAPI(API):
         except Exception as e:
             return {"error": str(e)}
 
-        recipeConfig = app.settings.recipes.dict()
+        if data["username"] != "":
+            recipeConfig = app.settings.recipes
 
-        if all(
-            key in recipeConfig and isinstance(recipeConfig[key], str)
-            for key in ["fromAddr", "toAddr", "smtp"]
-        ):
-            msg = MIMEText(
+            send_email(
+                recipeConfig,
                 f'User: {data["username"]}\n'
                 + f'Recipe: {data["name"]}\n'
                 + f'Version: {data["version"]}\n'
                 + f'URL: {data["url"]}\n'
-                + f'Description: {data["description"]}'
+                + f'Description: {data["description"]}',
+                f'SoftPack Recipe Request: {data["name"]}@{data["version"]}',
+                data["username"],
             )
-            msg[
-                "Subject"
-            ] = f'SoftPack Recipe Request: {data["name"]}@{data["version"]}'
-            msg["From"] = recipeConfig["fromAddr"]
-            msg["To"] = recipeConfig["toAddr"]
-
-            localhostname = None
-
-            if recipeConfig["localHostname"] is not None:
-                localhostname = recipeConfig["localHostname"]
-
-            s = smtplib.SMTP(
-                recipeConfig["smtp"], local_hostname=localhostname
-            )
-            s.sendmail(
-                recipeConfig["fromAddr"],
-                [recipeConfig["toAddr"]],
-                msg.as_string(),
-            )
-            s.quit()
 
         return {"message": "Request Created"}
 
@@ -349,3 +374,37 @@ class ServiceAPI(API):
             return {"error": "Invalid Input"}
 
         return {"description": app.spack.descriptions[data["recipe"]]}
+
+
+def send_email(
+    emailConfig: EmailConfig, message: str, subject: str, username: str
+) -> None:
+    """The send_email functions sends an email."""
+    if (
+        emailConfig.fromAddr is None
+        or emailConfig.toAddr is None
+        or emailConfig.smtp is None
+    ):
+        return
+
+    msg = MIMEText(message)
+
+    fromAddr = emailConfig.fromAddr.format(username)
+    toAddr = emailConfig.toAddr.format(username)
+
+    msg["Subject"] = subject
+    msg["From"] = fromAddr
+    msg["To"] = toAddr
+
+    localhostname = None
+
+    if emailConfig.localHostname is not None:
+        localhostname = emailConfig.localHostname
+
+    s = smtplib.SMTP(emailConfig.smtp, local_hostname=localhostname)
+    s.sendmail(
+        fromAddr,
+        [toAddr],
+        msg.as_string(),
+    )
+    s.quit()

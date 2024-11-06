@@ -38,6 +38,7 @@ type Environment {
   packages: [Package!]!
   state: State
   tags: [String!]!
+  username: String
   hidden: Boolean!
   created: Int!
   cachedEnvs: [Environment!]!
@@ -57,6 +58,7 @@ type EnvironmentAlreadyExistsError implements Error {
 input EnvironmentInput {
   name: String!
   path: String!
+  username: String = ""
   description: String!
   packages: [PackageInput!]!
   tags: [String!] = null

@@ -27,7 +27,12 @@ spack:
 
 recipes:
   toAddr: none@domain.com
-  fromAddr: none@domain.com
+  fromAddr: "{}@domain.com"
+  smtp: some.mail.relay
+
+environments:
+  toAddr: "{}@domain.com"
+  fromAddr: "none@domain.com"
   smtp: some.mail.relay
 
 

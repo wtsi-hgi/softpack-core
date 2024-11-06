@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from softpack_core.app import app
+from softpack_core.config.models import EmailConfig
 from softpack_core.schemas.environment import (
     CreateEnvironmentSuccess,
     Environment,
@@ -20,7 +21,13 @@ from tests.integration.utils import builder_called_correctly
 pytestmark = pytest.mark.repo
 
 
-def test_request_recipe(httpx_post, testable_env_input):
+def test_request_recipe(httpx_post, testable_env_input, send_email):
+    app.settings.recipes = EmailConfig(
+        fromAddr="{}@domain.com",
+        toAddr="hgi@domain.com",
+        smtp="nothing",
+    )
+
     client = TestClient(app.router)
     resp = client.post(
         url="/requestRecipe",
@@ -34,6 +41,15 @@ def test_request_recipe(httpx_post, testable_env_input):
     )
 
     assert resp.json() == {"message": "Request Created"}
+
+    assert send_email.call_count == 1
+
+    assert send_email.call_args[0][0] == app.settings.recipes
+    assert "Recipe:" in send_email.call_args[0][1]
+    assert (
+        send_email.call_args[0][2] == "SoftPack Recipe Request: a_recipe@1.2"
+    )
+    assert send_email.call_args[0][3] == "me"
 
     resp = client.get(url="/requestedRecipes")
 
@@ -111,12 +127,13 @@ def test_request_recipe(httpx_post, testable_env_input):
         PackageInput.from_name("*a_recipe@1.2"),
     ]
 
-    assert len(Environment.iter()) == 2
+    existingEnvs = len(Environment.iter())
+
     assert isinstance(Environment.create(env), CreateEnvironmentSuccess)
 
     envs = Environment.iter()
 
-    assert len(envs) == 3
+    assert len(envs) == existingEnvs + 1
     assert len(envs[0].packages) == 2
     assert envs[0].packages[0].name == "pkg"
     assert envs[0].packages[0].version == "1"
@@ -151,7 +168,7 @@ def test_request_recipe(httpx_post, testable_env_input):
 
         envs = Environment.iter()
 
-        assert len(envs) == 3
+        assert len(envs) == existingEnvs + 1
         assert len(envs[0].packages) == 2
         assert envs[0].packages[0].name == "pkg"
         assert envs[0].packages[0].version == "1"

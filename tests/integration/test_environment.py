@@ -15,8 +15,11 @@ import pygit2
 import pytest
 import yaml
 from fastapi import UploadFile
+from fastapi.testclient import TestClient
 
+from softpack_core.app import app
 from softpack_core.artifacts import Artifacts, artifacts
+from softpack_core.config.models import EmailConfig
 from softpack_core.schemas.environment import (
     AddTagSuccess,
     BuilderError,
@@ -191,6 +194,32 @@ async def test_create(
     assert testable_env_input.name == "test_env_create-3"
     testable_env_input.name = orig_input_name
 
+    result = await Environment.write_artifact(
+        file=upload,
+        folder_path=f"{testable_env_input.path}/{testable_env_input.name}-3",
+        file_name=upload.filename,
+    )
+    assert isinstance(result, WriteArtifactSuccess)
+
+    env = Environment.get_env(
+        testable_env_input.path, testable_env_input.name + "-3"
+    )
+    assert env.state == State.failed
+
+    metadata = env.read_metadata(
+        testable_env_input.path, testable_env_input.name + "-3"
+    )
+
+    metadata.force_hidden = True
+
+    env.store_metadata(
+        f"{testable_env_input.path}/{testable_env_input.name}-3", metadata
+    )
+
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+    assert testable_env_input.name == "test_env_create-4"
+
 
 def test_create_no_tags(httpx_post, testable_env_input):
     testable_env_input.tags = None
@@ -330,6 +359,98 @@ async def test_write_artifact(httpx_post, testable_env_input):
         file_name=upload.filename,
     )
     assert isinstance(result, InvalidInputError)
+
+
+@pytest.mark.asyncio
+async def test_email_on_build_complete(
+    httpx_post, send_email, testable_env_input
+):
+    app.settings.environments = EmailConfig(
+        fromAddr="hgi@domain.com",
+        toAddr="{}@domain.com",
+        smtp="server@domain.com",
+    )
+
+    testable_env_input.username = "me"
+
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+
+    client = TestClient(app.router)
+    resp = client.post(
+        url="/upload?"
+        + testable_env_input.path
+        + "/"
+        + testable_env_input.name,
+        files=[
+            ("file", (Artifacts.module_file, "")),
+        ],
+    )
+    assert resp.status_code == 200
+    assert resp.json().get("message") == "Successfully written artifact(s)"
+
+    assert send_email.call_count == 1
+
+    assert send_email.call_args[0][0] == app.settings.environments
+    assert "built sucessfully" in send_email.call_args[0][1]
+    assert send_email.call_args[0][2] == "Your environment is ready!"
+    assert send_email.call_args[0][3] == "me"
+
+    client = TestClient(app.router)
+    resp = client.post(
+        url="/upload?"
+        + testable_env_input.path
+        + "/"
+        + testable_env_input.name,
+        files=[
+            ("file", (Artifacts.module_file, "1")),
+        ],
+    )
+
+    assert send_email.call_count == 1
+
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+
+    client = TestClient(app.router)
+    resp = client.post(
+        url="/upload?"
+        + testable_env_input.path
+        + "/"
+        + testable_env_input.name,
+        files=[
+            ("file", (Artifacts.builder_out, "")),
+        ],
+    )
+    assert resp.status_code == 200
+    assert resp.json().get("message") == "Successfully written artifact(s)"
+
+    assert send_email.call_count == 2
+
+    assert send_email.call_args[0][0] == app.settings.environments
+    assert "failed to build" in send_email.call_args[0][1]
+    assert send_email.call_args[0][2] == "Your environment failed to build"
+    assert send_email.call_args[0][3] == "me"
+
+    testable_env_input.username = ""
+
+    result = Environment.create(testable_env_input)
+    assert isinstance(result, CreateEnvironmentSuccess)
+
+    client = TestClient(app.router)
+    resp = client.post(
+        url="/upload?"
+        + testable_env_input.path
+        + "/"
+        + testable_env_input.name,
+        files=[
+            ("file", (Artifacts.builder_out, "")),
+        ],
+    )
+    assert resp.status_code == 200
+    assert resp.json().get("message") == "Successfully written artifact(s)"
+
+    assert send_email.call_count == 2
 
 
 def test_iter(testable_env_input, mocker):

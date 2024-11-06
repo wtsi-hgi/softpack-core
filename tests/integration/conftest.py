@@ -58,3 +58,10 @@ def testable_env_input(mocker) -> EnvironmentInput:  # type: ignore
     )
 
     yield testable_env_input
+
+
+@pytest.fixture()
+def send_email(mocker):
+    send_email_mock = mocker.patch('softpack_core.service.send_email')
+
+    return send_email_mock
