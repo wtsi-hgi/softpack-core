@@ -9,11 +9,13 @@ import smtplib
 import urllib.parse
 from email.mime.text import MIMEText
 from pathlib import Path
+from typing import Tuple, Union, cast
 
 import typer
 import uvicorn
 import yaml
 from fastapi import APIRouter, Request, Response, UploadFile
+from strawberry.file_uploads import Upload
 from typer import Typer
 from typing_extensions import Annotated
 
@@ -111,48 +113,73 @@ class ServiceAPI(API):
         path = Path(env_path)
         env = Environment.get_env(path.parent, path.name)
         newState = State.queued
+        files = cast(list[Union[Upload, UploadFile, Tuple[str, str]]], file)
 
-        for f in file:
-            if f.filename == artifacts.builder_out:
-                newState = State.failed
+        if env:
+            for i in range(len(file)):
+                f = file[i]
+                if f.filename == artifacts.builder_out:
+                    newState = State.failed
 
-                break
+                    contents = cast(str, (await f.read()).decode())
 
-            if f.filename == artifacts.module_file:
-                newState = State.ready
+                    if (
+                        "concretization failed for the following reasons:"
+                        in contents
+                    ):
+                        env.update_metadata("failure_reason", "concretization")
+                    else:
+                        env.update_metadata("failure_reason", "build")
 
-                break
+                    files[i] = (f.filename, contents)
 
-        if (
-            newState != State.queued
-            and env is not None
-            and env.username is not None
-            and env.username != ""
-        ):
-            envEmailConfig = app.settings.environments
-            m = (
-                "built sucessfully"
-                if newState == State.ready
-                else "failed to build"
-            )
-            message = (
-                f"Hi {env.username},\n"
-                + "\n"
-                + f"Your environment, {env_path}, has {m}.\n"
-                + "\n"
-                + "SoftPack Team"
-            )
+                    break
 
-            subject = (
-                "Your environment is ready!"
-                if newState == State.ready
-                else "Your environment failed to build"
-            )
+                if f.filename == artifacts.module_file:
+                    newState = State.ready
 
-            send_email(envEmailConfig, message, subject, env.username)
-            env.remove_username()
+                    break
 
-        resp = await Environment.write_artifacts(env_path, file)
+            if (
+                newState != State.queued
+                and env.username is not None
+                and env.username != ""
+            ):
+                envEmailConfig = app.settings.environments
+                m = (
+                    "built sucessfully"
+                    if newState == State.ready
+                    else "failed to build"
+                )
+
+                e = (
+                    ""
+                    if newState == State.ready
+                    else
+                    "\nThe error was a version conflict. Try relaxing which versions you've specified.\n"
+                    if env.failure_reason == "concretization"
+                    else "\nThe error was a build error. Contact your softpack administrator.\n"
+                )
+
+                message = (
+                    f"Hi {env.username},\n"
+                    + "\n"
+                    + f"Your environment, {env_path}, has {m}.\n"
+                    + e
+                    + "\n"
+                    + "SoftPack Team"
+                )
+
+                subject = (
+                    "Your environment is ready!"
+                    if newState == State.ready
+                    else "Your environment failed to build"
+                )
+
+                send_email(envEmailConfig, message, subject, env.username)
+                env.remove_username()
+
+        resp = await Environment.write_artifacts(env_path, files)
         if not isinstance(resp, WriteArtifactSuccess):
             raise Exception(resp)
 

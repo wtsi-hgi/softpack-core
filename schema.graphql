@@ -39,6 +39,7 @@ type Environment {
   state: State
   tags: [String!]!
   username: String
+  failureReason: String
   hidden: Boolean!
   created: Int!
   cachedEnvs: [Environment!]!
