@@ -219,9 +219,15 @@ builder:
   host: str # URL to a GSB server
   port: int # Port of the GSB server
 
-recipes:
-  toAddr: Optional[str]        # Address to which recipe requests will be sent.
-  fromAddr: Optional[str]      # Address from which recipe requests will be sent.
+recipes: # Used to send recipe request emails; needs toAddr, fromAddr, and smtp to be set to send out emails.
+  toAddr: Optional[str]        # Address to which recipe requests will be sent, uses of '{}' will be replaced with the username of the requestor.
+  fromAddr: Optional[str]      # Address from which recipe requests will be sent, uses of '{}' will be replaced by the same username as above.
+  smtp: Optional[str]          # Address to an SMTP relay
+  localHostname: Optional[str] # Hostname to use for SMTP HELO.
+
+environments: # Used to send environment update emails; needs toAddr, fromAddr, and smtp to be set to send out emails.
+  toAddr: Optional[str]        # Address to which environment build failure/success emails are sent, uses of '{}' will be replaced with the username associated with the environment.
+  fromAddr: Optional[str]      # Address from which environment updates will be sent, uses of '{}' will be replaced by the same username as above.
   smtp: Optional[str]          # Address to an SMTP relay
   localHostname: Optional[str] # Hostname to use for SMTP HELO.
 ```
