@@ -128,8 +128,10 @@ class ServiceAPI(API):
                         in contents
                     ):
                         env.update_metadata("failure_reason", "concretization")
+                        env.failure_reason = "concretization"
                     else:
                         env.update_metadata("failure_reason", "build")
+                        env.failure_reason = "build"
 
                     files[i] = (f.filename, contents)
 
@@ -155,10 +157,11 @@ class ServiceAPI(API):
                 e = (
                     ""
                     if newState == State.ready
-                    else
-                    "\nThe error was a version conflict. Try relaxing which versions you've specified.\n"
-                    if env.failure_reason == "concretization"
-                    else "\nThe error was a build error. Contact your softpack administrator.\n"
+                    else "\nThe error was a build error. "
+                    + "Contact your softpack administrator.\n"
+                    if env.failure_reason == "build"
+                    else "\nThe error was a version conflict. "
+                    + "Try relaxing which versions you've specified.\n"
                 )
 
                 message = (
