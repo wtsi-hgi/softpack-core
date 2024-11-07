@@ -134,11 +134,11 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
     envs = Environment.iter()
 
     assert len(envs) == existingEnvs + 1
-    assert len(envs[0].packages) == 2
-    assert envs[0].packages[0].name == "pkg"
-    assert envs[0].packages[0].version == "1"
-    assert envs[0].packages[1].name == "*a_recipe"
-    assert envs[0].packages[1].version == "1.2"
+    assert len(envs[1].packages) == 2
+    assert envs[1].packages[0].name == "pkg"
+    assert envs[1].packages[0].version == "1"
+    assert envs[1].packages[1].name == "*a_recipe"
+    assert envs[1].packages[1].version == "1.2"
 
     httpx_post.assert_not_called()
 
@@ -169,11 +169,11 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
         envs = Environment.iter()
 
         assert len(envs) == existingEnvs + 1
-        assert len(envs[0].packages) == 2
-        assert envs[0].packages[0].name == "pkg"
-        assert envs[0].packages[0].version == "1"
-        assert envs[0].packages[1].name == "finalRecipe"
-        assert envs[0].packages[1].version == "1.2.1"
+        assert len(envs[1].packages) == 2
+        assert envs[1].packages[0].name == "pkg"
+        assert envs[1].packages[0].version == "1"
+        assert envs[1].packages[1].name == "finalRecipe"
+        assert envs[1].packages[1].version == "1.2.1"
 
         resp = client.get(url="/requestedRecipes")
 

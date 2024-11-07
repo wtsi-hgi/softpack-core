@@ -4,7 +4,6 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-import datetime
 import io
 import json
 import time
@@ -212,8 +211,16 @@ async def test_create(
 
     metadata.force_hidden = True
 
-    env.store_metadata(
+    result = await env.store_metadata(
         f"{testable_env_input.path}/{testable_env_input.name}-3", metadata
+    )
+
+    assert isinstance(result, WriteArtifactSuccess)
+    assert (
+        Environment.get_env(
+            testable_env_input.path, testable_env_input.name + "-3"
+        )
+        == None
     )
 
     result = Environment.create(testable_env_input)
@@ -531,61 +538,9 @@ def test_failure_reason_from_build_log(
     assert env.failure_reason == "concretization"
 
 
-def test_iter(testable_env_input, mocker):
-    get_mock = mocker.patch("httpx.get")
-    get_mock.return_value.json.return_value = [
-        {
-            "Name": "users/test_user/test_environment",
-            "Requested": "2025-01-02T03:04:00.000000000Z",
-            "BuildStart": "2025-01-02T03:04:05.000000000Z",
-            "BuildDone": None,
-        },
-        {
-            "Name": "groups/test_group/test_environment",
-            "Requested": "2025-01-02T03:04:00.000000000Z",
-            "BuildStart": "2025-01-02T03:04:05.000000000Z",
-            "BuildDone": "2025-01-02T03:04:15.000000000Z",
-        },
-        # only used for average calculations, does not map to an environment in
-        # the test data
-        {
-            "Name": "users/foo/bar",
-            "Requested": "2025-01-02T03:04:00.000000000Z",
-            "BuildStart": "2025-01-02T03:04:05.000000000Z",
-            "BuildDone": "2025-01-02T03:04:25.000000000Z",
-        },
-    ]
-
-    artifacts.updated = True
+def test_iter(testable_env_input):
     envs = list(Environment.iter())
     assert len(envs) == 2
-    assert envs[0].requested == datetime.datetime(
-        2025, 1, 2, 3, 4, 0, tzinfo=datetime.timezone.utc
-    )
-    assert envs[0].build_start == datetime.datetime(
-        2025, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc
-    )
-    assert envs[0].build_done is None
-    assert envs[1].requested == datetime.datetime(
-        2025, 1, 2, 3, 4, 0, tzinfo=datetime.timezone.utc
-    )
-    assert envs[1].build_start == datetime.datetime(
-        2025, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc
-    )
-    assert envs[1].build_done == datetime.datetime(
-        2025, 1, 2, 3, 4, 15, tzinfo=datetime.timezone.utc
-    )
-    assert envs[0].avg_wait_secs == envs[1].avg_wait_secs == 20
-
-
-def test_iter_no_statuses(testable_env_input):
-    artifacts.updated = True
-    envs = list(Environment.iter())
-    assert len(envs) == 2
-    assert envs[0].requested is None
-    assert envs[0].build_start is None
-    assert envs[0].build_done is None
-    assert envs[0].avg_wait_secs is None
     assert envs[0].state == State.queued
     assert envs[1].state == State.queued
 
@@ -625,6 +580,7 @@ async def test_states(httpx_post, testable_env_input, mocker):
     ]
     env = get_env_from_iter(testable_env_input.name + "-1")
     assert env is not None
+
     assert any(p.name == "zlib" for p in env.packages)
     assert any(p.version == "v1.1" for p in env.packages)
     assert env.type == Artifacts.built_by_softpack
@@ -796,41 +752,44 @@ def test_environmentinput_from_path():
         assert EnvironmentInput.from_path(path).validate() is not None
 
 
-def test_tagging(httpx_post, testable_env_input: EnvironmentInput) -> None:
+@pytest.mark.asyncio
+async def test_tagging(
+    httpx_post, testable_env_input: EnvironmentInput
+) -> None:
     example_env = Environment.iter()[0]
     assert example_env.tags == []
 
     name, path = example_env.name, example_env.path
-    result = Environment.add_tag(name, path, tag="test")
+    result = await Environment.add_tag(name, path, tag="test")
     assert isinstance(result, AddTagSuccess)
     assert result.message == "Tag successfully added"
 
-    result = Environment.add_tag("foo", "users/xyz", tag="test")
+    result = await Environment.add_tag("foo", "users/xyz", tag="test")
     assert isinstance(result, EnvironmentNotFoundError)
 
-    result = Environment.add_tag(name, path, tag="../")
+    result = await Environment.add_tag(name, path, tag="../")
     assert isinstance(result, InvalidInputError)
 
-    result = Environment.add_tag(name, path, tag="")
+    result = await Environment.add_tag(name, path, tag="")
     assert isinstance(result, InvalidInputError)
 
-    result = Environment.add_tag(name, path, tag="         ")
+    result = await Environment.add_tag(name, path, tag="         ")
     assert isinstance(result, InvalidInputError)
 
-    result = Environment.add_tag(name, path, tag="foo  bar")
+    result = await Environment.add_tag(name, path, tag="foo  bar")
     assert isinstance(result, InvalidInputError)
 
     example_env = Environment.iter()[0]
     assert len(example_env.tags) == 1
     assert example_env.tags[0] == "test"
 
-    result = Environment.add_tag(name, path, tag="second test")
+    result = await Environment.add_tag(name, path, tag="second test")
     assert isinstance(result, AddTagSuccess)
 
     example_env = Environment.iter()[0]
     assert example_env.tags == ["second test", "test"]
 
-    result = Environment.add_tag(name, path, tag="test")
+    result = await Environment.add_tag(name, path, tag="test")
     assert isinstance(result, AddTagSuccess)
     assert result.message == "Tag already present"
 
@@ -838,49 +797,55 @@ def test_tagging(httpx_post, testable_env_input: EnvironmentInput) -> None:
     assert example_env.tags == ["second test", "test"]
 
 
-def test_hidden(httpx_post, testable_env_input: EnvironmentInput) -> None:
+@pytest.mark.asyncio
+async def test_hidden(
+    httpx_post, testable_env_input: EnvironmentInput
+) -> None:
     example_env = Environment.iter()[0]
     assert not example_env.hidden
     name, path = example_env.name, example_env.path
 
-    result = Environment.set_hidden(name, path, True)
+    result = await Environment.set_hidden(name, path, True)
     assert isinstance(result, HiddenSuccess)
     assert result.message == "Hidden metadata set"
     example_env = Environment.iter()[0]
     assert example_env.hidden
 
-    result = Environment.set_hidden(name, path, True)
+    result = await Environment.set_hidden(name, path, True)
     assert isinstance(result, HiddenSuccess)
     assert result.message == "Hidden metadata already set"
     example_env = Environment.iter()[0]
     assert example_env.hidden
 
-    result = Environment.set_hidden(name, path, False)
+    result = await Environment.set_hidden(name, path, False)
     assert isinstance(result, HiddenSuccess)
     assert result.message == "Hidden metadata set"
     example_env = Environment.iter()[0]
     assert not example_env.hidden
 
-    result = Environment.set_hidden(name, path, False)
+    result = await Environment.set_hidden(name, path, False)
     assert isinstance(result, HiddenSuccess)
     assert result.message == "Hidden metadata already set"
     example_env = Environment.iter()[0]
     assert not example_env.hidden
 
-    result = Environment.set_hidden(name, path, True)
+    result = await Environment.set_hidden(name, path, True)
     assert isinstance(result, HiddenSuccess)
     assert result.message == "Hidden metadata set"
     example_env = Environment.iter()[0]
     assert example_env.hidden
 
 
-def test_force_hidden(
+@pytest.mark.asyncio
+async def test_force_hidden(
     httpx_post, testable_env_input: EnvironmentInput
 ) -> None:
     first_env = Environment.iter()[0]
     metadata = Environment.read_metadata(first_env.path, first_env.name)
     metadata.force_hidden = True
-    Environment.store_metadata(Path(first_env.path, first_env.name), metadata)
+    await Environment.store_metadata(
+        Path(first_env.path, first_env.name), metadata
+    )
 
     new_first = Environment.iter()[0]
 

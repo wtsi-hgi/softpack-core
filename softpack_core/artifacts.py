@@ -94,7 +94,6 @@ class Artifacts:
     users_folder_name = "users"
     groups_folder_name = "groups"
     credentials_callback = None
-    updated = True
 
     @dataclass
     class Object:
@@ -537,7 +536,6 @@ class Artifacts:
         )
         remote = self.repo.remotes[0]
         remote.push([self.repo.head.name], callbacks=self.credentials_callback)
-        self.updated = True
         return oid
 
     def build_tree(

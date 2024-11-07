@@ -12,7 +12,7 @@ import pygit2
 import pytest
 
 from softpack_core.artifacts import Artifacts, app, artifacts
-from softpack_core.schemas.environment import EnvironmentInput
+from softpack_core.schemas.environment import Environment, EnvironmentInput
 
 artifacts_dict = dict[
     str,
@@ -34,11 +34,13 @@ def new_test_artifacts() -> artifacts_dict:
     temp_dir = tempfile.TemporaryDirectory()
     app.settings.artifacts.path = Path(temp_dir.name)
     artifacts.create_remote_branch(branch_name)
-    artifacts.clone_repo(branch=branch_name)
+    artifacts.clone_repo(branch_name)
 
     dict = reset_test_repo(artifacts)
     dict["temp_dir"] = temp_dir
     dict["artifacts"] = artifacts
+
+    Environment.load_initial_environments()
 
     return dict
 
