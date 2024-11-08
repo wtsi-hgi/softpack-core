@@ -88,6 +88,11 @@ class InvalidInputError(Error):
 
 
 @strawberry.type
+class WriteArtifactFailure(Error):
+    """Artifact failed to be created."""
+
+
+@strawberry.type
 class EnvironmentNotFoundError(Error):
     """Environment not found."""
 
@@ -344,11 +349,13 @@ class Environment:
 
     @classmethod
     def init(cls, branch: str | None) -> None:
+        """Initialises Environment."""
         artifacts.clone_repo(branch)
         cls.load_initial_environments()
 
     @classmethod
     def load_initial_environments(cls) -> None:
+        """Loads the environments from the repo."""
         environment_folders = artifacts.iter()
         cls.environments = list(
             filter(None, map(cls.from_artifact, environment_folders))
@@ -356,8 +363,13 @@ class Environment:
 
         cls.environments.sort(key=lambda x: x.full_path())
 
+    def full_path(cls) -> Path:
+        """Return a Path containing the file path and name."""
+        return Path(cls.path, cls.name)
+
     @classmethod
     def iter(cls) -> list["Environment"]:
+        """Return a list of all Enviroments."""
         return cls.environments
 
     def has_requested_recipes(self) -> bool:
@@ -461,7 +473,11 @@ class Environment:
         if not isinstance(response, CreateEnvironmentSuccess):
             return response
 
-        cls.insert_new_env(Environment.get_env(env.path, env.name))
+        environment = Environment.get_env(Path(env.path), env.name)
+        if environment is not None:
+            cls.insert_new_env(environment)
+        else:
+            return EnvironmentNotFoundError(path=env.path, name=env.name)
 
         response = cls.submit_env_to_builder(env)
         if response is not None:
@@ -473,6 +489,7 @@ class Environment:
 
     @classmethod
     def insert_new_env(cls, env: "Environment") -> None:
+        """Inserts an enviroment into the correct, sorted position."""
         bisect.insort(
             Environment.environments, env, key=lambda x: x.full_path()
         )
@@ -665,6 +682,8 @@ class Environment:
         if isinstance(response, WriteArtifactSuccess):
             return AddTagSuccess(message="Tag successfully added")
 
+        return WriteArtifactFailure
+
     @classmethod
     def read_metadata(cls, path: str, name: str) -> Box:
         """Read an environments metadata.
@@ -689,7 +708,7 @@ class Environment:
         environment path given.
         """
         return await Environment.write_artifacts(
-            environment_path,
+            str(environment_path),
             [(artifacts.meta_file, metadata.to_yaml())],
             "update metadata",
         )
@@ -953,7 +972,8 @@ class Environment:
             )
 
     @classmethod
-    def env_index_from_path(cls, folder_path: str) -> Optional["Environment"]:
+    def env_index_from_path(cls, folder_path: str) -> Optional[int]:
+        """Return the index of a folder_path from the list of environments."""
         return next(
             (
                 i
@@ -962,9 +982,6 @@ class Environment:
             ),
             None,
         )
-
-    def full_path(cls):
-        return Path(cls.path, cls.name)
 
     @classmethod
     async def update_from_module(

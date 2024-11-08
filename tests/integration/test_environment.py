@@ -220,7 +220,7 @@ async def test_create(
         Environment.get_env(
             testable_env_input.path, testable_env_input.name + "-3"
         )
-        == None
+        is None
     )
 
     result = Environment.create(testable_env_input)

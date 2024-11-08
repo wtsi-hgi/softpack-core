@@ -333,7 +333,7 @@ class ServiceAPI(API):
                 continue
 
             await Environment.write_artifacts(
-                Path(env.path, env.name),
+                str(Path(env.path, env.name)),
                 [
                     (
                         Artifacts.environments_file,
@@ -426,6 +426,7 @@ class ServiceAPI(API):
     async def buildStatus(  # type: ignore[no-untyped-def]
         request: Request,
     ):
+        """Return the avg wait seconds and a map of names to build status."""
         statuses = BuildStatus.get_all()
         if isinstance(statuses, BuilderError):
             statuses = []
