@@ -632,24 +632,20 @@ async def test_create_from_module(httpx_post, testable_env_input):
     with open(test_file_path, "rb") as fh:
         data = fh.read()
 
-    upload = UploadFile(filename="shpc.mod", file=io.BytesIO(data))
-
     env_name = "some-environment"
     name = "groups/hgi/" + env_name
     module_path = "HGI/common/some_environment"
 
     result = await Environment.create_from_module(
-        file=upload,
+        file=data,
         module_path=module_path,
         environment_path=name,
     )
 
     assert isinstance(result, CreateEnvironmentSuccess)
 
-    upload = UploadFile(filename="shpc.mod", file=io.BytesIO(data))
-
     result = await Environment.create_from_module(
-        file=upload,
+        file=data,
         module_path=module_path,
         environment_path=name,
     )
@@ -699,12 +695,10 @@ async def test_create_from_module(httpx_post, testable_env_input):
     with open(test_modifiy_file_path, "rb") as fh:
         data = fh.read()
 
-    upload = UploadFile(filename="all_fields.mod", file=io.BytesIO(data))
-
     module_path = "HGI/common/all_fields"
 
     result = await Environment.update_from_module(
-        file=upload,
+        file=data,
         module_path=module_path,
         environment_path=name,
     )
@@ -723,10 +717,8 @@ async def test_create_from_module(httpx_post, testable_env_input):
     assert env.type == Artifacts.generated_from_module
     assert env.state == State.ready
 
-    upload = UploadFile(filename="all_fields.mod", file=io.BytesIO(data))
-
     result = await Environment.update_from_module(
-        file=upload,
+        file=data,
         module_path=module_path,
         environment_path="users/non/existant",
     )

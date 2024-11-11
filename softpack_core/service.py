@@ -16,21 +16,25 @@ import typer
 import uvicorn
 import yaml
 from fastapi import APIRouter, Request, Response, UploadFile
-from strawberry.file_uploads import Upload
 from typer import Typer
 from typing_extensions import Annotated
 
 from softpack_core.artifacts import Artifacts, State, artifacts
 from softpack_core.config.models import EmailConfig
 from softpack_core.schemas.environment import (
+    AddTagInput,
     BuilderError,
     BuildStatus,
     CreateEnvironmentSuccess,
+    DelEnvironmentInput,
     Environment,
     EnvironmentInput,
     PackageInput,
+    SetHiddenInput,
     WriteArtifactSuccess,
 )
+from softpack_core.schemas.groups import Group
+from softpack_core.schemas.package_collection import PackageCollection
 
 from .api import API
 from .app import app
@@ -116,7 +120,7 @@ class ServiceAPI(API):
         path = Path(env_path)
         env = Environment.get_env(path.parent, path.name)
         newState = State.queued
-        files = cast(list[Union[Upload, UploadFile, Tuple[str, str]]], file)
+        files = cast(list[Union[UploadFile, Tuple[str, str]]], file)
 
         if env:
             for i in range(len(file)):
@@ -447,6 +451,89 @@ class ServiceAPI(API):
                 filter(lambda x: x.build_start is not None, statuses),
             ),
         }
+
+    @staticmethod
+    @router.post("/createEnvironment")
+    def create_env(  # type: ignore[no-untyped-def]
+        env: EnvironmentInput,
+    ):
+        """Endpoint for creating environments."""
+        return Environment.create(env)
+
+    @staticmethod
+    @router.get("/getEnvironments")
+    def get_envs():  # type: ignore[no-untyped-def]
+        """Endpoint for creating environments."""
+        return Environment.iter()
+
+    @staticmethod
+    @router.post("/deleteEnvironment")
+    def delete_env(  # type: ignore[no-untyped-def]
+        env: DelEnvironmentInput,
+    ):
+        """Endpoint for deleting environments."""
+        return Environment.delete(env.name, env.path)
+
+    @staticmethod
+    @router.post("/addTag")
+    async def add_tag_env(  # type: ignore[no-untyped-def]
+        tag: AddTagInput,
+    ):
+        """Endpoint for adding a tag."""
+        return await Environment.add_tag(tag.name, tag.path, tag.tag)
+
+    @staticmethod
+    @router.post("/setHidden")
+    async def set_hidden(  # type: ignore[no-untyped-def]
+        hide: SetHiddenInput,
+    ):
+        """Endpoint for setting hidden."""
+        return await Environment.set_hidden(hide.name, hide.path, hide.hidden)
+
+    @staticmethod
+    @router.post("/uploadModule")
+    async def upload_module(  # type: ignore[no-untyped-def]
+        module_path: str,
+        environment_path: str,
+        file: Request,
+    ):
+        """Endpoint for uploading a module."""
+        data = await file.body()
+
+        return await Environment.create_from_module(
+            data, module_path, environment_path
+        )
+
+    @staticmethod
+    @router.post("/updateModule")
+    async def update_module(  # type: ignore[no-untyped-def]
+        module_path: str,
+        environment_path: str,
+        file: Request,
+    ):
+        """Endpoint for updating a module."""
+        data = await file.body()
+
+        return await Environment.update_from_module(
+            data, module_path, environment_path
+        )
+
+    @staticmethod
+    @router.get("/packageCollection")
+    def package_collection():  # type: ignore[no-untyped-def]
+        """Endpoint for returning spack recipes."""
+        return PackageCollection.iter()
+
+    @staticmethod
+    @router.post("/groups")
+    async def groups(request: Request):  # type: ignore[no-untyped-def]
+        """Endpoint for finding groups from a username."""
+        username = await request.json()
+
+        if not isinstance(username, str):
+            return {"error": "invalid username"}
+
+        return (group.name for group in Group.from_username(username))
 
 
 def send_email(

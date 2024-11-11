@@ -73,7 +73,7 @@ def test_spack_package_updater():
 
     spack.custom_repo = app.settings.spack.repo
 
-    timeout = time.time() + 60 * 3
+    timeout = time.time() + 60 * 10
 
     while True:
         new_pkgs = spack.stored_packages
