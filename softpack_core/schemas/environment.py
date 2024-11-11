@@ -4,10 +4,10 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import bisect
 import datetime
 import io
 import re
-import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
 from time import time
@@ -85,6 +85,11 @@ class WriteArtifactSuccess(Success):
 @strawberry.type
 class InvalidInputError(Error):
     """Invalid input data."""
+
+
+@strawberry.type
+class WriteArtifactFailure(Error):
+    """Artifact failed to be created."""
 
 
 @strawberry.type
@@ -338,59 +343,34 @@ class Environment:
     failure_reason: Optional[str]
     hidden: bool
     created: int
-    cachedEnvs: list["Environment"] = field(default_factory=list)
     interpreters: Interpreters = field(default_factory=Interpreters)
 
-    requested: Optional[datetime.datetime] = None
-    build_start: Optional[datetime.datetime] = None
-    build_done: Optional[datetime.datetime] = None
-    avg_wait_secs: Optional[float] = None
+    environments: list["Environment"] = field(default_factory=list)
 
     @classmethod
-    def iter(cls) -> list["Environment"]:
-        """Get an iterator over all Environment objects.
+    def init(cls, branch: str | None) -> None:
+        """Initialises Environment."""
+        artifacts.clone_repo(branch)
+        cls.load_initial_environments()
 
-        Returns:
-            Iterable[Environment]: An iterator of Environment objects.
-        """
-        if not artifacts.updated:
-            return cls.cachedEnvs
-
-        statuses = BuildStatus.get_all()
-        if isinstance(statuses, BuilderError):
-            statuses = []
-
-        status_map = {s.name: s for s in statuses}
-
-        waits: list[float] = []
-        for s in statuses:
-            if s.build_done is None:
-                continue
-            waits.append((s.build_done - s.requested).total_seconds())
-
-        try:
-            avg_wait_secs = statistics.mean(waits)
-        except statistics.StatisticsError:
-            avg_wait_secs = None
-
+    @classmethod
+    def load_initial_environments(cls) -> None:
+        """Loads the environments from the repo."""
         environment_folders = artifacts.iter()
-        environment_objects = list(
+        cls.environments = list(
             filter(None, map(cls.from_artifact, environment_folders))
         )
 
-        for env in environment_objects:
-            env.avg_wait_secs = avg_wait_secs
-            status = status_map.get(str(Path(env.path, env.name)))
-            if not status:
-                continue
-            env.requested = status.requested
-            env.build_start = status.build_start
-            env.build_done = status.build_done
+        cls.environments.sort(key=lambda x: x.full_path())
 
-        cls.cachedEnvs = environment_objects
-        artifacts.updated = False
+    def full_path(cls) -> Path:
+        """Return a Path containing the file path and name."""
+        return Path(cls.path, cls.name)
 
-        return environment_objects
+    @classmethod
+    def iter(cls) -> list["Environment"]:
+        """Return a list of all Enviroments."""
+        return cls.environments
 
     def has_requested_recipes(self) -> bool:
         """Do any of the requested packages have an unmade recipe."""
@@ -493,12 +473,25 @@ class Environment:
         if not isinstance(response, CreateEnvironmentSuccess):
             return response
 
+        environment = Environment.get_env(Path(env.path), env.name)
+        if environment is not None:
+            cls.insert_new_env(environment)
+        else:
+            return EnvironmentNotFoundError(path=env.path, name=env.name)
+
         response = cls.submit_env_to_builder(env)
         if response is not None:
             return response
 
         return CreateEnvironmentSuccess(
             message="Successfully scheduled environment creation"
+        )
+
+    @classmethod
+    def insert_new_env(cls, env: "Environment") -> None:
+        """Inserts an enviroment into the correct, sorted position."""
+        bisect.insort(
+            Environment.environments, env, key=lambda x: x.full_path()
         )
 
     @classmethod
@@ -647,7 +640,7 @@ class Environment:
         )
 
     @classmethod
-    def add_tag(
+    async def add_tag(
         cls, name: str, path: str, tag: str
     ) -> AddTagResponse:  # type: ignore
         """Add a tag to an Environment.
@@ -684,9 +677,12 @@ class Environment:
         metadata = cls.read_metadata(path, name)
         metadata.tags = sorted(tags)
 
-        cls.store_metadata(environment_path, metadata)
+        response = await cls.store_metadata(environment_path, metadata)
 
-        return AddTagSuccess(message="Tag successfully added")
+        if isinstance(response, WriteArtifactSuccess):
+            return AddTagSuccess(message="Tag successfully added")
+
+        return WriteArtifactFailure
 
     @classmethod
     def read_metadata(cls, path: str, name: str) -> Box:
@@ -703,22 +699,22 @@ class Environment:
         return Box()
 
     @classmethod
-    def store_metadata(cls, environment_path: Path, metadata: Box) -> None:
+    async def store_metadata(
+        cls, environment_path: Path, metadata: Box
+    ) -> WriteArtifactResponse:  # type: ignore
         """Store an environments metadata.
 
         This method writes the given metadata to the repo for the
         environment path given.
         """
-        tree_oid = artifacts.create_file(
-            Path(artifacts.environments_root, environment_path),
-            artifacts.meta_file,
-            metadata.to_yaml(),
-            overwrite=True,
+        return await Environment.write_artifacts(
+            str(environment_path),
+            [(artifacts.meta_file, metadata.to_yaml())],
+            "update metadata",
         )
-        artifacts.commit_and_push(tree_oid, "update metadata")
 
     @classmethod
-    def set_hidden(
+    async def set_hidden(
         cls, name: str, path: str, hidden: bool
     ) -> HiddenResponse:  # type: ignore
         """This method sets the hidden status for the given environment."""
@@ -734,11 +730,14 @@ class Environment:
 
         metadata.hidden = hidden
 
-        cls.store_metadata(environment_path, metadata)
+        response = await cls.store_metadata(environment_path, metadata)
 
-        return HiddenSuccess(message="Hidden metadata set")
+        if isinstance(response, WriteArtifactSuccess):
+            return HiddenSuccess(message="Hidden metadata set")
 
-    def update_metadata(cls, key: str, value: str | None) -> None:
+        return response
+
+    async def update_metadata(cls, key: str, value: str | None) -> None:
         """Takes a key and sets the value unless value is None."""
         metadata = cls.read_metadata(cls.path, cls.name)
 
@@ -747,11 +746,11 @@ class Environment:
         else:
             metadata[key] = value
 
-        cls.store_metadata(Path(cls.path, cls.name), metadata)
+        await cls.store_metadata(Path(cls.path, cls.name), metadata)
 
-    def remove_username(cls) -> None:
+    async def remove_username(cls) -> None:
         """Remove the username metadata from the meta.yaml file."""
-        cls.update_metadata("username", None)
+        await cls.update_metadata("username", None)
 
     @classmethod
     def delete(cls, name: str, path: str) -> DeleteResponse:  # type: ignore
@@ -767,6 +766,11 @@ class Environment:
         if artifacts.get(Path(path), name):
             tree_oid = artifacts.delete_environment(name, path)
             artifacts.commit_and_push(tree_oid, "delete environment")
+
+            index = cls.env_index_from_path(str(Path(path, name)))
+            if index is not None:
+                del Environment.environments[index]
+
             return DeleteEnvironmentSuccess(
                 message="Successfully deleted the environment"
             )
@@ -915,12 +919,14 @@ class Environment:
         cls,
         folder_path: str,
         files: list[Union[Upload, UploadFile, Tuple[str, str]]],
+        commitMsg: str = "write artifact",
     ) -> WriteArtifactResponse:  # type: ignore
         """Add one or more files to the Artifacts repo.
 
         Args:
             folder_path: the path to the folder that the file will be added to.
             files: the files to add to the repo.
+            commitMsg: the msg for the commit.
         """
         try:
             new_files: List[Tuple[str, Union[str, UploadFile]]] = []
@@ -943,15 +949,39 @@ class Environment:
                 new_files,
                 overwrite=True,
             )
-            artifacts.commit_and_push(tree_oid, "write artifact")
+            artifacts.commit_and_push(tree_oid, commitMsg)
+
+            index = cls.env_index_from_path(str(folder_path))
+            path = Path(folder_path)
+            env = Environment.get_env(path.parent, path.name)
+
+            if index is None:
+                if env:
+                    Environment.insert_new_env(env)
+            elif env:
+                Environment.environments[index] = env
+            else:
+                del Environment.environments[index]
+
             return WriteArtifactSuccess(
                 message="Successfully written artifact(s)",
             )
-
         except Exception as e:
             return InvalidInputError(
                 message="".join(format_exception_only(type(e), e))
             )
+
+    @classmethod
+    def env_index_from_path(cls, folder_path: str) -> Optional[int]:
+        """Return the index of a folder_path from the list of environments."""
+        return next(
+            (
+                i
+                for i, env in enumerate(Environment.environments)
+                if str(env.full_path()) == folder_path
+            ),
+            None,
+        )
 
     @classmethod
     async def update_from_module(

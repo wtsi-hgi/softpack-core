@@ -30,7 +30,7 @@ def test_builder_upload(testable_env_input):
     softpackYamlContents = b"softpack yaml file"
 
     spackLock = "spack.lock"
-    spackLockContents = b"spack lock file"
+    spackLockContents = b"{\"spack lock file\":0}"
 
     assert Environment.check_env_exists(Path(env_path)) is not None
     resp = client.post(

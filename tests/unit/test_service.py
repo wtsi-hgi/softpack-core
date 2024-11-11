@@ -9,6 +9,7 @@ from time import sleep
 
 import httpx
 from box import Box
+from fastapi.testclient import TestClient
 
 from softpack_core import __version__
 from softpack_core.app import app
@@ -91,3 +92,49 @@ def test_send_email(mocker):
 
     send_email(emailConfig, "MESSAGE3", "SUBJECT3", "USERNAME3")
     assert mock_SMTP.return_value.sendmail.call_count == 3
+
+
+def test_build_status(mocker):
+    get_mock = mocker.patch("httpx.get")
+    get_mock.return_value.json.return_value = [
+        {
+            "Name": "users/test_user/test_environment",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
+            "BuildStart": "2025-01-02T03:04:05.000000000Z",
+            "BuildDone": None,
+        },
+        {
+            "Name": "groups/test_group/test_environment",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
+            "BuildStart": "2025-01-02T03:04:05.000000000Z",
+            "BuildDone": "2025-01-02T03:04:15.000000000Z",
+        },
+        # only used for average calculations, does not map to an environment in
+        # the test data
+        {
+            "Name": "users/foo/bar",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
+            "BuildStart": "2025-01-02T03:04:05.000000000Z",
+            "BuildDone": "2025-01-02T03:04:25.000000000Z",
+        },
+        {
+            "Name": "users/foo/bar2",
+            "Requested": "2025-01-02T03:04:00.000000000Z",
+            "BuildStart": "",
+            "BuildDone": "",
+        },
+    ]
+
+    client = TestClient(app.router)
+    resp = client.post("/buildStatus")
+
+    assert resp.status_code == 200
+
+    status = resp.json()
+
+    assert status.get("avg") == 20
+    assert status.get("statuses") == {
+        "users/test_user/test_environment": "2025-01-02T03:04:05+00:00",
+        "groups/test_group/test_environment": "2025-01-02T03:04:05+00:00",
+        "users/foo/bar": "2025-01-02T03:04:05+00:00",
+    }

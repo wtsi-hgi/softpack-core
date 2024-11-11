@@ -6,6 +6,7 @@ LICENSE file in the root directory of this source tree.
 
 
 import smtplib
+import statistics
 import urllib.parse
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -22,6 +23,8 @@ from typing_extensions import Annotated
 from softpack_core.artifacts import Artifacts, State, artifacts
 from softpack_core.config.models import EmailConfig
 from softpack_core.schemas.environment import (
+    BuilderError,
+    BuildStatus,
     CreateEnvironmentSuccess,
     Environment,
     EnvironmentInput,
@@ -72,7 +75,7 @@ class ServiceAPI(API):
             # FIXME do only when branch does not exist
             artifacts.create_remote_branch(branch)
 
-        artifacts.clone_repo(branch=branch)
+        Environment.init(branch)
 
         uvicorn.run(
             "softpack_core.app:app.router",
@@ -127,10 +130,12 @@ class ServiceAPI(API):
                         "concretization failed for the following reasons:"
                         in contents
                     ):
-                        env.update_metadata("failure_reason", "concretization")
+                        await env.update_metadata(
+                            "failure_reason", "concretization"
+                        )
                         env.failure_reason = "concretization"
                     else:
-                        env.update_metadata("failure_reason", "build")
+                        await env.update_metadata("failure_reason", "build")
                         env.failure_reason = "build"
 
                     files[i] = (f.filename, contents)
@@ -186,7 +191,7 @@ class ServiceAPI(API):
                     env.username,
                     newState != State.ready,
                 )
-                env.remove_username()
+                await env.remove_username()
 
         resp = await Environment.write_artifacts(env_path, files)
         if not isinstance(resp, WriteArtifactSuccess):
@@ -202,6 +207,7 @@ class ServiceAPI(API):
         """Resubmit any pending builds to the builder."""
         successes = 0
         failures = 0
+
         for env in Environment.iter():
             if env.state != State.queued:
                 continue
@@ -326,23 +332,27 @@ class ServiceAPI(API):
             if not changed:
                 continue
 
-            artifacts.commit_and_push(
-                artifacts.create_file(
-                    Path(Artifacts.environments_root, env.path, env.name),
-                    Artifacts.environments_file,
-                    yaml.dump(
-                        dict(
-                            description=env.description,
-                            packages=[
-                                pkg.name
-                                + ("@" + pkg.version if pkg.version else "")
-                                for pkg in env.packages
-                            ],
-                        )
-                    ),
-                    False,
-                    True,
-                ),
+            await Environment.write_artifacts(
+                str(Path(env.path, env.name)),
+                [
+                    (
+                        Artifacts.environments_file,
+                        yaml.dump(
+                            dict(
+                                description=env.description,
+                                packages=[
+                                    pkg.name
+                                    + (
+                                        "@" + pkg.version
+                                        if pkg.version
+                                        else ""
+                                    )
+                                    for pkg in env.packages
+                                ],
+                            )
+                        ),
+                    )
+                ],
                 "fulfil recipe request for environment",
             )
 
@@ -410,6 +420,33 @@ class ServiceAPI(API):
             return {"error": "Invalid Input"}
 
         return {"description": app.spack.descriptions[data["recipe"]]}
+
+    @staticmethod
+    @router.post("/buildStatus")
+    async def buildStatus(  # type: ignore[no-untyped-def]
+        request: Request,
+    ):
+        """Return the avg wait seconds and a map of names to build status."""
+        statuses = BuildStatus.get_all()
+        if isinstance(statuses, BuilderError):
+            statuses = []
+
+        try:
+            avg_wait_secs = statistics.mean(
+                (s.build_done - s.requested).total_seconds()
+                for s in statuses
+                if s.build_done is not None
+            )
+        except statistics.StatisticsError:
+            avg_wait_secs = None
+
+        return {
+            "avg": avg_wait_secs,
+            "statuses": map(
+                lambda x: (x.name, x.build_start),
+                filter(lambda x: x.build_start is not None, statuses),
+            ),
+        }
 
 
 def send_email(

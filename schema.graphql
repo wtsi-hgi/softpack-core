@@ -19,9 +19,6 @@ type CreateEnvironmentSuccess implements Success {
 
 union CreateResponse = CreateEnvironmentSuccess | InvalidInputError | EnvironmentAlreadyExistsError | BuilderError
 
-"""Date with time (isoformat)"""
-scalar DateTime
-
 type DeleteEnvironmentSuccess implements Success {
   message: String!
 }
@@ -42,12 +39,8 @@ type Environment {
   failureReason: String
   hidden: Boolean!
   created: Int!
-  cachedEnvs: [Environment!]!
   interpreters: Interpreters!
-  requested: DateTime
-  buildStart: DateTime
-  buildDone: DateTime
-  avgWaitSecs: Float
+  environments: [Environment!]!
 }
 
 type EnvironmentAlreadyExistsError implements Error {
