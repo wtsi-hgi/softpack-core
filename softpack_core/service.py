@@ -243,7 +243,7 @@ class ServiceAPI(API):
         }
 
     @staticmethod
-    @router.post("/requestRecipe")
+    @router.post("/request-recipe")
     async def request_recipe(  # type: ignore[no-untyped-def]
         request: Request,
     ):
@@ -284,7 +284,7 @@ class ServiceAPI(API):
         return {"message": "Request Created"}
 
     @staticmethod
-    @router.get("/requestedRecipes")
+    @router.get("/requested-recipes")
     async def requested_recipes(  # type: ignore[no-untyped-def]
         request: Request,
     ):
@@ -292,7 +292,7 @@ class ServiceAPI(API):
         return list(artifacts.iter_recipe_requests())
 
     @staticmethod
-    @router.post("/fulfilRequestedRecipe")
+    @router.post("/fulfil-requested-recipe")
     async def fulfil_recipe(  # type: ignore[no-untyped-def]
         request: Request,
     ):
@@ -379,7 +379,7 @@ class ServiceAPI(API):
         return {"message": "Recipe Fulfilled"}
 
     @staticmethod
-    @router.post("/removeRequestedRecipe")
+    @router.post("/remove-requested-recipe")
     async def remove_recipe(  # type: ignore[no-untyped-def]
         request: Request,
     ):
@@ -410,7 +410,7 @@ class ServiceAPI(API):
         return {"message": "Request Removed"}
 
     @staticmethod
-    @router.post("/getRecipeDescription")
+    @router.post("/get-recipe-description")
     async def recipe_description(  # type: ignore[no-untyped-def]
         request: Request,
     ):
@@ -426,7 +426,7 @@ class ServiceAPI(API):
         return {"description": app.spack.descriptions[data["recipe"]]}
 
     @staticmethod
-    @router.post("/buildStatus")
+    @router.post("/build-status")
     async def buildStatus(  # type: ignore[no-untyped-def]
         request: Request,
     ):
@@ -453,7 +453,7 @@ class ServiceAPI(API):
         }
 
     @staticmethod
-    @router.post("/createEnvironment")
+    @router.post("/create-environment")
     def create_env(  # type: ignore[no-untyped-def]
         env: EnvironmentInput,
     ):
@@ -461,13 +461,13 @@ class ServiceAPI(API):
         return Environment.create(env)
 
     @staticmethod
-    @router.get("/getEnvironments")
+    @router.get("/get-environments")
     def get_envs():  # type: ignore[no-untyped-def]
         """Endpoint for creating environments."""
         return Environment.iter()
 
     @staticmethod
-    @router.post("/deleteEnvironment")
+    @router.post("/delete-environment")
     def delete_env(  # type: ignore[no-untyped-def]
         env: DelEnvironmentInput,
     ):
@@ -475,7 +475,7 @@ class ServiceAPI(API):
         return Environment.delete(env.name, env.path)
 
     @staticmethod
-    @router.post("/addTag")
+    @router.post("/add-tag")
     async def add_tag_env(  # type: ignore[no-untyped-def]
         tag: AddTagInput,
     ):
@@ -483,7 +483,7 @@ class ServiceAPI(API):
         return await Environment.add_tag(tag.name, tag.path, tag.tag)
 
     @staticmethod
-    @router.post("/setHidden")
+    @router.post("/set-hidden")
     async def set_hidden(  # type: ignore[no-untyped-def]
         hide: SetHiddenInput,
     ):
@@ -491,7 +491,7 @@ class ServiceAPI(API):
         return await Environment.set_hidden(hide.name, hide.path, hide.hidden)
 
     @staticmethod
-    @router.post("/uploadModule")
+    @router.post("/upload-module")
     async def upload_module(  # type: ignore[no-untyped-def]
         module_path: str,
         environment_path: str,
@@ -505,7 +505,7 @@ class ServiceAPI(API):
         )
 
     @staticmethod
-    @router.post("/updateModule")
+    @router.post("/update-module")
     async def update_module(  # type: ignore[no-untyped-def]
         module_path: str,
         environment_path: str,
@@ -519,7 +519,7 @@ class ServiceAPI(API):
         )
 
     @staticmethod
-    @router.get("/packageCollection")
+    @router.get("/package-collection")
     def package_collection():  # type: ignore[no-untyped-def]
         """Endpoint for returning spack recipes."""
         return PackageCollection.iter()

@@ -128,7 +128,7 @@ def test_build_status(mocker):
     ]
 
     client = TestClient(app.router)
-    resp = client.post("/buildStatus")
+    resp = client.post("/build-status")
 
     assert resp.status_code == 200
 
@@ -147,7 +147,7 @@ def test_create_env(httpx_post, testable_env_input: EnvironmentInput):
     input = testable_env_input.__dict__
     input["packages"] = [pkg.__dict__ for pkg in testable_env_input.packages]
 
-    resp = client.post("/createEnvironment", json=input)
+    resp = client.post("/create-environment", json=input)
 
     assert resp.status_code == 200
     assert (
@@ -155,7 +155,7 @@ def test_create_env(httpx_post, testable_env_input: EnvironmentInput):
         == "Successfully scheduled environment creation"
     )
 
-    resp = client.post("/createEnvironment", json={"bad": "value"})
+    resp = client.post("/create-environment", json={"bad": "value"})
 
     assert resp.status_code == 422
 
@@ -164,7 +164,7 @@ def test_delete_env(testable_env_input: EnvironmentInput):
     client = TestClient(app.router)
 
     resp = client.post(
-        "/deleteEnvironment",
+        "/delete-environment",
         json={"path": "users/test_user", "name": "test_environment"},
     )
 
@@ -176,7 +176,7 @@ def test_add_tag(testable_env_input: EnvironmentInput):
     client = TestClient(app.router)
 
     resp = client.post(
-        "/addTag",
+        "/add-tag",
         json={
             "name": "test_environment",
             "path": "users/test_user",
@@ -192,7 +192,7 @@ def test_set_hidden(testable_env_input: EnvironmentInput):
     client = TestClient(app.router)
 
     resp = client.post(
-        "/setHidden",
+        "/set-hidden",
         json={
             "path": "users/test_user",
             "name": "test_environment",
@@ -208,7 +208,7 @@ def test_upload_and_update_module(testable_env_input: EnvironmentInput):
     client = TestClient(app.router)
 
     resp = client.post(
-        "/uploadModule?module_path=some/module/path&"
+        "/upload-module?module_path=some/module/path&"
         + "environment_path=groups/something/env-1",
         data="",
     )
@@ -226,7 +226,7 @@ def test_upload_and_update_module(testable_env_input: EnvironmentInput):
         data = fh.read()
 
     resp = client.post(
-        "/updateModule?module_path=some/module/path&"
+        "/update-module?module_path=some/module/path&"
         + "environment_path=groups/something/env-1",
         data=data,
     )
@@ -241,7 +241,7 @@ def test_upload_and_update_module(testable_env_input: EnvironmentInput):
 def test_package_collection():
     client = TestClient(app.router)
 
-    resp = client.get("/packageCollection")
+    resp = client.get("/package-collection")
 
     pkgs = resp.json()
 
@@ -277,7 +277,7 @@ def test_get_envs(testable_env_input: EnvironmentInput):
     client = TestClient(app.router)
 
     resp = client.get(
-        "/getEnvironments",
+        "/get-environments",
     )
 
     assert resp.status_code == 200
