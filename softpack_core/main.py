@@ -7,10 +7,8 @@ LICENSE file in the root directory of this source tree.
 from typing import Any
 
 from .app import app
-from .graphql import GraphQL
 from .service import ServiceAPI
 
-GraphQL.register()
 ServiceAPI.register()
 
 

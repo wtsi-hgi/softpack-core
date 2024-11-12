@@ -30,7 +30,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
 
     client = TestClient(app.router)
     resp = client.post(
-        url="/requestRecipe",
+        url="/request-recipe",
         json={
             "name": "a_recipe",
             "version": "1.2",
@@ -51,7 +51,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
     )
     assert send_email.call_args[0][3] == "me"
 
-    resp = client.get(url="/requestedRecipes")
+    resp = client.get(url="/requested-recipes")
 
     assert resp.json() == [
         {
@@ -64,7 +64,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
     ]
 
     resp = client.post(
-        url="/requestRecipe",
+        url="/request-recipe",
         json={
             "name": "a_recipe",
             "version": "1.2",
@@ -77,7 +77,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
     assert resp.json() == {"error": "File already exists"}
 
     resp = client.post(
-        url="/requestRecipe",
+        url="/request-recipe",
         json={
             "nome": "a_recipe",
             "version": "1.2",
@@ -90,7 +90,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
     assert resp.json() == {"error": "Invalid Input"}
 
     resp = client.post(
-        url="/requestRecipe",
+        url="/request-recipe",
         json={
             "name": "b_recipe",
             "version": "1.4",
@@ -102,7 +102,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
 
     assert resp.json() == {"message": "Request Created"}
 
-    resp = client.get(url="/requestedRecipes")
+    resp = client.get(url="/requested-recipes")
 
     assert resp.json() == [
         {
@@ -148,7 +148,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
 
     try:
         resp = client.post(
-            url="/fulfilRequestedRecipe",
+            url="/fulfil-requested-recipe",
             json={
                 "name": "finalRecipe",
                 "version": "1.2.1",
@@ -175,7 +175,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
         assert envs[1].packages[1].name == "finalRecipe"
         assert envs[1].packages[1].version == "1.2.1"
 
-        resp = client.get(url="/requestedRecipes")
+        resp = client.get(url="/requested-recipes")
 
         assert resp.json() == [
             {
@@ -188,18 +188,18 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
         ]
 
         resp = client.post(
-            url="/removeRequestedRecipe",
+            url="/remove-requested-recipe",
             json={"name": "b_recipe", "version": "1.4"},
         )
 
         assert resp.json() == {"message": "Request Removed"}
 
-        resp = client.get(url="/requestedRecipes")
+        resp = client.get(url="/requested-recipes")
 
         assert resp.json() == []
 
         resp = client.post(
-            url="/requestRecipe",
+            url="/request-recipe",
             json={
                 "name": "c_recipe",
                 "version": "0.9",
@@ -218,7 +218,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
         assert isinstance(Environment.create(env), CreateEnvironmentSuccess)
 
         resp = client.post(
-            url="/removeRequestedRecipe",
+            url="/remove-requested-recipe",
             json={"name": "c_recipe", "version": "0.9"},
         )
 
@@ -228,7 +228,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
         }
 
         resp = client.post(
-            url="/fulfilRequestedRecipe",
+            url="/fulfil-requested-recipe",
             json={
                 "name": "no_recipe",
                 "version": "1",
@@ -240,7 +240,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
         assert resp.json() == {"error": "Unknown Recipe"}
 
         resp = client.post(
-            url="/fulfilRequestedRecipe",
+            url="/fulfil-requested-recipe",
             json={
                 "name": "finalRecipe",
                 "version": "1",
@@ -252,7 +252,7 @@ def test_request_recipe(httpx_post, testable_env_input, send_email):
         assert resp.json() == {"error": "Unknown Recipe"}
 
         resp = client.post(
-            url="/fulfilRequestedRecipe",
+            url="/fulfil-requested-recipe",
             json={
                 "name": "finalRecipe",
                 "version": "1.2.1",

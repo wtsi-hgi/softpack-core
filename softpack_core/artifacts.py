@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Iterable, Iterator, List, Optional, Tuple, Union, cast
 
 import pygit2
-import strawberry
 import yaml
 from box import Box
 from fastapi import UploadFile
@@ -25,9 +24,9 @@ from .app import app
 from .ldapapi import LDAP
 
 
-@strawberry.type
+@dataclass
 class Package(PackageBase):
-    """A Strawberry model representing a package."""
+    """A data class representing a package."""
 
     version: Optional[str] = None
 
@@ -50,15 +49,14 @@ class Package(PackageBase):
         return Package(name=name)
 
 
-@strawberry.type
+@dataclass
 class Interpreters:
-    """A Strawberry model representing the interpreters in an environment."""
+    """A data class model representing the interpreters in an environment."""
 
     r: Optional[str] = None
     python: Optional[str] = None
 
 
-@strawberry.enum
 class State(Enum):
     """Environment states."""
 
@@ -68,7 +66,6 @@ class State(Enum):
     waiting = 'waiting'
 
 
-@strawberry.enum
 class Type(Enum):
     """Environment types."""
 

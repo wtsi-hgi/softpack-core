@@ -171,12 +171,6 @@ Run [MkDocs] server to view documentation:
 poetry run mkdocs serve
 ```
 
-To generate a GraphQL schema file:
-
-```
-poetry run strawberry export-schema softpack_core.graphql:GraphQL.schema > schema.graphql
-```
-
 
 [pip]: https://pip.pypa.io
 [Python installation guide]: http://docs.python-guide.org/en/latest/starting/installation/

@@ -15,12 +15,9 @@ from traceback import format_exception_only
 from typing import List, Optional, Tuple, Union, cast
 
 import httpx
-import starlette.datastructures
-import strawberry
 import yaml
 from box import Box
 from fastapi import UploadFile
-from strawberry.file_uploads import Upload
 
 from softpack_core.app import app
 from softpack_core.artifacts import (
@@ -32,141 +29,127 @@ from softpack_core.artifacts import (
     artifacts,
 )
 from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
-from softpack_core.schemas.base import BaseSchema
 
 
-# Interfaces
-@strawberry.interface
-class Success:
-    """Interface for successful results."""
-
-    message: str
-
-
-@strawberry.interface
-class Error:
-    """Interface for errors."""
-
-    message: str
-
-
-# Success types
-@strawberry.type
-class CreateEnvironmentSuccess(Success):
+@dataclass
+class CreateEnvironmentSuccess:
     """Environment successfully scheduled."""
 
+    message: str
 
-@strawberry.type
-class UpdateEnvironmentSuccess(Success):
+
+@dataclass
+class UpdateEnvironmentSuccess:
     """Environment successfully updated."""
 
+    message: str
 
-@strawberry.type
-class AddTagSuccess(Success):
+
+@dataclass
+class AddTagSuccess:
     """Successfully added tag to environment."""
 
+    message: str
 
-@strawberry.type
-class HiddenSuccess(Success):
+
+@dataclass
+class HiddenSuccess:
     """Successfully set hidden status on environment."""
 
+    message: str
 
-@strawberry.type
-class DeleteEnvironmentSuccess(Success):
+
+@dataclass
+class DeleteEnvironmentSuccess:
     """Environment successfully deleted."""
 
+    message: str
 
-@strawberry.type
-class WriteArtifactSuccess(Success):
+
+@dataclass
+class WriteArtifactSuccess:
     """Artifact successfully created."""
+
+    message: str
 
 
 # Error types
-@strawberry.type
-class InvalidInputError(Error):
+@dataclass
+class InvalidInputError:
     """Invalid input data."""
 
+    error: str
 
-@strawberry.type
-class WriteArtifactFailure(Error):
+
+@dataclass
+class WriteArtifactFailure:
     """Artifact failed to be created."""
 
+    error: str
 
-@strawberry.type
-class EnvironmentNotFoundError(Error):
+
+@dataclass
+class EnvironmentNotFoundError:
     """Environment not found."""
 
     path: str
     name: str
-    message: str = "No environment with this path and name found."
+    error: str = "No environment with this path and name found."
 
 
-@strawberry.type
-class EnvironmentAlreadyExistsError(Error):
+@dataclass
+class EnvironmentAlreadyExistsError:
     """Environment name already exists."""
 
     path: str
     name: str
+    error: str
 
 
-@strawberry.type
-class BuilderError(Error):
+@dataclass
+class BuilderError:
     """Unable to connect to builder."""
+
+    error: str
 
 
 # Unions
-CreateResponse = strawberry.union(
-    "CreateResponse",
-    [
-        CreateEnvironmentSuccess,
-        InvalidInputError,
-        EnvironmentAlreadyExistsError,
-        BuilderError,
-    ],
-)
+CreateResponse = Union[
+    CreateEnvironmentSuccess,
+    InvalidInputError,
+    EnvironmentAlreadyExistsError,
+    BuilderError,
+    EnvironmentNotFoundError,
+]
 
-UpdateResponse = strawberry.union(
-    "UpdateResponse",
-    [
-        UpdateEnvironmentSuccess,
-        InvalidInputError,
-        EnvironmentNotFoundError,
-    ],
-)
+UpdateResponse = Union[
+    UpdateEnvironmentSuccess,
+    InvalidInputError,
+    EnvironmentNotFoundError,
+]
 
-AddTagResponse = strawberry.union(
-    "AddTagResponse",
-    [
-        AddTagSuccess,
-        InvalidInputError,
-        EnvironmentNotFoundError,
-    ],
-)
+AddTagResponse = Union[
+    AddTagSuccess,
+    InvalidInputError,
+    EnvironmentNotFoundError,
+    WriteArtifactFailure,
+]
 
-HiddenResponse = strawberry.union(
-    "HiddenResponse",
-    [
-        HiddenSuccess,
-        InvalidInputError,
-        EnvironmentNotFoundError,
-    ],
-)
+HiddenResponse = Union[
+    HiddenSuccess,
+    InvalidInputError,
+    EnvironmentNotFoundError,
+]
 
-DeleteResponse = strawberry.union(
-    "DeleteResponse",
-    [
-        DeleteEnvironmentSuccess,
-        EnvironmentNotFoundError,
-    ],
-)
+DeleteResponse = Union[
+    DeleteEnvironmentSuccess,
+    EnvironmentNotFoundError,
+]
 
-WriteArtifactResponse = strawberry.union(
-    "WriteArtifactResponse",
-    [
-        WriteArtifactSuccess,
-        InvalidInputError,
-    ],
-)
+WriteArtifactResponse = Union[
+    WriteArtifactSuccess,
+    InvalidInputError,
+]
 
 
 def validate_tag(tag: str) -> Union[None, InvalidInputError]:
@@ -178,26 +161,25 @@ def validate_tag(tag: str) -> Union[None, InvalidInputError]:
     """
     if tag != tag.strip():
         return InvalidInputError(
-            message="Tags must not contain leading or trailing whitespace"
+            error="Tags must not contain leading or trailing whitespace"
         )
 
     if re.fullmatch(r"[a-zA-Z0-9 ._-]+", tag) is None:
         return InvalidInputError(
-            message="Tags must contain only alphanumerics, dots, "
+            error="Tags must contain only alphanumerics, dots, "
             "underscores, dashes, and spaces"
         )
 
     if re.search(r"\s\s", tag) is not None:
         return InvalidInputError(
-            message="Tags must not contain runs of multiple spaces"
+            error="Tags must not contain runs of multiple spaces"
         )
 
     return None
 
 
-@strawberry.input
 class PackageInput(Package):
-    """A Strawberry input model representing a package."""
+    """A data class model representing a package."""
 
     def to_package(self) -> Package:
         """Create a Package object from a PackageInput object.
@@ -207,15 +189,15 @@ class PackageInput(Package):
         return Package(**vars(self))
 
 
-@strawberry.input
+@dataclass
 class EnvironmentInput:
-    """A Strawberry input model representing an environment."""
+    """A data class model representing an environment."""
 
     name: str
     path: str
-    username: Optional[str] = ""
     description: str
     packages: list[PackageInput]
+    username: Optional[str] = ""
     tags: Optional[list[str]] = None
 
     def validate(self) -> Union[None, InvalidInputError]:
@@ -230,13 +212,15 @@ class EnvironmentInput:
         if any(
             len(value) == 0
             for key, value in vars(self).items()
-            if key != "tags" and key != "username"
+            if key != "tags"
+            and key != "username"
+            and key != "__pydantic_initialised__"
         ):
-            return InvalidInputError(message="all fields must be filled in")
+            return InvalidInputError(error="all fields must be filled in")
 
         if not re.fullmatch("^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$", self.name):
             return InvalidInputError(
-                message="name must only contain alphanumerics, "
+                error="name must only contain alphanumerics, "
                 "dash, and underscore"
             )
 
@@ -245,11 +229,11 @@ class EnvironmentInput:
             Artifacts.groups_folder_name,
         ]
         if not any(self.path.startswith(dir + "/") for dir in valid_dirs):
-            return InvalidInputError(message="Invalid path")
+            return InvalidInputError(error="Invalid path")
 
         if not re.fullmatch(r"^[^/]+/[a-zA-Z0-9_-]+$", self.path):
             return InvalidInputError(
-                message="user/group subdirectory must only contain "
+                error="user/group subdirectory must only contain "
                 "alphanumerics, dash, and underscore"
             )
 
@@ -307,7 +291,7 @@ class BuildStatus:
             json = r.json()
         except Exception as e:
             return BuilderError(
-                message="Connection to builder failed: "
+                error="Connection to builder failed: "
                 + "".join(format_exception_only(type(e), e))
             )
 
@@ -326,11 +310,36 @@ class BuildStatus:
         ]
 
 
-@strawberry.type
-class Environment:
-    """A Strawberry model representing a single environment."""
+@dataclass
+class DelEnvironmentInput:
+    """A class representing an input to delete environment."""
 
-    id: str
+    path: str
+    name: str
+
+
+@dataclass
+class AddTagInput:
+    """A class representing an input to add a tag."""
+
+    path: str
+    name: str
+    tag: str
+
+
+@dataclass
+class SetHiddenInput:
+    """A class representing an input to set hidden."""
+
+    path: str
+    name: str
+    hidden: bool
+
+
+@dataclass
+class Environment:
+    """A data class representing a single environment."""
+
     name: str
     path: str
     description: str
@@ -408,7 +417,6 @@ class Environment:
                 return None
 
             return Environment(
-                id=obj.oid,
                 name=obj.name,
                 path=str(obj.path.parent),
                 description=spec.description,
@@ -440,7 +448,7 @@ class Environment:
 
         if not env.name:
             return InvalidInputError(
-                message="environment name must not be blank"
+                error="environment name must not be blank"
             )
 
         while not isinstance(
@@ -479,9 +487,9 @@ class Environment:
         else:
             return EnvironmentNotFoundError(path=env.path, name=env.name)
 
-        response = cls.submit_env_to_builder(env)
-        if response is not None:
-            return response
+        builder_response = cls.submit_env_to_builder(env)
+        if builder_response is not None:
+            return builder_response
 
         return CreateEnvironmentSuccess(
             message="Successfully scheduled environment creation"
@@ -506,7 +514,7 @@ class Environment:
             versionless_name, version = m.groups()
         except Exception:
             return InvalidInputError(
-                message=f"could not parse version from name: {env.name!r}"
+                error=f"could not parse version from name: {env.name!r}"
             )
 
         if env.has_requested_recipes():
@@ -535,7 +543,7 @@ class Environment:
             r.raise_for_status()
         except Exception as e:
             return BuilderError(
-                message="Connection to builder failed: "
+                error="Connection to builder failed: "
                 + "".join(format_exception_only(type(e), e))
             )
         return None
@@ -569,7 +577,7 @@ class Environment:
         # Check if an env with same name already exists at given path
         if artifacts.get(Path(env.path), env.name):
             return EnvironmentAlreadyExistsError(
-                message="This name is already used in this location",
+                error="This name is already used in this location",
                 path=env.path,
                 name=env.name,
             )
@@ -612,7 +620,7 @@ class Environment:
             artifacts.commit_and_push(tree_oid, "create environment folder")
         except RuntimeError as e:
             return InvalidInputError(
-                message="".join(format_exception_only(type(e), e))
+                error="".join(format_exception_only(type(e), e))
             )
 
         return CreateEnvironmentSuccess(
@@ -658,12 +666,14 @@ class Environment:
             A message confirming the success or failure of the operation.
         """
         environment_path = Path(path, name)
-        response: Optional[Error] = cls.check_env_exists(environment_path)
+        response: Optional[EnvironmentNotFoundError] = cls.check_env_exists(
+            environment_path
+        )
         if response is not None:
             return response
 
-        if (response := validate_tag(tag)) is not None:
-            return response
+        if (tagResponse := validate_tag(tag)) is not None:
+            return tagResponse
 
         tree = artifacts.get(Path(path), name)
         if tree is None:
@@ -677,12 +687,12 @@ class Environment:
         metadata = cls.read_metadata(path, name)
         metadata.tags = sorted(tags)
 
-        response = await cls.store_metadata(environment_path, metadata)
+        metadataResponse = await cls.store_metadata(environment_path, metadata)
 
-        if isinstance(response, WriteArtifactSuccess):
+        if isinstance(metadataResponse, WriteArtifactSuccess):
             return AddTagSuccess(message="Tag successfully added")
 
-        return WriteArtifactFailure
+        return WriteArtifactFailure(error="Failed to add tag")
 
     @classmethod
     def read_metadata(cls, path: str, name: str) -> Box:
@@ -719,7 +729,9 @@ class Environment:
     ) -> HiddenResponse:  # type: ignore
         """This method sets the hidden status for the given environment."""
         environment_path = Path(path, name)
-        response: Optional[Error] = cls.check_env_exists(environment_path)
+        response: Optional[EnvironmentNotFoundError] = cls.check_env_exists(
+            environment_path
+        )
         if response is not None:
             return response
 
@@ -730,12 +742,12 @@ class Environment:
 
         metadata.hidden = hidden
 
-        response = await cls.store_metadata(environment_path, metadata)
+        metadataResponse = await cls.store_metadata(environment_path, metadata)
 
-        if isinstance(response, WriteArtifactSuccess):
+        if isinstance(metadataResponse, WriteArtifactSuccess):
             return HiddenSuccess(message="Hidden metadata set")
 
-        return response
+        return metadataResponse
 
     async def update_metadata(cls, key: str, value: str | None) -> None:
         """Takes a key and sets the value unless value is None."""
@@ -776,14 +788,14 @@ class Environment:
             )
 
         return EnvironmentNotFoundError(
-            message="No environment with this name found in this location.",
+            error="No environment with this name found in this location.",
             path=path,
             name=name,
         )
 
     @classmethod
     async def create_from_module(
-        cls, file: Upload, module_path: str, environment_path: str
+        cls, file: bytes, module_path: str, environment_path: str
     ) -> CreateResponse:  # type: ignore
         """Create an Environment based on an existing module.
 
@@ -824,7 +836,7 @@ class Environment:
         if not isinstance(result, WriteArtifactSuccess):
             cls.delete(name=env.name, path=environment_path)
             return InvalidInputError(
-                message="Write of module file failed: " + result.message
+                error="Write of module file failed: " + result.error
             )
 
         return CreateEnvironmentSuccess(
@@ -833,7 +845,7 @@ class Environment:
 
     @classmethod
     async def convert_module_file_to_artifacts(
-        cls, file: Upload, env_name: str, env_path: str, module_path: str
+        cls, contents: bytes, env_name: str, env_path: str, module_path: str
     ) -> WriteArtifactResponse:  # type: ignore
         """convert_module_file_to_artifacts parses a module and writes to repo.
 
@@ -846,7 +858,6 @@ class Environment:
         Returns:
             WriteArtifactResponse: success or failure indicator.
         """
-        contents = await file.read()
         yml = ToSoftpackYML(env_name, contents)
         readme = GenerateEnvReadme(module_path)
 
@@ -870,9 +881,9 @@ class Environment:
     @classmethod
     async def write_module_artifacts(
         cls,
-        module_file: Upload,
-        softpack_file: Upload,
-        readme_file: Upload,
+        module_file: UploadFile,
+        softpack_file: UploadFile,
+        readme_file: UploadFile,
         environment_path: str,
     ) -> WriteArtifactResponse:  # type: ignore
         """Writes the given module and softpack files to the artifacts repo.
@@ -890,9 +901,9 @@ class Environment:
             WriteArtifactResponse: contains message and commit hash of
             softpack.yml upload.
         """
-        module_file.name = artifacts.module_file
-        readme_file.name = artifacts.readme_file
-        softpack_file.name = artifacts.environments_file
+        module_file.filename = artifacts.module_file
+        readme_file.filename = artifacts.readme_file
+        softpack_file.filename = artifacts.environments_file
 
         return await cls.write_artifacts(
             folder_path=environment_path,
@@ -901,7 +912,7 @@ class Environment:
 
     @classmethod
     async def write_artifact(
-        cls, file: Upload, folder_path: str, file_name: str
+        cls, file: UploadFile, folder_path: str, file_name: str
     ) -> WriteArtifactResponse:  # type: ignore
         """Add a file to the Artifacts repo.
 
@@ -910,7 +921,7 @@ class Environment:
             folder_path: the path to the folder that the file will be added to.
             file_name: the name of the file to be added.
         """
-        file.name = file_name
+        file.filename = file_name
 
         return await cls.write_artifacts(folder_path, [file])
 
@@ -918,7 +929,7 @@ class Environment:
     async def write_artifacts(
         cls,
         folder_path: str,
-        files: list[Union[Upload, UploadFile, Tuple[str, str]]],
+        files: list[Union[UploadFile, Tuple[str, str]]],
         commitMsg: str = "write artifact",
     ) -> WriteArtifactResponse:  # type: ignore
         """Add one or more files to the Artifacts repo.
@@ -935,13 +946,9 @@ class Environment:
                     new_files.append(
                         cast(Tuple[str, Union[str, UploadFile]], file)
                     )
-                elif isinstance(file, starlette.datastructures.UploadFile):
-                    new_files.append(
-                        (file.filename or "", cast(UploadFile, file))
-                    )
                 else:
                     new_files.append(
-                        (file.name, cast(str, (await file.read()).decode()))
+                        (file.filename or "", cast(UploadFile, file))
                     )
 
             tree_oid = artifacts.create_files(
@@ -968,7 +975,7 @@ class Environment:
             )
         except Exception as e:
             return InvalidInputError(
-                message="".join(format_exception_only(type(e), e))
+                error="".join(format_exception_only(type(e), e))
             )
 
     @classmethod
@@ -985,7 +992,7 @@ class Environment:
 
     @classmethod
     async def update_from_module(
-        cls, file: Upload, module_path: str, environment_path: str
+        cls, file: bytes, module_path: str, environment_path: str
     ) -> UpdateResponse:  # type: ignore
         """Update an Environment based on an existing module.
 
@@ -1015,46 +1022,15 @@ class Environment:
         if result is not None:
             return result
 
-        result = await cls.convert_module_file_to_artifacts(
+        convertResult = await cls.convert_module_file_to_artifacts(
             file, env.name, environment_path, module_path
         )
 
-        if not isinstance(result, WriteArtifactSuccess):
+        if not isinstance(convertResult, WriteArtifactSuccess):
             return InvalidInputError(
-                message="Write of module file failed: " + result.message
+                error="Write of module file failed: " + convertResult.error
             )
 
         return UpdateEnvironmentSuccess(
             message="Successfully updated environment in artifacts repo"
-        )
-
-
-class EnvironmentSchema(BaseSchema):
-    """Environment schema."""
-
-    @dataclass
-    class Query:
-        """GraphQL query schema."""
-
-        environments: list[Environment] = Environment.iter  # type: ignore
-
-    @dataclass
-    class Mutation:
-        """GraphQL mutation schema."""
-
-        createEnvironment: CreateResponse = Environment.create  # type: ignore
-        deleteEnvironment: DeleteResponse = Environment.delete  # type: ignore
-        addTag: AddTagResponse = Environment.add_tag  # type: ignore
-        setHidden: HiddenResponse = Environment.set_hidden  # type: ignore
-        # writeArtifact: WriteArtifactResponse = (  # type: ignore
-        #     Environment.write_artifact
-        # )
-        # writeArtifacts: WriteArtifactResponse = (  # type: ignore
-        #     Environment.write_artifacts
-        # )
-        createFromModule: CreateResponse = (  # type: ignore
-            Environment.create_from_module
-        )
-        updateFromModule: UpdateResponse = (  # type: ignore
-            Environment.update_from_module
         )
