@@ -144,8 +144,6 @@ class ServiceAPI(API):
 
                     files[i] = (f.filename, contents)
 
-                    break
-
                 if f.filename == artifacts.module_file:
                     newState = State.ready
 
