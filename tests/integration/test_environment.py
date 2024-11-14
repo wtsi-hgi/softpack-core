@@ -401,7 +401,7 @@ async def test_email_on_build_complete(
     assert send_email.call_args[0][0] == app.settings.environments
     assert "built sucessfully" in send_email.call_args[0][1]
     assert "The error was" not in send_email.call_args[0][1]
-    assert send_email.call_args[0][2] == "Your environment is ready!"
+    assert send_email.call_args[0][2] == "Your SoftPack environment is ready!"
     assert send_email.call_args[0][3] == "me"
 
     client = TestClient(app.router)
@@ -441,7 +441,10 @@ async def test_email_on_build_complete(
         "The error was a build error. Contact your softpack administrator."
         in send_email.call_args[0][1]
     )
-    assert send_email.call_args[0][2] == "Your environment failed to build"
+    assert (
+        send_email.call_args[0][2]
+        == "Your SoftPack environment failed to build"
+    )
     assert send_email.call_args[0][3] == "me"
 
     testable_env_input.username = ""
@@ -492,7 +495,10 @@ async def test_email_on_build_complete(
     assert send_email.call_args[0][0] == app.settings.environments
     assert "failed to build" in send_email.call_args[0][1]
     assert "version conflict" in send_email.call_args[0][1]
-    assert send_email.call_args[0][2] == "Your environment failed to build"
+    assert (
+        send_email.call_args[0][2]
+        == "Your SoftPack environment failed to build"
+    )
     assert send_email.call_args[0][3] == "me"
 
 
