@@ -481,11 +481,7 @@ class Environment:
         if not isinstance(response, CreateEnvironmentSuccess):
             return response
 
-        environment = Environment.get_env(Path(env.path), env.name)
-        if environment is not None:
-            cls.insert_new_env(environment)
-        else:
-            return EnvironmentNotFoundError(path=env.path, name=env.name)
+        Environment.update_cache(Path(env.path, env.name))
 
         builder_response = cls.submit_env_to_builder(env)
         if builder_response is not None:
@@ -958,17 +954,7 @@ class Environment:
             )
             artifacts.commit_and_push(tree_oid, commitMsg)
 
-            index = cls.env_index_from_path(str(folder_path))
-            path = Path(folder_path)
-            env = Environment.get_env(path.parent, path.name)
-
-            if index is None:
-                if env:
-                    Environment.insert_new_env(env)
-            elif env:
-                Environment.environments[index] = env
-            else:
-                del Environment.environments[index]
+            Environment.update_cache(folder_path)
 
             return WriteArtifactSuccess(
                 message="Successfully written artifact(s)",
@@ -989,6 +975,20 @@ class Environment:
             ),
             None,
         )
+    
+    @classmethod
+    def update_cache(cls, folder_path: str | Path) -> None:
+        index = cls.env_index_from_path(str(folder_path))
+        path = Path(folder_path)
+        env = Environment.get_env(path.parent, path.name)
+
+        if index is None:
+            if env:
+                Environment.insert_new_env(env)
+        elif env:
+            Environment.environments[index] = env
+        else:
+            del Environment.environments[index]
 
     @classmethod
     async def update_from_module(
