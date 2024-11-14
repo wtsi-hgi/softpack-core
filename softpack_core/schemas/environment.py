@@ -775,9 +775,7 @@ class Environment:
             tree_oid = artifacts.delete_environment(name, path)
             artifacts.commit_and_push(tree_oid, "delete environment")
 
-            index = cls.env_index_from_path(str(Path(path, name)))
-            if index is not None:
-                del Environment.environments[index]
+            Environment.update_cache(Path(path, name))
 
             return DeleteEnvironmentSuccess(
                 message="Successfully deleted the environment"
@@ -965,19 +963,8 @@ class Environment:
             )
 
     @classmethod
-    def env_index_from_path(cls, folder_path: str) -> Optional[int]:
-        """Return the index of a folder_path from the list of environments."""
-        return next(
-            (
-                i
-                for i, env in enumerate(Environment.environments)
-                if str(env.full_path()) == folder_path
-            ),
-            None,
-        )
-    
-    @classmethod
     def update_cache(cls, folder_path: str | Path) -> None:
+        """Regenerate the cached environment specified by the path."""
         index = cls.env_index_from_path(str(folder_path))
         path = Path(folder_path)
         env = Environment.get_env(path.parent, path.name)
@@ -989,6 +976,18 @@ class Environment:
             Environment.environments[index] = env
         else:
             del Environment.environments[index]
+
+    @classmethod
+    def env_index_from_path(cls, folder_path: str) -> Optional[int]:
+        """Return the index of a folder_path from the list of environments."""
+        return next(
+            (
+                i
+                for i, env in enumerate(Environment.environments)
+                if str(env.full_path()) == folder_path
+            ),
+            None,
+        )
 
     @classmethod
     async def update_from_module(
