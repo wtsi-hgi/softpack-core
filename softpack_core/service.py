@@ -144,8 +144,6 @@ class ServiceAPI(API):
 
                     files[i] = (f.filename, contents)
 
-                    break
-
                 if f.filename == artifacts.module_file:
                     newState = State.ready
 
@@ -183,9 +181,9 @@ class ServiceAPI(API):
                 )
 
                 subject = (
-                    "Your environment is ready!"
+                    "Your SoftPack environment is ready!"
                     if newState == State.ready
-                    else "Your environment failed to build"
+                    else "Your SoftPack environment failed to build"
                 )
 
                 send_email(
