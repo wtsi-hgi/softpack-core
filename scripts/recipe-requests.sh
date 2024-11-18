@@ -7,7 +7,7 @@ declare CORE_URL="http://127.0.0.1:8000";
 IFS=$'\n';
 
 while true; do
-	declare -a data=( $(curl "$CORE_URL/requestedRecipes" 2> /dev/null | jq -c '.[]') ) || {
+	declare -a data=( $(curl "$CORE_URL/requested-recipes" 2> /dev/null | jq -c '.[]') ) || {
 		echo "Error: failed to get data from Core." >&2;
 
 		exit 1;
@@ -58,7 +58,7 @@ while true; do
 					echo "${data[$((num - 1))]}" | jq '{"requestedName": .name, "requestedVersion": .version}' -c;
 					echo "${data[$((num - 1))]}" | jq '{"name","version"}' -c;
 					echo -e "$pkgname\n$pkgversion" | jq -s -R 'split("\n")[:2] | to_entries | map({(if .key == 0 then "name" else "version" end): .value}) | add | del(..|select(. == ""))' -c;
-				} | jq -s add -c)" "$CORE_URL/fulfilRequestedRecipe"; then
+				} | jq -s add -c)" "$CORE_URL/fulfil-requested-recipe"; then
 					echo;
 
 					break;
@@ -69,7 +69,7 @@ while true; do
 				read v;
 
 				if [ "$v" = "y" -o "$v" = "Y" ]; then
-					if curl -d "$(echo "${data[$((num - 1))]}" | jq 'with_entries(select([.key] | inside(["name", "version"])))')" "$CORE_URL/removeRequestedRecipe"; then
+					if curl -d "$(echo "${data[$((num - 1))]}" | jq 'with_entries(select([.key] | inside(["name", "version"])))')" "$CORE_URL/remove-requested-recipe"; then
 						echo;
 
 						break;
