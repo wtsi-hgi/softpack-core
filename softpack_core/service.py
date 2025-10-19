@@ -560,12 +560,14 @@ def send_email(
 
     # Build recipients list and keep headers in sync to avoid "implicit destination" holds.
     recipients = [toAddr]
-    if sendAdmin and emailConfig.adminAddr is not None:
-        admin = emailConfig.adminAddr
-        recipients.append(admin)
-        # Include admin in headers so it's not an implicit-only envelope recipient.
-        # Use Bcc so admin receives a copy without appearing in the visible To header.
-        msg["Bcc"] = admin
+
+    if sendAdmin and emailConfig.adminAddr:
+        admins = [addr.strip() for addr in emailConfig.adminAddr.split(",") if addr.strip()]
+        if admins:
+            msg["Cc"] = ", ".join(admins)
+            for admin in admins:
+                if admin not in recipients:
+                    recipients.append(admin)
 
     localhostname = None
 

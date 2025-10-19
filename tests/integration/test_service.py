@@ -51,14 +51,14 @@ def test_send_email(mocker):
     assert mock_SMTP.call_args[1] == {"local_hostname": None}
 
     assert mock_SMTP.return_value.sendmail.call_count == 1
-    assert (
-        mock_SMTP.return_value.sendmail.call_args[0][0] == emailConfig.fromAddr
-    )
-    assert mock_SMTP.return_value.sendmail.call_args[0][1] == [
-        emailConfig.toAddr
-    ]
-    assert "MESSAGE1" in mock_SMTP.return_value.sendmail.call_args[0][2]
-    assert "SUBJECT1" in mock_SMTP.return_value.sendmail.call_args[0][2]
+
+    first_call = mock_SMTP.return_value.sendmail.call_args_list[0]
+    assert first_call[0][0] == emailConfig.fromAddr
+    assert first_call[0][1] == [emailConfig.toAddr]
+    first_message = first_call[0][2]
+    assert "MESSAGE1" in first_message
+    assert "SUBJECT1" in first_message
+    assert "Cc:" not in first_message
 
     emailConfig = EmailConfig(
         fromAddr="{}@domain.com",
@@ -72,23 +72,25 @@ def test_send_email(mocker):
 
     assert mock_SMTP.return_value.sendmail.call_count == 2
     assert mock_SMTP.call_args[1] == {"local_hostname": "something"}
-    assert (
-        mock_SMTP.return_value.sendmail.call_args[0][0]
-        == "USERNAME2@domain.com"
-    )
-    assert mock_SMTP.return_value.sendmail.call_args[0][1] == [
+    second_call = mock_SMTP.return_value.sendmail.call_args_list[1]
+    assert second_call[0][0] == "USERNAME2@domain.com"
+    assert second_call[0][1] == [
         "USERNAME2@other-domain.com",
         "admin@domain.com",
     ]
+    second_message = second_call[0][2]
+    assert "Cc: admin@domain.com" in second_message
 
     send_email(emailConfig, "MESSAGE2", "SUBJECT2", "USERNAME2", False)
     assert mock_SMTP.return_value.sendmail.call_count == 3
-    assert mock_SMTP.return_value.sendmail.call_args[0][1] == [
-        "USERNAME2@other-domain.com"
-    ]
 
-    assert "MESSAGE2" in mock_SMTP.return_value.sendmail.call_args[0][2]
-    assert "SUBJECT2" in mock_SMTP.return_value.sendmail.call_args[0][2]
+    third_call = mock_SMTP.return_value.sendmail.call_args_list[2]
+    assert third_call[0][1] == ["USERNAME2@other-domain.com"]
+
+    third_message = third_call[0][2]
+    assert "MESSAGE2" in third_message
+    assert "SUBJECT2" in third_message
+    assert "Cc:" not in third_message
 
     emailConfig = EmailConfig()
 
