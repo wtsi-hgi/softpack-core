@@ -7,7 +7,7 @@ LICENSE file in the root directory of this source tree.
 import re
 from typing import Any, Callable, Iterable, cast
 
-import ldap
+import ldap3 as ldap
 from typing_extensions import Self
 
 from .app import app
