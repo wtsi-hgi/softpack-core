@@ -35,7 +35,7 @@ def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
 
     contents_bytes: bytes
 
-    if type(contents) == str:
+    if isinstance(contents, str):
         contents_bytes = contents.encode()
     else:
         contents_bytes = cast(bytes, contents)

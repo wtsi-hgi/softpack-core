@@ -402,7 +402,7 @@ class Environment:
         return cls.from_artifact(artifact_env)
 
     @classmethod
-    def from_artifact(cls, obj: Artifacts.Object) -> Optional["Environment"]:
+    def from_artifact(cls, obj: Artifacts.Object) -> Optional["Environment"]:  # type: ignore  # noqa: E501
         """Create an Environment object from an artifact.
 
         Args:
@@ -423,7 +423,7 @@ class Environment:
                 packages=spec.packages,
                 state=spec.state,
                 readme=spec.get("readme", ""),
-                type=spec.get("type", ""),
+                type=spec.get("type", ""),  # TODO check default value
                 tags=spec.tags,
                 username=spec.username,
                 failure_reason=spec.failure_reason,
@@ -435,7 +435,7 @@ class Environment:
             return None
 
     @classmethod
-    def create(cls, env: EnvironmentInput) -> CreateResponse:  # type: ignore
+    def create(cls, env: EnvironmentInput) -> CreateResponse:
         """Create an Environment.
 
         Args:

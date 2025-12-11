@@ -109,7 +109,7 @@ class Artifacts:
             return self.obj.oid
 
         @property
-        def name(self) -> str:
+        def name(self) -> str | None:
             """Get the name of an artifact.
 
             Returns:
@@ -503,7 +503,7 @@ class Artifacts:
             "removed recipe request",
         )
 
-    def iter_recipe_requests(self) -> Iterable[RecipeObject]:
+    def iter_recipe_requests(self) -> Iterator[RecipeObject]:
         """Iterate over recipe requests."""
         try:
             tree = self.tree(self.recipes_root)
