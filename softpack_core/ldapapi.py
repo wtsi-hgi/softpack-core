@@ -7,7 +7,7 @@ LICENSE file in the root directory of this source tree.
 import re
 from typing import Any, Callable, Iterable, cast
 
-import ldap3 as ldap
+from ldap3 import Server, Connection, ALL, AUTO_BIND_NO_TLS
 from typing_extensions import Self
 
 from .app import app
@@ -30,7 +30,7 @@ class LDAP:
             None.
         """
         try:
-            self.ldap = ldap.initialize(self.settings.server)
+            self.ldap = Connection(self.settings.server, auto_bind=AUTO_BIND_NO_TLS)
             self.group_regex = re.compile(self.settings.group.pattern)
         except AttributeError as e:
             print(f"{__file__}: AttributeError: {e}")
