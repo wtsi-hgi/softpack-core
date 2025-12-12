@@ -23,20 +23,25 @@ def test_groups(mocker) -> None:
 
     def search(self, *args, **kwargs):
         # ldap3 uses Connection.response (list of dicts with 'dn', 'type', and 'attributes')
+        # Provide string values for attributes so the production code's
+        # `getattr(entry, attr)[0].encode()` call works (strings have .encode()).
         self.response = [
             {
                 "dn": "cn=testteam,ou=group,dc=foo",
                 "type": "searchResEntry",
-                "attributes": {"cn": [b"testteam"]},
+                "attributes": {"cn": ["testteam"]},
                 "raw_attributes": {"cn": [b"testteam"]},
             },
             {
                 "dn": "cn=otherteam,ou=group,dc=foo",
                 "type": "searchResEntry",
-                "attributes": {"cn": [b"otherteam"]},
+                "attributes": {"cn": ["otherteam"]},
                 "raw_attributes": {"cn": [b"otherteam"]},
             },
         ]
+        # ldap3 internals expect a search request dict; provide minimal
+        # keys to avoid KeyError in Connection._get_entries.
+        self.request = {"base": "", "filter": ""}
         return True
 
     # patch ldap3 Connection.search (ldap3 uses Connection, not SimpleLDAPObject.search_s)
