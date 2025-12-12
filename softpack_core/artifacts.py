@@ -145,7 +145,9 @@ class Artifacts:
             Returns:
                 Box: A boxed dictionary.
             """
-            info = Box.from_yaml(self.obj[Artifacts.environments_file].data.decode("utf-8"))
+            info = Box.from_yaml(
+                self.obj[Artifacts.environments_file].data.decode("utf-8")
+            )
 
             if Artifacts.readme_file in self.obj:
                 info["readme"] = self.obj[Artifacts.readme_file].data.decode()
@@ -224,7 +226,9 @@ class Artifacts:
             """
             meta = Box()
             if Artifacts.meta_file in self.obj:
-                meta = Box.from_yaml(self.obj[Artifacts.meta_file].data.decode("utf-8"))
+                meta = Box.from_yaml(
+                    self.obj[Artifacts.meta_file].data.decode("utf-8")
+                )
 
             return meta
 
