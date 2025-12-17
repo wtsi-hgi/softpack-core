@@ -19,7 +19,9 @@ from softpack_core.schemas.environment import EnvironmentInput
 from softpack_core.service import ServiceAPI, send_email
 
 
+
 def test_service_run() -> None:
+    ServiceAPI.register()
     run = multiprocessing.Process(target=ServiceAPI.run)
     run.start()
     while True:
@@ -126,7 +128,6 @@ def test_build_status(mocker):
             "BuildDone": "",
         },
     ]
-
     client = TestClient(app.router)
     resp = client.post("/build-status")
 
