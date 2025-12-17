@@ -7,11 +7,7 @@ LICENSE file in the root directory of this source tree.
 import re
 from typing import Any, Callable, Iterable, cast
 
-from ldap3 import (
-    AUTO_BIND_NO_TLS,
-    SUBTREE,
-    Connection,
-)
+from ldap3 import AUTO_BIND_NO_TLS, SUBTREE, Connection
 from ldap3.core.exceptions import LDAPException
 from ldap3.utils.conv import escape_filter_chars
 from typing_extensions import Self
@@ -104,11 +100,13 @@ class LDAP:
             list[str]: List of groups
         """
         try:
-            # Escape any special chars in the username before inserting into filter
+            # noqa: E501# Escape any special chars in the username before inserting into filter
             safe_user = escape_filter_chars(user)
-            # Build filter and ensure RFC4515 form by wrapping in parentheses if missing.
+            # noqa: E501 # Build filter and ensure RFC4515 form by wrapping in parentheses if missing.
             search_filter = self.settings.filter.format(user=safe_user)
-            if not (search_filter.startswith("(") and search_filter.endswith(")")):
+            if not (
+                search_filter.startswith("(") and search_filter.endswith(")")
+            ):
                 search_filter = f"({search_filter})"
             self.ldap.search(
                 search_base=self.settings.base,

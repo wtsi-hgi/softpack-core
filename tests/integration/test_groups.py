@@ -22,9 +22,9 @@ def test_groups(mocker) -> None:
     assert not len(groups)
 
     def search(self, *args, **kwargs):
-        # ldap3 uses Connection.response (list of dicts with 'dn', 'type', and 'attributes')
-        # Provide string values for attributes so the production code's
-        # `getattr(entry, attr)[0].encode()` call works (strings have .encode()).
+        # ldap3 uses Connection.response (list of dicts with 'dn', 'type', and 'attributes') # noqa: E501
+        # Provide string values for attributes so the production code's # noqa: E501
+        # `getattr(entry, attr)[0].encode()` call works (strings have .encode()). # noqa: E501
         self.response = [
             {
                 "dn": "cn=testteam,ou=group,dc=foo",
