@@ -22,10 +22,7 @@ def test_groups(mocker) -> None:
     assert not len(groups)
 
     def search(self, *args, **kwargs):
-        # ldap3 uses Connection.response (list of dicts with 'dn', 'type', and 'attributes') # noqa: E501
-        # Provide string values for attributes so the production code's # noqa: E501
-        # `getattr(entry, attr)[0].encode()` call works (strings have .encode()). # noqa: E501
-        self.response = [
+        response = [
             {
                 "dn": "cn=testteam,ou=group,dc=foo",
                 "type": "searchResEntry",
@@ -39,10 +36,9 @@ def test_groups(mocker) -> None:
                 "raw_attributes": {"cn": [b"otherteam"]},
             },
         ]
-        # ldap3 internals expect a search request dict; provide minimal
-        # keys to avoid KeyError in Connection._get_entries.
-        self.request = {"base": "", "filter": ""}
-        return True
+
+        result = {"base": "", "filter": ""}
+        return True, result, response, None
 
     # patch ldap3 Connection.search (ldap3 uses Connection, not SimpleLDAPObject.search_s)
     mocker.patch.object(ldap3.Connection, "search", new=search)
