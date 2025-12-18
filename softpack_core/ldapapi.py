@@ -7,7 +7,7 @@ LICENSE file in the root directory of this source tree.
 import re
 from typing import Any, Callable, Iterable, cast
 
-from ldap3 import AUTO_BIND_NO_TLS, SUBTREE, Connection
+from ldap3 import AUTO_BIND_NO_TLS, SUBTREE, Connection, SAFE_SYNC, Server
 from ldap3.core.exceptions import LDAPException
 from ldap3.utils.conv import escape_filter_chars
 from typing_extensions import Self
@@ -33,7 +33,9 @@ class LDAP:
         """
         try:
             self.ldap = Connection(
-                self.settings.server, auto_bind=AUTO_BIND_NO_TLS
+                server=Server(self.settings.server), 
+                auto_bind=AUTO_BIND_NO_TLS, 
+                client_strategy=SAFE_SYNC
             )
             self.group_regex = re.compile(self.settings.group.pattern)
         except AttributeError as e:
@@ -59,7 +61,7 @@ class LDAP:
         Returns:
             str: Parsed and decoded group name
         """
-        return group[1][self.settings.group.attr][0].decode(encoding='UTF-8')
+        return group['raw_attributes'][self.settings.group.attr][0].decode(encoding='UTF-8')
 
     def reconnect(fn: Callable[..., Any]) -> Any:  # type: ignore
         """Reconnect decorator for attempting multiple retries on failure.
@@ -103,33 +105,16 @@ class LDAP:
             # noqa: E501# Escape any special chars in the username before inserting into filter
             safe_user = escape_filter_chars(user)
             # noqa: E501 # Build filter and ensure RFC4515 form by wrapping in parentheses if missing.
-            search_filter = self.settings.filter.format(user=safe_user)
-            if not (
-                search_filter.startswith("(") and search_filter.endswith(")")
-            ):
-                search_filter = f"({search_filter})"
-            self.ldap.search(
+            search_filter = f"({self.settings.filter.format(user=safe_user)})"
+
+            _, _, response, _ = self.ldap.search(
                 search_base=self.settings.base,
-                search_scope=SUBTREE,
                 search_filter=search_filter,
+                search_scope=SUBTREE,
                 attributes=(self.settings.group.attr,),
             )
-            # Convert ldap3 entries to tuples compatible with parse_group
-            groups = [
-                (
-                    entry.entry_dn,
-                    {
-                        self.settings.group.attr: [
-                            getattr(entry, self.settings.group.attr)[
-                                0
-                            ].encode()
-                        ]
-                    },
-                )
-                for entry in self.ldap.entries
-            ]
 
-            return sorted(self.filter_groups(map(self.parse_group, groups)))
+            return sorted(self.filter_groups(map(self.parse_group, response)))
         except AttributeError as e:
             print(f"{__file__}: AttributeError: {e}")
             return []
