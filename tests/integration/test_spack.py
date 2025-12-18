@@ -23,21 +23,15 @@ def test_spack_packages():
     pkgs = spack.stored_packages
 
     assert len(pkgs) > 1
-
     assert isinstance(pkgs[0], Package)
-
     assert pkgs[0].name != ""
-
     assert len(pkgs[0].versions) > 0
-
     assert pkgs[0].versions[0] != ""
 
     packages = list(PackageCollection.iter())
 
     assert isinstance(packages[0], PackageMultiVersion)
-
     assert packages[0].name != ""
-
     assert len(packages[0].versions) != 0
 
     assert (

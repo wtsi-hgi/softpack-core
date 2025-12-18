@@ -1,1 +1,1 @@
-"""Tests for softpack_core"""
+"""Tests for softpack_core."""
