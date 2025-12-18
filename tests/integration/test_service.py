@@ -21,6 +21,7 @@ from softpack_core.service import ServiceAPI, send_email
 
 ServiceAPI.register()
 
+
 def test_service_run() -> None:
     run = multiprocessing.Process(target=ServiceAPI.run)
     run.start()

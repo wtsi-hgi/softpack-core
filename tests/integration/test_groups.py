@@ -40,7 +40,6 @@ def test_groups(mocker) -> None:
         result = {"base": "", "filter": ""}
         return True, result, response, None
 
-    # patch ldap3 Connection.search (ldap3 uses Connection, not SimpleLDAPObject.search_s)
     mocker.patch.object(ldap3.Connection, "search", new=search)
 
     groups = list(Group.from_username("foo"))

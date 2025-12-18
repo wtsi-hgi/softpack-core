@@ -7,7 +7,7 @@ LICENSE file in the root directory of this source tree.
 import re
 from typing import Any, Callable, Iterable, cast
 
-from ldap3 import AUTO_BIND_NO_TLS, SUBTREE, Connection, SAFE_SYNC, Server
+from ldap3 import AUTO_BIND_NO_TLS, SAFE_SYNC, SUBTREE, Connection, Server
 from ldap3.core.exceptions import LDAPException
 from ldap3.utils.conv import escape_filter_chars
 from typing_extensions import Self
@@ -33,9 +33,9 @@ class LDAP:
         """
         try:
             self.ldap = Connection(
-                server=Server(self.settings.server), 
-                auto_bind=AUTO_BIND_NO_TLS, 
-                client_strategy=SAFE_SYNC
+                server=Server(self.settings.server),
+                auto_bind=AUTO_BIND_NO_TLS,
+                client_strategy=SAFE_SYNC,
             )
             self.group_regex = re.compile(self.settings.group.pattern)
         except AttributeError as e:
@@ -61,7 +61,9 @@ class LDAP:
         Returns:
             str: Parsed and decoded group name
         """
-        return group['raw_attributes'][self.settings.group.attr][0].decode(encoding='UTF-8')
+        return group['raw_attributes'][self.settings.group.attr][0].decode(
+            encoding='UTF-8'
+        )
 
     def reconnect(fn: Callable[..., Any]) -> Any:  # type: ignore
         """Reconnect decorator for attempting multiple retries on failure.
