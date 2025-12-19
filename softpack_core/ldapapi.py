@@ -52,7 +52,7 @@ class LDAP:
         """
         return list(filter(self.group_regex.match, groups))
 
-    def parse_group(self, group: tuple[str, dict[str, list[bytes]]]) -> str:
+    def parse_group(self, group: dict[str, dict[str, list[bytes]]]) -> str:
         """Parse and decode a group name from search results.
 
         Args:

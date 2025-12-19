@@ -485,7 +485,10 @@ class Artifacts:
         if not recipeData:
             return None
 
-        return cast(Artifacts.RecipeObject, Box.from_yaml(recipeData.data.decode("utf-8")))
+        return cast(
+            Artifacts.RecipeObject,
+            Box.from_yaml(recipeData.data.decode("utf-8")),
+        )
 
     def remove_recipe_request(self, name: str, version: str) -> pygit2.Oid:
         """Remove a recipe request.
@@ -515,7 +518,10 @@ class Artifacts:
             return []
 
         for recipe in tree:
-            yield cast(Artifacts.RecipeObject, Box.from_yaml(recipe.data.decode("utf-8")))
+            yield cast(
+                Artifacts.RecipeObject,
+                Box.from_yaml(recipe.data.decode("utf-8")),
+            )
 
     def commit_and_push(
         self, tree_oid: pygit2.Oid, message: str
