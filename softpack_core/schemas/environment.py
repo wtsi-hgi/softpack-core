@@ -417,19 +417,19 @@ class Environment:
                 return None
 
             return Environment(
-                name=obj.name,
-                path=str(obj.path.parent),
+                name=cast(str, obj.name),
+                path=cast(str, obj.path.parent),
                 description=spec.description,
                 packages=spec.packages,
                 state=spec.state,
-                readme=spec.get("readme", ""),
-                type=spec.get("type", ""),  # TODO check default value
+                readme=spec.get("readme", ""),  # type: ignore
+                type=spec.get("type", ""),  # type: ignore
                 tags=spec.tags,
                 username=spec.username,
                 failure_reason=spec.failure_reason,
                 hidden=spec.hidden,
                 created=spec.created,
-                interpreters=spec.get("interpreters", Interpreters()),
+                interpreters=spec.get("interpreters", Interpreters()),  # type: ignore # noqa: E501
             )
         except KeyError:
             return None
@@ -733,7 +733,7 @@ class Environment:
 
         metadata = cls.read_metadata(path, name)
 
-        if metadata.get("hidden") == hidden:
+        if metadata.get("hidden") == hidden:  # type: ignore
             return HiddenSuccess(message="Hidden metadata already set")
 
         metadata.hidden = hidden
@@ -750,7 +750,7 @@ class Environment:
         metadata = cls.read_metadata(cls.path, cls.name)
 
         if value is None:
-            del metadata[key]
+            del metadata[key]  # type: ignore
         else:
             metadata[key] = value
 
