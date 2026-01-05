@@ -623,7 +623,7 @@ class Artifacts:
         try:
             tree = self.tree(self.recipes_root)
         except Exception:
-            pass
+            return
 
         for recipe in tree:
             yield cast(
