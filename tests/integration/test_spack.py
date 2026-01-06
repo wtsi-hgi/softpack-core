@@ -17,32 +17,30 @@ from softpack_core.spack import Package, Spack
 
 
 def test_spack_packages():
-    spack = Spack()
+    spack = Spack(spack_exe=app.settings.spack.bin)
     spack.packages()
 
     pkgs = spack.stored_packages
 
     assert len(pkgs) > 1
-
     assert isinstance(pkgs[0], Package)
-
     assert pkgs[0].name != ""
-
     assert len(pkgs[0].versions) > 0
-
     assert pkgs[0].versions[0] != ""
 
     packages = list(PackageCollection.iter())
 
     assert isinstance(packages[0], PackageMultiVersion)
-
     assert packages[0].name != ""
-
     assert len(packages[0].versions) != 0
 
     assert (
-        spack.descriptions.get("jq")
-        == "jq is a lightweight and flexible command-line JSON processor."
+        spack.descriptions.get("xxhash")
+        == "xxHash is an Extremely fast Hash algorithm, running at RAM speed "
+        "limits.\n  It successfully completes the SMHasher test suite which ev"
+        "aluates\n  collision, dispersion and randomness qualities of hash fun"
+        "ctions. Code\n  is highly portable, and hashes are identical on all p"
+        "latforms (little /\n  big endian)."
     )
 
     if app.settings.spack.repo == "https://github.com/custom-spack/repo":
@@ -50,7 +48,10 @@ def test_spack_packages():
     else:
         assert len(packages) > len(pkgs)
 
-        spack = Spack(custom_repo=app.settings.spack.repo)
+        spack = Spack(
+            custom_repo=app.settings.spack.repo,
+            spack_exe=app.settings.spack.bin,
+        )
 
         spack.packages()
 
@@ -58,12 +59,11 @@ def test_spack_packages():
 
 
 def test_spack_package_updater():
-    spack = Spack()
+    spack = Spack(spack_exe=app.settings.spack.bin)
 
     assert len(spack.stored_packages) == 0
 
     spack.keep_packages_updated(1)
-
     pkgs = spack.stored_packages
 
     assert len(pkgs) > 0

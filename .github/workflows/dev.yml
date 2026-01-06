@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         python-versions: ["3.11"]
-        os: [ubuntu-20.04]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
 
     # Steps represent a sequence of tasks that will be executed as part of the job
@@ -50,7 +50,7 @@ jobs:
       - name: Install system libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libldap2-dev libsasl2-dev libssl-dev python-dev
+          sudo apt-get install -y libldap2-dev libsasl2-dev libssl-dev python-dev-is-python3
 
       - name: Install dependencies
         run: |

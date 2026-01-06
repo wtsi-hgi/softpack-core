@@ -5,6 +5,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 import multiprocessing
+import os
 from pathlib import Path
 from time import sleep
 
@@ -17,6 +18,8 @@ from softpack_core.app import app
 from softpack_core.config.models import EmailConfig
 from softpack_core.schemas.environment import EnvironmentInput
 from softpack_core.service import ServiceAPI, send_email
+
+ServiceAPI.register()
 
 
 def test_service_run() -> None:
@@ -126,7 +129,6 @@ def test_build_status(mocker):
             "BuildDone": "",
         },
     ]
-
     client = TestClient(app.router)
     resp = client.post("/build-status")
 
@@ -254,7 +256,7 @@ def test_groups(testable_env_input: EnvironmentInput):
 
     resp = client.post(
         "/groups",
-        json="root",
+        json=os.getlogin(),
     )
 
     groups = resp.json()

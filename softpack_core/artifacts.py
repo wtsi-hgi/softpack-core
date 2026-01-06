@@ -10,8 +10,21 @@ import shutil
 import tempfile
 from dataclasses import dataclass
 from enum import Enum
+from io import IOBase
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional, Tuple, Union, cast
+from typing import (
+    Callable,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    Union,
+    cast,
+    overload,
+    runtime_checkable,
+)
 
 import pygit2
 import yaml
@@ -22,6 +35,73 @@ from softpack_core.spack import PackageBase
 
 from .app import app
 from .ldapapi import LDAP
+
+
+@runtime_checkable
+class ObjectProtocol(Protocol):
+    """Protocol for pygit2 objects used in Artifacts.Object."""
+
+    @property
+    def data(self) -> bytes:
+        """Get data property."""
+        ...
+
+    @property
+    def tree(self) -> pygit2.Tree:
+        """Get tree property."""
+        ...
+
+    @property
+    def oid(self) -> pygit2.Oid:
+        """Get OID property."""
+        ...
+
+    @property
+    def name(self) -> Optional[str]:
+        """Get name property."""
+        ...
+
+    def __getitem__(self, key: str) -> "Artifacts.Object":
+        """Get item by key."""
+        ...
+
+    def __contains__(self, key: str) -> bool:
+        """Check if key is in object."""
+        ...
+
+    def __iter__(self) -> Iterator["ObjectProtocol"]:
+        """Iterate over object."""
+        ...
+
+    def __next__(self) -> "ObjectProtocol":
+        """Get next item in iteration."""
+        ...
+
+    @overload
+    def peel(self, type: type[pygit2.Tree]) -> pygit2.Tree:
+        ...
+
+    @overload
+    def peel(self, type: type[pygit2.Commit]) -> pygit2.Commit:
+        ...
+
+    @overload
+    def peel(self, type: type[pygit2.Blob]) -> pygit2.Blob:
+        ...
+
+    @overload
+    def peel(self, type: type[pygit2.Tag]) -> pygit2.Tag:
+        ...
+
+    @overload
+    def peel(
+        self, type: None
+    ) -> Union[pygit2.Tree, pygit2.Commit, pygit2.Blob, pygit2.Tag]:
+        ...
+
+    @overload
+    def peel(self) -> "ObjectProtocol":
+        ...
 
 
 @dataclass
@@ -106,10 +186,10 @@ class Artifacts:
             Returns:
                 pygit2.Oid: Artifact OID.
             """
-            return self.obj.oid
+            return cast(ObjectProtocol, self.obj).oid
 
         @property
-        def name(self) -> str:
+        def name(self) -> str | None:
             """Get the name of an artifact.
 
             Returns:
@@ -118,13 +198,13 @@ class Artifacts:
             return self.obj.name
 
         @property
-        def data(self) -> list[bytes]:
+        def data(self) -> bytes:
             """Get data from a git object.
 
             Returns:
-                list[bytes]: Data property from the object.
+                bytes: Data property from the object.
             """
-            return self.obj.data
+            return cast(ObjectProtocol, self.obj).data
 
         def get(self, key: str) -> "Artifacts.Object":
             """Get attribute as an Artifact object.
@@ -135,7 +215,9 @@ class Artifacts:
             Returns:
                 Artifacts.Object: An artifact object.
             """
-            return Artifacts.Object(path=self.path, obj=self.obj[key])
+            return Artifacts.Object(
+                path=self.path, obj=cast(pygit2.Tree, self.obj)[key]
+            )
 
         def spec(self) -> Box:
             """Get dictionary of the softpack.yml file contents.
@@ -145,12 +227,15 @@ class Artifacts:
             Returns:
                 Box: A boxed dictionary.
             """
-            info = Box.from_yaml(self.obj[Artifacts.environments_file].data)
+            obj = cast(ObjectProtocol, self.obj)
 
-            if Artifacts.readme_file in self.obj:
-                info["readme"] = self.obj[Artifacts.readme_file].data.decode()
+            info = Box.from_yaml(
+                obj[Artifacts.environments_file].data.decode("utf-8")
+            )
 
-            if Artifacts.generated_from_module_file in self.obj:
+            if Artifacts.readme_file in obj:
+                info["readme"] = obj[Artifacts.readme_file].data.decode()
+            if Artifacts.generated_from_module_file in obj:
                 info["type"] = Artifacts.generated_from_module
             else:
                 info["type"] = Artifacts.built_by_softpack
@@ -159,9 +244,9 @@ class Artifacts:
                 map(lambda p: Package.from_name(p), info.packages)
             )
 
-            if Artifacts.module_file in self.obj:
+            if Artifacts.module_file in obj:
                 info["state"] = State.ready
-            elif Artifacts.builder_out in self.obj:
+            elif Artifacts.builder_out in obj:
                 info["state"] = State.failed
             elif any(pkg.name.startswith("*") for pkg in info.packages):
                 info["state"] = State.waiting
@@ -179,7 +264,7 @@ class Artifacts:
 
             info["interpreters"] = Interpreters()
 
-            if Artifacts.spack_file in self.obj:
+            if Artifacts.spack_file in obj:
                 hasR = False
                 hasPython = False
 
@@ -194,7 +279,7 @@ class Artifacts:
                         break
 
                 if not hasR or not hasPython:
-                    data = json.loads(self.obj[Artifacts.spack_file].data)
+                    data = json.loads(obj[Artifacts.spack_file].data)
 
                     for hash in data.get("concrete_specs", {}):
                         spec = data["concrete_specs"][hash]
@@ -222,9 +307,15 @@ class Artifacts:
                 - hidden: boolean
                 - force_hidden: boolean
             """
+            obj = cast(ObjectProtocol, self.obj)
+
             meta = Box()
-            if Artifacts.meta_file in self.obj:
-                meta = Box.from_yaml(self.obj[Artifacts.meta_file].data)
+            if Artifacts.meta_file in obj:
+                meta = Box.from_yaml(
+                    cast(ObjectProtocol, obj)[Artifacts.meta_file].data.decode(
+                        "utf-8"
+                    )
+                )
 
             return meta
 
@@ -235,10 +326,16 @@ class Artifacts:
                 Iterator[Artifacts.Object]: An iterator over items under an
                 artifact.
             """
-            for obj in iter(self.obj):
-                path = self.path / obj.name
+            for obj in cast(ObjectProtocol, self.obj):
+                if obj.name is None:
+                    name = ""
+                else:
+                    name = obj.name
+
+                path = self.path / name
                 yield Artifacts.Object(
-                    path=path.relative_to(Artifacts.environments_root), obj=obj
+                    path=path.relative_to(Artifacts.environments_root),
+                    obj=cast(pygit2.Object, obj),
                 )
 
     def __init__(self) -> None:
@@ -249,8 +346,8 @@ class Artifacts:
         credentials = None
         try:
             credentials = pygit2.UserPass(
-                self.settings.artifacts.repo.username,
-                self.settings.artifacts.repo.writer,
+                cast(str, self.settings.artifacts.repo.username),
+                cast(str, self.settings.artifacts.repo.writer),
             )
         except Exception as e:
             print(e)
@@ -292,7 +389,7 @@ class Artifacts:
 
         self.repo = pygit2.clone_repository(
             self.settings.artifacts.repo.url,
-            path=path,
+            path=cast(str, path),
             callbacks=self.credentials_callback,
             bare=True,
             checkout_branch=branch,
@@ -301,7 +398,7 @@ class Artifacts:
         self.reference = "/".join(
             [
                 "refs/remotes",
-                self.repo.remotes[0].name,
+                cast(str, self.repo.remotes[0].name),
                 self.repo.head.shorthand,
             ]
         )
@@ -321,7 +418,7 @@ class Artifacts:
             repo.branches['origin/' + branch]
         except KeyError:
             commit = repo.revparse_single('HEAD')
-            repo.create_branch(branch, commit)
+            repo.create_branch(branch, cast(pygit2.Commit, commit))
 
             remote = repo.remotes[0]
             remote.push(
@@ -391,7 +488,13 @@ class Artifacts:
             list[pygit2.Tree]: List of environments
         """
         try:
-            return [path / folder.name for folder in self.tree(str(path))]
+            return cast(
+                list[pygit2.Tree],
+                [
+                    path / cast(str, folder.name)
+                    for folder in self.tree(str(path))
+                ],
+            )
         except KeyError:
             return list(())
 
@@ -404,7 +507,12 @@ class Artifacts:
         Returns:
             Tree: A Tree object
         """
-        return self.repo.lookup_reference(self.reference).peel().tree[path]
+        tree = (
+            cast(ObjectProtocol, self.repo.lookup_reference(self.reference))
+            .peel()
+            .tree[path]
+        )
+        return cast(pygit2.Tree, tree)
 
     def environments(self, path: Path) -> Iterable:
         """Return a list of environments in the repo under the given path.
@@ -428,7 +536,9 @@ class Artifacts:
         """
         folders = self.iter_users() + self.iter_groups()
 
-        return itertools.chain.from_iterable(map(self.environments, folders))
+        return itertools.chain.from_iterable(
+            map(cast(Callable, self.environments), folders)
+        )
 
     def get(self, path: Path, name: str) -> Optional[Object]:
         """Return the environment at the specified name and path.
@@ -481,7 +591,12 @@ class Artifacts:
         if not recipeData:
             return None
 
-        return cast(Artifacts.RecipeObject, Box.from_yaml(recipeData.data))
+        return cast(
+            Artifacts.RecipeObject,
+            Box.from_yaml(
+                cast(ObjectProtocol, recipeData).data.decode("utf-8")
+            ),
+        )
 
     def remove_recipe_request(self, name: str, version: str) -> pygit2.Oid:
         """Remove a recipe request.
@@ -503,15 +618,20 @@ class Artifacts:
             "removed recipe request",
         )
 
-    def iter_recipe_requests(self) -> Iterable[RecipeObject]:
+    def iter_recipe_requests(self) -> Iterator[RecipeObject]:
         """Iterate over recipe requests."""
         try:
             tree = self.tree(self.recipes_root)
         except Exception:
-            return []
+            return
 
         for recipe in tree:
-            yield cast(Artifacts.RecipeObject, Box.from_yaml(recipe.data))
+            yield cast(
+                Artifacts.RecipeObject,
+                Box.from_yaml(
+                    cast(ObjectProtocol, recipe).data.decode("utf-8")
+                ),
+            )
 
     def commit_and_push(
         self, tree_oid: pygit2.Oid, message: str
@@ -554,7 +674,7 @@ class Artifacts:
         while str(path) != ".":
             try:
                 sub_treebuilder = repo.TreeBuilder(
-                    root_tree[str(path.parent)]
+                    cast(pygit2.Tree, root_tree[str(path.parent)])
                     if str(path.parent) != "."
                     else root_tree
                 )
@@ -621,30 +741,34 @@ class Artifacts:
             if not overwrite and tree and file_name in tree:
                 raise FileExistsError("File already exists")
 
-        root_tree = self.repo.head.peel(pygit2.Tree)
+        root_tree = cast(ObjectProtocol, self.repo.head).peel(pygit2.Tree)
 
-        if new_folder and (full_path not in root_tree or overwrite):
+        if new_folder and (cast(str, full_path) not in root_tree or overwrite):
             new_treebuilder = self.repo.TreeBuilder()
         else:
-            folder = root_tree[full_path]
-            new_treebuilder = self.repo.TreeBuilder(folder)
+            folder = root_tree[cast(str, full_path)]
+            new_treebuilder = self.repo.TreeBuilder(cast(pygit2.Tree, folder))
 
         for file_name, contents in files:
             if isinstance(contents, str):
-                file_oid = self.repo.create_blob(contents)
+                file_oid = self.repo.create_blob(cast(bytes, contents))
             else:
-                file_oid = self.repo.create_blob_fromiobase(contents.file)
+                file_oid = self.repo.create_blob_fromiobase(
+                    cast(IOBase, contents.file)
+                )
             new_treebuilder.insert(
                 file_name, file_oid, pygit2.GIT_FILEMODE_BLOB
             )
 
-        new_tree = new_treebuilder.write()
+        new_tree_id = new_treebuilder.write()
 
         # Expand to include the whole repo
-        full_tree = self.build_tree(self.repo, root_tree, new_tree, full_path)
+        full_tree = self.build_tree(
+            self.repo, root_tree, new_tree_id, full_path
+        )
 
         # Check for errors in the new tree
-        new_tree = self.repo.get(full_tree)
+        new_tree = cast(pygit2.Tree, self.repo.get(full_tree))
         diff = self.repo.diff(new_tree, root_tree)
         if len(diff) > len(files):
             raise RuntimeError("Too many changes to the repo")
@@ -680,11 +804,11 @@ class Artifacts:
             name: the file/directory to remove from the parent
         """
         # Get repository tree
-        root_tree = self.repo.head.peel(pygit2.Tree)
+        root_tree = cast(ObjectProtocol, self.repo.head).peel(pygit2.Tree)
         # Find environment in the tree
-        target_tree = root_tree[full_path]
+        target_tree = root_tree[cast(str, full_path)]
         # Remove the environment
-        tree_builder = self.repo.TreeBuilder(target_tree)
+        tree_builder = self.repo.TreeBuilder(cast(pygit2.Tree, target_tree))
         tree_builder.remove(name)
         new_tree = tree_builder.write()
 

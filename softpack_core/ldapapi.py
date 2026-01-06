@@ -7,7 +7,9 @@ LICENSE file in the root directory of this source tree.
 import re
 from typing import Any, Callable, Iterable, cast
 
-import ldap
+from ldap3 import AUTO_BIND_NO_TLS, SAFE_SYNC, SUBTREE, Connection, Server
+from ldap3.core.exceptions import LDAPException
+from ldap3.utils.conv import escape_filter_chars
 from typing_extensions import Self
 
 from .app import app
@@ -30,7 +32,11 @@ class LDAP:
             None.
         """
         try:
-            self.ldap = ldap.initialize(self.settings.server)
+            self.ldap = Connection(
+                server=Server(self.settings.server),
+                auto_bind=AUTO_BIND_NO_TLS,
+                client_strategy=SAFE_SYNC,
+            )
             self.group_regex = re.compile(self.settings.group.pattern)
         except AttributeError as e:
             print(f"{__file__}: AttributeError: {e}")
@@ -46,7 +52,7 @@ class LDAP:
         """
         return list(filter(self.group_regex.match, groups))
 
-    def parse_group(self, group: tuple[str, dict[str, list[bytes]]]) -> str:
+    def parse_group(self, group: dict[str, dict[str, list[bytes]]]) -> str:
         """Parse and decode a group name from search results.
 
         Args:
@@ -55,7 +61,9 @@ class LDAP:
         Returns:
             str: Parsed and decoded group name
         """
-        return group[1][self.settings.group.attr][0].decode(encoding='UTF-8')
+        return group['raw_attributes'][self.settings.group.attr][0].decode(
+            encoding='UTF-8'
+        )
 
     def reconnect(fn: Callable[..., Any]) -> Any:  # type: ignore
         """Reconnect decorator for attempting multiple retries on failure.
@@ -69,13 +77,16 @@ class LDAP:
 
         def wrapped_function(self: Self, *args: Any, **kwargs: Any) -> Any:
             try:
-                retry = 0
-                while retry < self.settings.retries:
+                # Attempt up to self.settings.retries times
+                retries = getattr(self.settings, "retries", 1) or 1
+                for _ in range(retries):
                     try:
-                        retry += 1
                         return fn(self, *args, **kwargs)
-                    except ldap.SERVER_DOWN:
+                    except LDAPException:
+                        # Reinitialize connection and retry
                         self.initialize()
+                        continue
+                # All retries failed
                 return None
             except AttributeError as e:
                 print(f"{__file__}: AttributeError: {e}")
@@ -93,16 +104,22 @@ class LDAP:
             list[str]: List of groups
         """
         try:
-            groups = self.ldap.search_s(
-                self.settings.base,
-                ldap.SCOPE_SUBTREE,
-                self.settings.filter.format(user=user),
-                (self.settings.group.attr,),
+            # noqa: E501# Escape any special chars in the username before inserting into filter
+            safe_user = escape_filter_chars(user)
+            # noqa: E501 # Build filter and ensure RFC4515 form by wrapping in parentheses if missing.
+            search_filter = f"({self.settings.filter.format(user=safe_user)})"
+
+            _, _, response, _ = self.ldap.search(
+                search_base=self.settings.base,
+                search_filter=search_filter,
+                search_scope=SUBTREE,
+                attributes=(self.settings.group.attr,),
             )
-            return sorted(self.filter_groups(map(self.parse_group, groups)))
+
+            return sorted(self.filter_groups(map(self.parse_group, response)))
         except AttributeError as e:
             print(f"{__file__}: AttributeError: {e}")
             return []
-        except ldap.SERVER_DOWN as e:
-            print(f"{__file__}: AttributeError: {e}")
+        except LDAPException as e:
+            print(f"{__file__}: LDAPException: {e}")
             return []

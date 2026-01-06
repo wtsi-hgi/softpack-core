@@ -70,7 +70,7 @@ def test_commit_and_push() -> None:
     new_tree, file_path = add_test_file_to_repo(artifacts)
 
     new_commit_oid = artifacts.commit_and_push(new_tree, "commit new file")
-    repo_head = artifacts.repo.head.peel(pygit2.Commit).oid
+    repo_head = artifacts.repo.head.peel(pygit2.Commit).id
 
     assert old_commit_oid != new_commit_oid
     assert new_commit_oid == repo_head
@@ -108,7 +108,7 @@ def test_create_file() -> None:
     new_test_env = "test_create_file_env"
 
     user_envs_tree = get_user_envs_tree(
-        artifacts, user, artifacts.repo.head.peel(pygit2.Tree).oid
+        artifacts, user, artifacts.repo.head.peel(pygit2.Tree).id
     )
     assert new_test_env not in [obj.name for obj in user_envs_tree]
 
@@ -209,7 +209,7 @@ def test_delete_environment() -> None:
     env_for_deleting = ad["test_environment"]
 
     user_envs_tree = get_user_envs_tree(
-        artifacts, user, artifacts.repo.head.peel(pygit2.Tree).oid
+        artifacts, user, artifacts.repo.head.peel(pygit2.Tree).id
     )
     assert env_for_deleting in [obj.name for obj in user_envs_tree]
 
@@ -297,7 +297,7 @@ def test_simultaneous_commit():
     commit = artifacts.repo.head.peel(pygit2.Commit)
     for _ in range(parallelism):
         commit = commit.parents[0]
-    assert commit.oid == initial_commit_oid
+    assert commit.id == initial_commit_oid
 
 
 def test_recipes():

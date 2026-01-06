@@ -7,7 +7,7 @@ LICENSE file in the root directory of this source tree.
 import getpass
 import os
 
-import ldap
+import ldap3
 
 from softpack_core.schemas.groups import Group
 
@@ -21,15 +21,26 @@ def test_groups(mocker) -> None:
     groups = list(Group.from_username("foo"))
     assert not len(groups)
 
-    def search_s(*args):
-        return [
-            ("cn=testteam,ou=group,dc=foo", {"cn": [b"testteam"]}),
-            ("cn=otherteam,ou=group,dc=foo", {"cn": [b"otherteam"]}),
+    def search(self, *args, **kwargs):
+        response = [
+            {
+                "dn": "cn=testteam,ou=group,dc=foo",
+                "type": "searchResEntry",
+                "attributes": {"cn": ["testteam"]},
+                "raw_attributes": {"cn": [b"testteam"]},
+            },
+            {
+                "dn": "cn=otherteam,ou=group,dc=foo",
+                "type": "searchResEntry",
+                "attributes": {"cn": ["otherteam"]},
+                "raw_attributes": {"cn": [b"otherteam"]},
+            },
         ]
 
-    mocker.patch.object(
-        ldap.ldapobject.SimpleLDAPObject, "search_s", new=search_s
-    )
+        result = {"base": "", "filter": ""}
+        return True, result, response, None
+
+    mocker.patch.object(ldap3.Connection, "search", new=search)
 
     groups = list(Group.from_username("foo"))
     group_names = {group.name for group in groups}
