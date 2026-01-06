@@ -736,6 +736,9 @@ async def test_create_from_module(httpx_post, testable_env_input):
 
 @pytest.mark.asyncio
 async def test_create_from_module_begining_space(httpx_post, testable_env_input):
+    """
+    Test wather a module with ModuleHelp begining with a space on the first line is correctly parsed into yml
+    """
     test_files_dir = Path(__file__).parent.parent / "files" / "modules"
     test_file_path = test_files_dir / "begining_space.mod"
 
@@ -753,6 +756,45 @@ async def test_create_from_module_begining_space(httpx_post, testable_env_input)
     )
     
     test_tosoftpack(module_input=test_file_path)
+
+@pytest.mark.asyncio
+async def test_create_from_invalid_module(httpx_post, testable_env_input, mocker):
+    """
+    Test weather an invalid module is then deleted in the repo after create_from module fails
+    """
+    test_files_dir = Path(__file__).parent.parent / "files" / "modules"
+    test_file_path = test_files_dir / "begining_space.mod"
+
+    with open(test_file_path, "rb") as fh:
+        data = fh.read()
+
+    env_name = "some-invalid-environment"
+    name = "groups/hgi/" + env_name
+    module_path = "HGI/common/some_invalid_environment"
+
+    get_mock = mocker.patch("softpack_core.schemas.environment.ToSoftpackYML")
+    get_mock.return_value = b"description: |\n   This is an invalid module\n  Invalid line\npackages:\n  - invalid-package@1.0\n"
+    
+    result = await Environment.create_from_module(
+        file=data,
+        module_path=module_path,
+        environment_path=name,
+    )
+    
+    assert isinstance(result, InvalidInputError)
+
+    parent_path = Path(
+        artifacts.group_folder(),
+        "hgi",
+        env_name,
+    )
+
+    assert not file_in_remote(
+        Path(parent_path, artifacts.environments_file),
+        Path(parent_path, artifacts.module_file),
+        Path(parent_path, artifacts.readme_file),
+        Path(parent_path, artifacts.generated_from_module_file),
+    )
 
 
 def test_environmentinput_from_path():
