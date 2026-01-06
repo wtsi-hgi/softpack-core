@@ -53,6 +53,7 @@ def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
                     .replace("\\$", "$")
                     .removeprefix("\"")
                     .removesuffix("\"")
+                    .lstrip()
                 )
                 description += "  " + line_str + "\n"
         else:

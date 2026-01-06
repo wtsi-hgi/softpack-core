@@ -37,6 +37,7 @@ from softpack_core.schemas.environment import (
     WriteArtifactSuccess,
 )
 from tests.integration.utils import builder_called_correctly, file_in_remote
+from tests.test_module import test_tosoftpack
 
 pytestmark = pytest.mark.repo
 
@@ -675,6 +676,8 @@ async def test_create_from_module(httpx_post, testable_env_input):
     with open(test_files_dir / "shpc.readme", "rb") as fh:
         expected_readme_data = fh.read()
 
+    test_tosoftpack(module_input=test_file_path)
+
     tree = artifacts.repo.head.peel(pygit2.Tree)
     obj = tree[str(readme_path)]
     assert obj is not None
@@ -729,6 +732,27 @@ async def test_create_from_module(httpx_post, testable_env_input):
         environment_path="users/non/existant",
     )
     assert isinstance(result, EnvironmentNotFoundError)
+
+
+@pytest.mark.asyncio
+async def test_create_from_module_begining_space(httpx_post, testable_env_input):
+    test_files_dir = Path(__file__).parent.parent / "files" / "modules"
+    test_file_path = test_files_dir / "begining_space.mod"
+
+    with open(test_file_path, "rb") as fh:
+        data = fh.read()
+
+    env_name = "some-environment"
+    name = "groups/hgi/" + env_name
+    module_path = "HGI/common/some_environment"
+
+    result = await Environment.create_from_module(
+        file=data,
+        module_path=module_path,
+        environment_path=name,
+    )
+    
+    test_tosoftpack(module_input=test_file_path)
 
 
 def test_environmentinput_from_path():
