@@ -9,7 +9,9 @@ import re
 from pathlib import Path
 from string import Template
 from typing import Union, cast
+
 from ruamel.yaml import YAML
+
 
 def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
     """Converts an shpc-style module file to a softpack.yml file.

@@ -37,7 +37,6 @@ from softpack_core.schemas.environment import (
     WriteArtifactSuccess,
 )
 from tests.integration.utils import builder_called_correctly, file_in_remote
-from tests.test_module import test_tosoftpack
 
 pytestmark = pytest.mark.repo
 
@@ -676,8 +675,6 @@ async def test_create_from_module(httpx_post, testable_env_input):
     with open(test_files_dir / "shpc.readme", "rb") as fh:
         expected_readme_data = fh.read()
 
-    test_tosoftpack(module_input=test_file_path)
-
     tree = artifacts.repo.head.peel(pygit2.Tree)
     obj = tree[str(readme_path)]
     assert obj is not None
@@ -735,32 +732,12 @@ async def test_create_from_module(httpx_post, testable_env_input):
 
 
 @pytest.mark.asyncio
-async def test_create_from_module_begining_space(httpx_post, testable_env_input):
-    """
-    Test wather a module with ModuleHelp begining with a space on the first line is correctly parsed into yml
-    """
-    test_files_dir = Path(__file__).parent.parent / "files" / "modules"
-    test_file_path = test_files_dir / "begining_space.mod"
+async def test_create_from_invalid_module(
+    httpx_post, testable_env_input, mocker
+):
+    """Test create from invalid module.
 
-    with open(test_file_path, "rb") as fh:
-        data = fh.read()
-
-    env_name = "some-environment"
-    name = "groups/hgi/" + env_name
-    module_path = "HGI/common/some_environment"
-
-    result = await Environment.create_from_module(
-        file=data,
-        module_path=module_path,
-        environment_path=name,
-    )
-    
-    test_tosoftpack(module_input=test_file_path)
-
-@pytest.mark.asyncio
-async def test_create_from_invalid_module(httpx_post, testable_env_input, mocker):
-    """
-    Test weather an invalid module is then deleted in the repo after create_from module fails
+    - is it then deleted in the repo after create_from module fails?
     """
     test_files_dir = Path(__file__).parent.parent / "files" / "modules"
     test_file_path = test_files_dir / "begining_space.mod"
@@ -773,14 +750,16 @@ async def test_create_from_invalid_module(httpx_post, testable_env_input, mocker
     module_path = "HGI/common/some_invalid_environment"
 
     get_mock = mocker.patch("softpack_core.schemas.environment.ToSoftpackYML")
-    get_mock.return_value = b"description: |\n   This is an invalid module\n  Invalid line\npackages:\n  - invalid-package@1.0\n"
-    
+    get_mock.return_value = b"description: |\n   \
+        This is an invalid module\n  \
+        Invalid line\npackages:\n  - invalid-package@1.0\n"
+
     result = await Environment.create_from_module(
         file=data,
         module_path=module_path,
         environment_path=name,
     )
-    
+
     assert isinstance(result, InvalidInputError)
 
     parent_path = Path(
