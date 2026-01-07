@@ -4,11 +4,12 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import io
 import re
 from pathlib import Path
 from string import Template
 from typing import Union, cast
-
+from ruamel.yaml import YAML
 
 def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
     """Converts an shpc-style module file to a softpack.yml file.
@@ -53,7 +54,6 @@ def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
                     .replace("\\$", "$")
                     .removeprefix("\"")
                     .removesuffix("\"")
-                    .lstrip()
                 )
                 description += "  " + line_str + "\n"
         else:
@@ -106,11 +106,11 @@ def ToSoftpackYML(name: str, contents: Union[bytes, str]) -> bytes:
 
     packages.insert(0, name)
 
-    package_str = "\n  - ".join(packages)
+    stream = io.BytesIO()
+    yml = YAML()
+    yml.dump({"description": description, "packages": packages}, stream)
 
-    return (
-        f"description: |\n{description}packages:\n  - {package_str}\n".encode()
-    )
+    return stream.getbuffer().tobytes()
 
 
 def GenerateEnvReadme(module_path: str) -> bytes:

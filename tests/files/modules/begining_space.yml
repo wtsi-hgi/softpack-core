@@ -1,5 +1,3 @@
-description: |
-  Testing adding a simple module with cli tool
-  ModulesHelp
+description: "   Testing adding a simple module with cli tool\n  ModulesHelp\n"
 packages:
-  - test-print@1
+- test-print@1

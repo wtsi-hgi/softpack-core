@@ -1,11 +1,8 @@
-description: |
-  Help text line 1
-  
-  Help text line 2
+description: "  Help text line 1\n  \n  Help text line 2\n"
 packages:
-  - name_of_container@1.0.1
-  - pkg1
-  - pkg
-  - 2
-  - pkg3
-  - pkg4
+- name_of_container@1.0.1
+- pkg1
+- pkg
+- '2'
+- pkg3
+- pkg4
