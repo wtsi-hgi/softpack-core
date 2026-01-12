@@ -732,10 +732,10 @@ async def test_create_from_module(httpx_post, testable_env_input):
 
 
 @pytest.mark.asyncio
-async def test_create_from_invalid_module(
+async def test_create_from_module_with_invalid_yaml_parsing(
     httpx_post, testable_env_input, mocker
 ):
-    """Test create from invalid module.
+    """Test create from module with invalid yaml parsing. 
 
     - is it then deleted in the repo after create_from module fails?
     """
