@@ -828,7 +828,7 @@ class Environment:
         )
 
         if not isinstance(result, WriteArtifactSuccess):
-            cls.delete(name=env.name, path=environment_path)
+            cls.delete(name=env.name, path=env.path)
             return InvalidInputError(
                 error="Write of module file failed: " + result.error
             )

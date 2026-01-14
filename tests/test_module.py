@@ -10,6 +10,7 @@ from softpack_core.module import GenerateEnvReadme, ToSoftpackYML
 
 
 def pytest_generate_tests(metafunc):
+    """Run all the test_tosoftpack on all the modules in files/modules dir."""
     if "module_input" not in metafunc.fixturenames:
         return
 
