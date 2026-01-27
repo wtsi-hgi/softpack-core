@@ -433,21 +433,39 @@ class ServiceAPI(API):
         if isinstance(statuses, BuilderError):
             statuses = []
 
-        try:
-            avg_wait_secs = statistics.mean(
-                (s.build_done - s.requested).total_seconds()
-                for s in statuses
-                if s.build_done is not None
-            )
-        except statistics.StatisticsError:
-            avg_wait_secs = None
+        queue_times = [
+            (s.build_start - s.requested).total_seconds()
+            for s in statuses
+                if s.build_start is not None
+        ]               
+        build_times = [
+            (s.build_done - s.build_start).total_seconds()
+            for s in statuses
+                if s.build_done is not None and s.build_start is not None
+        ]  
+
+        avg_queue_secs = statistics.mean(queue_times) if queue_times else None
+        avg_build_secs = statistics.mean(build_times) if build_times else None
 
         return {
-            "avg": avg_wait_secs,
-            "statuses": map(
-                lambda x: (x.name, x.build_start),
-                filter(lambda x: x.build_start is not None, statuses),
-            ),
+            "avgQueueSeconds": avg_queue_secs,
+            "avgBuildSeconds": avg_build_secs,
+            "queue": [
+                {
+                  "name": s.name,
+                  "requested": s.requested.isoformat(),
+                }    
+                for s in statuses
+                if s.build_start is None
+            ],
+            "building": [
+                {
+                    "name": s.name,
+                    "buildStart": s.build_start.isoformat(),
+                }
+                for s in statuses
+                if s.build_start is not None and s.build_done is None
+            ],
         }
 
     @staticmethod

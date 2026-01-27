@@ -104,29 +104,29 @@ def test_build_status(mocker):
     get_mock.return_value.json.return_value = [
         {
             "Name": "users/test_user/test_environment",
-            "Requested": "2025-01-02T03:04:00.000000000Z",
-            "BuildStart": "2025-01-02T03:04:05.000000000Z",
+            "Requested": "2025-01-02T03:04:00+00:00",
+            "BuildStart": "2025-01-02T03:04:05+00:00",
             "BuildDone": None,
         },
         {
             "Name": "groups/test_group/test_environment",
-            "Requested": "2025-01-02T03:04:00.000000000Z",
-            "BuildStart": "2025-01-02T03:04:05.000000000Z",
-            "BuildDone": "2025-01-02T03:04:15.000000000Z",
+            "Requested": "2025-01-02T03:04:00+00:00",
+            "BuildStart": "2025-01-02T03:04:05+00:00",
+            "BuildDone": "2025-01-02T03:04:15+00:00",
         },
         # only used for average calculations, does not map to an environment in
         # the test data
         {
             "Name": "users/foo/bar",
-            "Requested": "2025-01-02T03:04:00.000000000Z",
-            "BuildStart": "2025-01-02T03:04:05.000000000Z",
-            "BuildDone": "2025-01-02T03:04:25.000000000Z",
+            "Requested": "2025-01-02T03:04:00+00:00",
+            "BuildStart": "2025-01-02T03:04:05+00:00",
+            "BuildDone": "2025-01-02T03:04:25+00:00",
         },
         {
             "Name": "users/foo/bar2",
-            "Requested": "2025-01-02T03:04:00.000000000Z",
-            "BuildStart": "",
-            "BuildDone": "",
+            "Requested": "2025-01-02T03:04:00+00:00",
+            "BuildStart": None,
+            "BuildDone": None,
         },
     ]
     client = TestClient(app.router)
@@ -136,12 +136,21 @@ def test_build_status(mocker):
 
     status = resp.json()
 
-    assert status.get("avg") == 20
-    assert status.get("statuses") == {
-        "users/test_user/test_environment": "2025-01-02T03:04:05+00:00",
-        "groups/test_group/test_environment": "2025-01-02T03:04:05+00:00",
-        "users/foo/bar": "2025-01-02T03:04:05+00:00",
-    }
+    assert status["avgQueueSeconds"] == 5.0
+    assert status["avgBuildSeconds"] == 15.0
+
+    assert status["queue"] == [
+        {
+            "name": "users/foo/bar2",
+            "requested": "2025-01-02T03:04:00+00:00",
+        }
+    ]
+    assert status["building"] == [
+        {
+            "name": "users/test_user/test_environment",
+            "buildStart": "2025-01-02T03:04:05+00:00",
+        }
+    ]
 
 
 def test_create_env(httpx_post, testable_env_input: EnvironmentInput):
