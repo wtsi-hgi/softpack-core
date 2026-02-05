@@ -445,12 +445,6 @@ class ServiceAPI(API):
             key=lambda s: s.requested,
         )
 
-        building = [
-            s
-            for s in statuses
-            if s.build_start is not None and s.build_done is None
-        ]
-
         return {
             "avgBuildSeconds": avg_build_secs,
             "queue": [
@@ -459,13 +453,15 @@ class ServiceAPI(API):
                     "requested": s.requested.isoformat(),
                 }
                 for s in queued
+                if s.requested is not None
             ],
             "building": [
                 {
                     "name": s.name,
                     "buildStart": s.build_start.isoformat(),
                 }
-                for s in building
+                for s in statuses
+                if s.build_start is not None and s.build_done is None
             ],
         }
 
