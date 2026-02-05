@@ -427,9 +427,7 @@ class ServiceAPI(API):
     async def buildStatus(  # type: ignore[no-untyped-def]
         request: Request,
     ):
-        """Return build status and conservative ETA estimates.
-        Estimates are FIFO-based and derived from historical average build time.
-        """
+        """Return the average build time and current build/queue status."""
         statuses = BuildStatus.get_all()
         if isinstance(statuses, BuilderError):
             statuses = []
