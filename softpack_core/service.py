@@ -163,13 +163,11 @@ class ServiceAPI(API):
                 e = (
                     ""
                     if newState == State.ready
-                    else (
-                        "\nThe error was a build error. "
-                        + "Contact your softpack administrator.\n"
-                        if env.failure_reason == "build"
-                        else "\nThe error was a version conflict. "
-                        + "Try relaxing which versions you've specified.\n"
-                    )
+                    else "\nThe error was a build error. "
+                    + "Contact your softpack administrator.\n"
+                    if env.failure_reason == "build"
+                    else "\nThe error was a version conflict. "
+                    + "Try relaxing which versions you've specified.\n"
                 )
 
                 message = (
@@ -430,7 +428,6 @@ class ServiceAPI(API):
         request: Request,
     ):
         """Return build status and conservative ETA estimates.
-
         Estimates are FIFO-based and derived from historical average build time.
         """
         statuses = BuildStatus.get_all()
@@ -590,11 +587,9 @@ def send_email(
     s = smtplib.SMTP(emailConfig.smtp, local_hostname=localhostname)
     s.sendmail(
         fromAddr,
-        (
-            [toAddr, emailConfig.adminAddr]
-            if sendAdmin and emailConfig.adminAddr is not None
-            else [toAddr]
-        ),
+        [toAddr, emailConfig.adminAddr]
+        if sendAdmin and emailConfig.adminAddr is not None
+        else [toAddr],
         msg.as_string(),
     )
     s.quit()
