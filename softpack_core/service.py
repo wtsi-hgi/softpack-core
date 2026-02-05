@@ -4,7 +4,6 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-
 import smtplib
 import statistics
 import urllib.parse
@@ -164,11 +163,13 @@ class ServiceAPI(API):
                 e = (
                     ""
                     if newState == State.ready
-                    else "\nThe error was a build error. "
-                    + "Contact your softpack administrator.\n"
-                    if env.failure_reason == "build"
-                    else "\nThe error was a version conflict. "
-                    + "Try relaxing which versions you've specified.\n"
+                    else (
+                        "\nThe error was a build error. "
+                        + "Contact your softpack administrator.\n"
+                        if env.failure_reason == "build"
+                        else "\nThe error was a version conflict. "
+                        + "Try relaxing which versions you've specified.\n"
+                    )
                 )
 
                 message = (
@@ -428,43 +429,48 @@ class ServiceAPI(API):
     async def buildStatus(  # type: ignore[no-untyped-def]
         request: Request,
     ):
-        """Return the avg wait seconds and a map of names to build status."""
+        """Return build status and conservative ETA estimates.
+
+        Estimates are FIFO-based and derived from historical average build time.
+        """
         statuses = BuildStatus.get_all()
         if isinstance(statuses, BuilderError):
             statuses = []
 
-        queue_times = [
-            (s.build_start - s.requested).total_seconds()
-            for s in statuses
-                if s.build_start is not None
-        ]               
         build_times = [
             (s.build_done - s.build_start).total_seconds()
             for s in statuses
-                if s.build_done is not None and s.build_start is not None
-        ]  
+            if s.build_done is not None and s.build_start is not None
+        ]
 
-        avg_queue_secs = statistics.mean(queue_times) if queue_times else None
         avg_build_secs = statistics.mean(build_times) if build_times else None
 
+        queued = sorted(
+            (s for s in statuses if s.build_start is None),
+            key=lambda s: s.requested,
+        )
+
+        building = [
+            s
+            for s in statuses
+            if s.build_start is not None and s.build_done is None
+        ]
+
         return {
-            "avgQueueSeconds": avg_queue_secs,
             "avgBuildSeconds": avg_build_secs,
             "queue": [
                 {
-                  "name": s.name,
-                  "requested": s.requested.isoformat(),
-                }    
-                for s in statuses
-                if s.build_start is None
+                    "name": s.name,
+                    "requested": s.requested.isoformat(),
+                }
+                for s in queued
             ],
             "building": [
                 {
                     "name": s.name,
                     "buildStart": s.build_start.isoformat(),
                 }
-                for s in statuses
-                if s.build_start is not None and s.build_done is None
+                for s in building
             ],
         }
 
@@ -584,9 +590,11 @@ def send_email(
     s = smtplib.SMTP(emailConfig.smtp, local_hostname=localhostname)
     s.sendmail(
         fromAddr,
-        [toAddr, emailConfig.adminAddr]
-        if sendAdmin and emailConfig.adminAddr is not None
-        else [toAddr],
+        (
+            [toAddr, emailConfig.adminAddr]
+            if sendAdmin and emailConfig.adminAddr is not None
+            else [toAddr]
+        ),
         msg.as_string(),
     )
     s.quit()

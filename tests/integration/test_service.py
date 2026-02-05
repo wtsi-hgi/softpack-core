@@ -136,7 +136,6 @@ def test_build_status(mocker):
 
     status = resp.json()
 
-    assert status["avgQueueSeconds"] == 5.0
     assert status["avgBuildSeconds"] == 15.0
 
     assert status["queue"] == [
@@ -151,7 +150,6 @@ def test_build_status(mocker):
             "buildStart": "2025-01-02T03:04:05+00:00",
         }
     ]
-
 
 def test_create_env(httpx_post, testable_env_input: EnvironmentInput):
     client = TestClient(app.router)
