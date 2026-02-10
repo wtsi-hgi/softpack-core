@@ -4,7 +4,6 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-
 import smtplib
 import statistics
 import urllib.parse
@@ -428,26 +427,42 @@ class ServiceAPI(API):
     async def buildStatus(  # type: ignore[no-untyped-def]
         request: Request,
     ):
-        """Return the avg wait seconds and a map of names to build status."""
+        """Return the average build time and current build/queue status."""
         statuses = BuildStatus.get_all()
         if isinstance(statuses, BuilderError):
             statuses = []
 
-        try:
-            avg_wait_secs = statistics.mean(
-                (s.build_done - s.requested).total_seconds()
-                for s in statuses
-                if s.build_done is not None
-            )
-        except statistics.StatisticsError:
-            avg_wait_secs = None
+        build_times = [
+            (s.build_done - s.build_start).total_seconds()
+            for s in statuses
+            if s.build_done is not None and s.build_start is not None
+        ]
+
+        avg_build_secs = statistics.mean(build_times) if build_times else None
+
+        queued = sorted(
+            (s for s in statuses if s.build_start is None),
+            key=lambda s: s.requested,
+        )
 
         return {
-            "avg": avg_wait_secs,
-            "statuses": map(
-                lambda x: (x.name, x.build_start),
-                filter(lambda x: x.build_start is not None, statuses),
-            ),
+            "avgBuildSeconds": avg_build_secs,
+            "queue": [
+                {
+                    "name": s.name,
+                    "requested": s.requested.isoformat(),
+                }
+                for s in queued
+                if s.requested is not None
+            ],
+            "building": [
+                {
+                    "name": s.name,
+                    "buildStart": s.build_start.isoformat(),
+                }
+                for s in statuses
+                if s.build_start is not None and s.build_done is None
+            ],
         }
 
     @staticmethod
