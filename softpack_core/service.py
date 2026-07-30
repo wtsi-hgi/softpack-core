@@ -14,7 +14,7 @@ from typing import Tuple, Union, cast
 import typer
 import uvicorn
 import yaml
-from fastapi import APIRouter, Request, Response, UploadFile
+from fastapi import APIRouter, Request, Response, UploadFile, BackgroundTasks
 from typer import Typer
 from typing_extensions import Annotated
 
@@ -34,6 +34,7 @@ from softpack_core.schemas.environment import (
 )
 from softpack_core.schemas.groups import Group
 from softpack_core.schemas.package_collection import PackageCollection
+from tests.integration.conftest import send_email
 
 from .api import API
 from .app import app
@@ -93,6 +94,7 @@ class ServiceAPI(API):
     async def upload_artifacts(  # type: ignore[no-untyped-def]
         request: Request,
         file: list[UploadFile],
+        background_tasks: BackgroundTasks
     ):
         """upload_artifacts is a POST fn that adds files to an environment.
 
@@ -102,6 +104,7 @@ class ServiceAPI(API):
             file (List[UploadFile]): The files to be uploaded.
             request (Request): The POST request which contains the environment
             path in the query.
+            background_tasks: Imported from FastAPI to add blocking tasks to
 
         Returns:
             WriteArtifactResponse
@@ -185,12 +188,13 @@ class ServiceAPI(API):
                     else "Your SoftPack environment failed to build"
                 )
 
-                send_email(
+                background_tasks.add_task(
+                    send_email,
                     envEmailConfig,
                     message,
                     subject,
                     env.username,
-                    newState != State.ready,
+                    newState != State.ready
                 )
                 await env.remove_username()
 
@@ -243,6 +247,7 @@ class ServiceAPI(API):
     @router.post("/request-recipe")
     async def request_recipe(  # type: ignore[no-untyped-def]
         request: Request,
+        background_tasks: BackgroundTasks
     ):
         """Request a recipe to be created."""
         data = await request.json()
@@ -267,7 +272,8 @@ class ServiceAPI(API):
         if data["username"] != "":
             recipeConfig = app.settings.recipes
 
-            send_email(
+            background_tasks.add_task(
+                send_email,
                 recipeConfig,
                 f'User: {data["username"]}\n'
                 + f'Recipe: {data["name"]}\n'
