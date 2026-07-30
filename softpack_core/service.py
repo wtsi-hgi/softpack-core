@@ -34,7 +34,6 @@ from softpack_core.schemas.environment import (
 )
 from softpack_core.schemas.groups import Group
 from softpack_core.schemas.package_collection import PackageCollection
-from tests.integration.conftest import send_email
 
 from .api import API
 from .app import app
